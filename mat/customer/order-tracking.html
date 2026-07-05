@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Order Tracking – Mathura Quick Mart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <style>
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 500;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--gray-200);
+      height: var(--header-height);
+      box-shadow: var(--shadow-sm);
+    }
+    .navbar-inner {
+      max-width: var(--container-max);
+      margin: 0 auto;
+      padding: 0 var(--sp-6);
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .navbar-logo { display: flex; align-items: center; gap: var(--sp-2); text-decoration: none; }
+    .logo-icon { width: 38px; height: 38px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+    .logo-text { font-family: var(--font-display); font-weight: var(--fw-black); font-size: var(--text-xl); background: linear-gradient(135deg, var(--primary-dark), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    .tracking-grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: var(--sp-8);
+      margin-top: var(--sp-6);
+    }
+
+    .tracking-card {
+      background: var(--white);
+      border-radius: var(--radius-xl);
+      padding: var(--sp-6);
+      border: 1px solid var(--gray-200);
+    }
+
+    /* ---- Tracking Map ---- */
+    .tracking-map-container {
+      width: 100%;
+      height: 500px;
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      border: 1px solid var(--gray-200);
+      position: relative;
+      background: #e5e9f0;
+    }
+
+    .tracking-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      position: relative;
+      padding-left: var(--sp-6);
+    }
+    .tracking-timeline::before {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 10px;
+      bottom: 10px;
+      width: 2px;
+      background: var(--gray-200);
+    }
+    .tracking-step {
+      position: relative;
+      padding-bottom: var(--sp-8);
+    }
+    .tracking-step:last-child {
+      padding-bottom: 0;
+    }
+    .tracking-dot {
+      position: absolute;
+      left: -23px;
+      top: 4px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--gray-300);
+      border: 3px solid var(--white);
+      box-shadow: var(--shadow-sm);
+      transition: all var(--transition-base);
+    }
+    .tracking-step.done .tracking-dot {
+      background: var(--primary);
+    }
+    .tracking-step.active .tracking-dot {
+      background: var(--secondary);
+      box-shadow: 0 0 0 4px rgb(249 115 22 / 0.2);
+      animation: pulse-green 1.5s infinite;
+    }
+    .tracking-step-title {
+      font-size: var(--text-sm);
+      font-weight: var(--fw-bold);
+      color: var(--gray-800);
+    }
+    .tracking-step-desc {
+      font-size: var(--text-xs);
+      color: var(--gray-500);
+      margin-top: 2px;
+    }
+
+    /* Map simulation components */
+    .map-rider {
+      position: absolute;
+      font-size: 2rem;
+      transition: all 2s linear;
+      z-index: 10;
+    }
+    .map-shop {
+      position: absolute;
+      left: 10%;
+      top: 50%;
+      font-size: 2rem;
+    }
+    .map-customer-home {
+      position: absolute;
+      right: 15%;
+      top: 30%;
+      font-size: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      .tracking-grid { grid-template-columns: 1fr; }
+      .tracking-map-container { height: 300px; }
+    }
+  </style>
+
+  <script type='module' src='/js/firebase-init.js'></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="../index.html" class="navbar-logo">
+      <div class="logo-icon">🛒</div>
+      <div>
+        <div class="logo-text">Mathura Quick Mart</div>
+      </div>
+    </a>
+    <a href="/customer/dashboard.html" class="btn btn-ghost">← Dashboard</a>
+  </div>
+</nav>
+
+<div class="container section-sm">
+  <h1 class="section-title">Live Order Tracking</h1>
+
+  <div class="tracking-grid">
+    <!-- Status Sidebar -->
+    <div class="flex flex-col gap-6">
+      <div class="tracking-card">
+        <h2 style="font-size:var(--text-lg);font-weight:var(--fw-bold);margin-bottom:var(--sp-4);">Order Info</h2>
+        <div class="flex justify-between mb-2" style="font-size:var(--text-sm);">
+          <span style="color:var(--gray-500)">Order ID</span>
+          <strong id="track-id">SM940348574</strong>
+        </div>
+        <div class="flex justify-between mb-4" style="font-size:var(--text-sm);">
+          <span style="color:var(--gray-500)">Status</span>
+          <span class="status status-out-delivery">Out for Delivery</span>
+        </div>
+        <div class="divider"></div>
+        <div style="font-size:var(--text-sm);">
+          <div style="font-weight:var(--fw-bold);color:var(--gray-800);">Delivery Partner</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:8px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--secondary-pale);display:flex;align-items:center;justify-content:center;font-size:1.2rem;">🛵</div>
+            <div>
+              <div style="font-weight:var(--fw-bold);" id="driver-name">Ramesh Kumar</div>
+              <div style="font-size:11px;color:var(--gray-500);" id="driver-phone">Call: +91 99887 76655</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="tracking-card">
+        <h2 style="font-size:var(--text-lg);font-weight:var(--fw-bold);margin-bottom:var(--sp-6);">Delivery Status</h2>
+
+        <div class="tracking-timeline">
+          <div class="tracking-step done" id="step-placed">
+            <div class="tracking-dot"></div>
+            <div class="tracking-step-title">Order Placed</div>
+            <div class="tracking-step-desc">Your order has been received and confirmed.</div>
+          </div>
+          <div class="tracking-step active" id="step-packed">
+            <div class="tracking-dot"></div>
+            <div class="tracking-step-title">Packed</div>
+            <div class="tracking-step-desc">Mathura Quick Mart staff finished packing items.</div>
+          </div>
+          <div class="tracking-step" id="step-out">
+            <div class="tracking-dot"></div>
+            <div class="tracking-step-title">Out for Delivery</div>
+            <div class="tracking-step-desc">Waiting for dispatch...</div>
+          </div>
+          <div class="tracking-step" id="step-delivered">
+            <div class="tracking-dot"></div>
+            <div class="tracking-step-title">Delivered</div>
+            <div class="tracking-step-desc" id="delivery-time-text">Time will be displayed after dispatch.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map Simulator -->
+    <div class="tracking-map-container">
+      <!-- Simulated map elements -->
+      <div style="position:absolute;inset:0;background:radial-gradient(circle, #edf1f7 10%, #e2e8f0 100%);">
+        <!-- SVG Roads Grid -->
+        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <line x1="0" y1="100" x2="1000" y2="100" stroke="#fff" stroke-width="20" />
+          <line x1="0" y1="250" x2="1000" y2="250" stroke="#fff" stroke-width="20" />
+          <line x1="0" y1="400" x2="1000" y2="400" stroke="#fff" stroke-width="20" />
+          <line x1="150" y1="0" x2="150" y2="600" stroke="#fff" stroke-width="20" />
+          <line x1="450" y1="0" x2="450" y2="600" stroke="#fff" stroke-width="20" />
+          <line x1="750" y1="0" x2="750" y2="600" stroke="#fff" stroke-width="20" />
+        </svg>
+      </div>
+
+      <div class="map-shop" title="Mathura Quick Mart Outlet Store">🏪 Store</div>
+      <div class="map-customer-home" title="Your Delivery Address">🏠 Home</div>
+      <div class="map-rider" id="map-rider" style="left:12%; top:45%;">🛵</div>
+
+      <div style="position:absolute;bottom:16px;left:16px;background:rgba(255,255,255,0.9);padding:8px 12px;border-radius:8px;font-size:11px;font-weight:bold;box-shadow:var(--shadow-md);z-index:20;">
+        📍 Live driver positioning active
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="../js/app.js"></script>
+<script>
+  let step = -1; // -1 means Packed
+  const positions = [
+    { left: '12%', top: '45%' },
+    { left: '20%', top: '38%' },
+    { left: '35%', top: '38%' },
+    { left: '42%', top: '23%' },
+    { left: '60%', top: '23%' },
+    { left: '78%', top: '25%' }
+  ];
+
+  function simulateMovement() {
+    const rider = document.getElementById('map-rider');
+    if (!rider) return;
+
+    if (step === -1) {
+      document.getElementById('step-packed').className = 'tracking-step done';
+      document.getElementById('step-out').className = 'tracking-step active';
+      document.getElementById('step-out').querySelector('.tracking-step-desc').textContent = 'Driver is on the way to your location.';
+      document.getElementById('delivery-time-text').textContent = 'Expected within 15 minutes.';
+      MathuraQuickMart.toast('📦 Order Dispatched! Expected time: 15 mins.', 'info');
+      step = 0;
+      return;
+    }
+
+    step = (step + 1) % positions.length;
+    rider.style.left = positions[step].left;
+    rider.style.top = positions[step].top;
+
+    // When rider reaches Home (last position)
+    if (step === positions.length - 1) {
+      document.getElementById('step-out').className = 'tracking-step done';
+      document.getElementById('step-delivered').className = 'tracking-step active';
+      document.getElementById('delivery-time-text').textContent = 'Delivered successfully.';
+      MathuraQuickMart.toast('🛵 Rider has arrived at your address!', 'success');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const lastOrder = localStorage.getItem('mathuraquickmart_last_order');
+    if (lastOrder) {
+      const order = JSON.parse(lastOrder);
+      document.getElementById('track-id').textContent = order.id;
+    }
+
+    // Start rider movement simulation loop
+    setInterval(simulateMovement, 3500);
+  });
+</script>
+</body>
+</html>
