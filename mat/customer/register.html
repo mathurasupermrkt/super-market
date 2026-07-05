@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register – Mathura Quick Mart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <style>
+    body {
+      background: radial-gradient(circle at 10% 20%, #f0fdf4 0%, #f8fafc 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--sp-4);
+    }
+    .register-container {
+      width: 100%;
+      max-width: 460px;
+    }
+  </style>
+
+  <script type='module' src='/js/firebase-init.js'></script>
+</head>
+<body>
+
+<div class="register-container animate-scale-in">
+  <div style="text-align:center;margin-bottom:var(--sp-6);">
+    <a href="../index.html" class="navbar-logo" style="display:inline-flex;align-items:center;gap:var(--sp-2);">
+      <div class="logo-icon">🛒</div>
+      <div>
+        <div class="logo-text" style="font-size:var(--text-2xl);">Mathura Quick Mart</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="card p-8">
+    <h1 style="font-size:var(--text-xl);font-weight:var(--fw-bold);margin-bottom:var(--sp-6);text-align:center;">Create Customer Account</h1>
+
+    <div class="form-group mb-4">
+      <label class="form-label">Full Name</label>
+      <input type="text" class="form-input" id="reg-name" placeholder="John Doe" required>
+    </div>
+
+    <div class="form-group mb-4">
+      <label class="form-label">Email Address</label>
+      <input type="email" class="form-input" id="reg-email" placeholder="name@domain.com" required>
+    </div>
+
+    <div class="form-group mb-4">
+      <label class="form-label">Mobile Number</label>
+      <input type="tel" class="form-input" id="reg-phone" placeholder="+91 XXXXX XXXXX" required>
+    </div>
+
+    <div class="form-group mb-6">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-input" id="reg-password" placeholder="At least 6 characters" required>
+    </div>
+
+    <button class="btn btn-primary btn-lg w-full" onclick="handleRegister()">
+      Register Account
+    </button>
+
+    <div class="divider"></div>
+
+    <p style="font-size:var(--text-sm);color:var(--gray-500);text-align:center;">
+      Already have an account? <a href="login.html">Sign In</a>
+    </p>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="../js/app.js"></script>
+<script>
+  function handleRegister() {
+    const name = document.getElementById('reg-name').value;
+    const email = document.getElementById('reg-email').value;
+    const phone = document.getElementById('reg-phone').value;
+    const password = document.getElementById('reg-password').value;
+
+    if (!name || !email || !phone || !password) {
+      MathuraQuickMart.toast('Please fill in all registration fields', 'error');
+      return;
+    }
+
+    if (password.length < 6) {
+      MathuraQuickMart.toast('Password must be at least 6 characters long', 'error');
+      return;
+    }
+
+    // Success login
+    const user = { name, email, role: 'customer' };
+    MathuraQuickMart.login(user);
+
+    MathuraQuickMart.toast('🎉 Account registered successfully!', 'success');
+
+    setTimeout(() => {
+      window.location.href = '/customer/dashboard.html';
+    }, 1500);
+  }
+</script>
+</body>
+</html>

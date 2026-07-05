@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About Us – Mathura Quick Mart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <style>
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 500;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--gray-200);
+      height: var(--header-height);
+      box-shadow: var(--shadow-sm);
+    }
+    .navbar-inner {
+      max-width: var(--container-max);
+      margin: 0 auto;
+      padding: 0 var(--sp-6);
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .navbar-logo { display: flex; align-items: center; gap: var(--sp-2); text-decoration: none; }
+    .logo-icon { width: 38px; height: 38px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+    .logo-text { font-family: var(--font-display); font-weight: var(--fw-black); font-size: var(--text-xl); background: linear-gradient(135deg, var(--primary-dark), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  </style>
+
+  <script type='module' src='/js/firebase-init.js'></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="../index.html" class="navbar-logo">
+      <div class="logo-icon">🛒</div>
+      <div>
+        <div class="logo-text">Mathura Quick Mart</div>
+      </div>
+    </a>
+    <a href="../index.html" class="btn btn-outline btn-sm">Shop Store</a>
+  </div>
+</nav>
+
+<div class="container section-sm" style="max-width:800px;">
+  <div class="breadcrumb mb-6">
+    <a href="../index.html">Home</a>
+    <span class="breadcrumb-sep">/</span>
+    <span class="breadcrumb-current">About Us</span>
+  </div>
+
+  <h1 class="section-title">About Mathura Quick Mart</h1>
+
+  <div class="card p-8 mt-6">
+    <p style="font-size:var(--text-base);color:var(--gray-700);line-height:1.8;margin-bottom:var(--sp-4);">
+      Welcome to <strong>Mathura Quick Mart</strong>, your premium neighborhood online supermarket. We are dedicated to providing the freshest groceries, farm-fresh fruits and vegetables, quality dairy products, essential bakery goods, and household needs directly to your doorstep.
+    </p>
+    
+    <p style="font-size:var(--text-base);color:var(--gray-700);line-height:1.8;margin-bottom:var(--sp-4);">
+      Founded with a vision to redefine the grocery shopping experience, Mathura Quick Mart combines modern technology with trusted local suppliers. Our express delivery network guarantees that your orders are packed with care and delivered within 60 minutes.
+    </p>
+
+    <h2 style="font-size:var(--text-lg);font-weight:bold;margin-top:var(--sp-6);margin-bottom:var(--sp-3);">Our Commitment</h2>
+    <ul style="list-style-type:disc;padding-left:var(--sp-6);color:var(--gray-600);font-size:var(--text-sm);line-height:1.8;">
+      <li style="margin-bottom:8px;"><strong>Farm to Table:</strong> We source organic and premium items from local partners under strict hygiene conditions.</li>
+      <li style="margin-bottom:8px;"><strong>Customer First:</strong> Our refund policies, direct support, and live order tracking are geared toward complete satisfaction.</li>
+      <li style="margin-bottom:8px;"><strong>Sustainable Logistics:</strong> We plan routes dynamically to reduce vehicle emissions and support carbon neutrality.</li>
+    </ul>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+</body>
+</html>
