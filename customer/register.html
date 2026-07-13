@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register – Mathura Quick Mart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <style>
+    body {
+      background: radial-gradient(circle at 10% 20%, #f0fdf4 0%, #f8fafc 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--sp-4);
+    }
+    .register-container {
+      width: 100%;
+      max-width: 460px;
+    }
+    .btn-loading {
+      opacity: 0.75;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .btn-loading::after {
+      content: '';
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      margin-left: 8px;
+      border: 2px solid rgba(255,255,255,0.5);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+
+  <script type='module' src='/js/firebase-init.js'></script>
+</head>
+<body>
+
+<div class="register-container animate-scale-in">
+  <div style="text-align:center;margin-bottom:var(--sp-6);">
+    <a href="../index.html" class="navbar-logo" style="display:inline-flex;align-items:center;gap:var(--sp-2);">
+      <div class="logo-icon">🛒</div>
+      <div>
+        <div class="logo-text" style="font-size:var(--text-2xl);">Mathura Quick Mart</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="card p-8">
+    <h1 style="font-size:var(--text-xl);font-weight:var(--fw-bold);margin-bottom:var(--sp-6);text-align:center;">Create Customer Account</h1>
+
+    <div class="form-group mb-4">
+      <label class="form-label">Full Name</label>
+      <input type="text" class="form-input" id="reg-name" placeholder="John Doe" required>
+    </div>
+
+    <div class="form-group mb-4">
+      <label class="form-label">Email Address</label>
+      <input type="email" class="form-input" id="reg-email" placeholder="name@domain.com" required>
+    </div>
+
+    <div class="form-group mb-4">
+      <label class="form-label">Mobile Number</label>
+      <input type="tel" class="form-input" id="reg-phone" placeholder="+91 XXXXX XXXXX" required>
+    </div>
+
+    <div class="form-group mb-6">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-input" id="reg-password" placeholder="At least 6 characters" required>
+    </div>
+
+    <button class="btn btn-primary btn-lg w-full" id="register-btn" onclick="handleRegister()">
+      Register Account
+    </button>
+
+    <div class="divider"></div>
+
+    <p style="font-size:var(--text-sm);color:var(--gray-500);text-align:center;">
+      Already have an account? <a href="login.html">Sign In</a>
+    </p>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="../js/app.js"></script>
+<script>
+  function setLoading(loading) {
+    const btn = document.getElementById('register-btn');
+    if (loading) {
+      btn.classList.add('btn-loading');
+      btn.textContent = 'Creating Account...';
+    } else {
+      btn.classList.remove('btn-loading');
+      btn.textContent = 'Register Account';
+    }
+  }
+
+  function getRegisterErrorMessage(code) {
+    switch (code) {
+      case 'auth/email-already-in-use': return 'This email is already registered. Try logging in.';
+      case 'auth/invalid-email':        return 'Please enter a valid email address.';
+      case 'auth/weak-password':        return 'Password must be at least 6 characters.';
+      default:                          return 'Registration failed. Please try again.';
+    }
+  }
+
+  async function handleRegister() {
+    const name     = document.getElementById('reg-name').value.trim();
+    const email    = document.getElementById('reg-email').value.trim();
+    const phone    = document.getElementById('reg-phone').value.trim();
+    const password = document.getElementById('reg-password').value;
+
+    if (!name || !email || !phone || !password) {
+      MathuraQuickMart.toast('Please fill in all registration fields', 'error');
+      return;
+    }
+
+    if (password.length < 6) {
+      MathuraQuickMart.toast('Password must be at least 6 characters long', 'error');
+      return;
+    }
+
+    setLoading(true);
+
+    function doRegister() {
+      const auth    = window.FirebaseAuth;
+      const authFns = window.FirebaseAuthFns;
+      const db      = window.FirebaseDB;
+      const fs      = window.Firestore;
+
+      authFns.createUserWithEmailAndPassword(auth, email, password)
+        .then(async (userCredential) => {
+          const fbUser = userCredential.user;
+
+          // Update Firebase Auth display name
+          await authFns.updateProfile(fbUser, { displayName: name }).catch(() => {});
+
+          // Save extended profile to Firestore users/{uid}
+          const profileData = {
+            uid:       fbUser.uid,
+            name:      name,
+            email:     email,
+            phone:     phone,
+            role:      'customer',
+            createdAt: new Date().toISOString(),
+          };
+          await fs.setDoc(fs.doc(db, 'users', fbUser.uid), profileData).catch(() => {});
+
+          const user = { uid: fbUser.uid, name, email, role: 'customer' };
+          MathuraQuickMart.login(user);
+
+          MathuraQuickMart.toast('🎉 Account registered successfully!', 'success');
+          setTimeout(() => { window.location.href = '/customer/dashboard.html'; }, 1500);
+        })
+        .catch((error) => {
+          setLoading(false);
+          MathuraQuickMart.toast(getRegisterErrorMessage(error.code), 'error');
+        });
+    }
+
+    // Wait for Firebase to be ready if not yet
+    if (window.FirebaseAuth && window.FirebaseAuthFns) {
+      doRegister();
+    } else {
+      window.addEventListener('firebase-ready', doRegister, { once: true });
+    }
+  }
+</script>
+</body>
+</html>

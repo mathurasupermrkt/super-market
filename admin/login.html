@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Portal – Mathura Quick Mart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <style>
+    body {
+      background: radial-gradient(circle at 10% 20%, #f0fdf4 0%, #f8fafc 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--sp-4);
+    }
+    .login-container {
+      width: 100%;
+      max-width: 420px;
+    }
+    .staff-toggle {
+      display: flex;
+      background: var(--gray-100);
+      border-radius: var(--radius-lg);
+      padding: 4px;
+      margin-bottom: var(--sp-6);
+    }
+    .staff-toggle-btn {
+      flex: 1;
+      padding: 0.5rem 1rem;
+      border: none;
+      background: transparent;
+      font-size: var(--text-sm);
+      font-weight: var(--fw-bold);
+      color: var(--gray-600);
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      transition: all var(--transition-fast);
+      text-align: center;
+    }
+    .staff-toggle-btn.active {
+      background: var(--white);
+      color: var(--primary-dark);
+      box-shadow: var(--shadow-sm);
+    }
+    .btn-loading {
+      opacity: 0.75;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .btn-loading::after {
+      content: '';
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      margin-left: 8px;
+      border: 2px solid rgba(255,255,255,0.5);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+
+  <script type='module' src='/js/firebase-init.js'></script>
+</head>
+<body>
+
+<div class="login-container animate-scale-in">
+  <!-- Logo -->
+  <div style="text-align:center;margin-bottom:var(--sp-6);">
+    <a href="../index.html" class="navbar-logo" style="display:inline-flex;align-items:center;gap:var(--sp-2);">
+      <div class="logo-icon" style="background:linear-gradient(135deg, #0f766e, #022c22);">💼</div>
+      <div>
+        <div class="logo-text" style="font-size:var(--text-2xl);background:linear-gradient(135deg, #0f766e, #022c22);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Staff Workspace</div>
+      </div>
+    </a>
+    <p style="color:var(--gray-500);font-size:var(--text-xs);margin-top:8px;">Store Management &amp; Logistics Portals</p>
+  </div>
+
+  <div class="card p-8">
+    <div class="staff-toggle">
+      <button class="staff-toggle-btn active" id="toggle-admin" onclick="setRole('admin')">Store Admin</button>
+      <button class="staff-toggle-btn" id="toggle-delivery" onclick="setRole('delivery')">Delivery Rider</button>
+    </div>
+
+    <h1 style="font-size:var(--text-lg);font-weight:var(--fw-bold);margin-bottom:var(--sp-4);text-align:center;" id="login-title">Admin Login</h1>
+
+    <div class="form-group mb-4">
+      <label class="form-label" id="username-label">Email ID</label>
+      <input type="email" class="form-input" id="login-email" placeholder="admin@mathuraquickmart.in" required>
+    </div>
+
+    <div class="form-group mb-6">
+      <div style="display:flex;justify-content:between;">
+        <label class="form-label">Password</label>
+      </div>
+      <input type="password" class="form-input" id="login-password" placeholder="••••••••" required>
+    </div>
+
+    <button class="btn btn-primary btn-lg w-full" id="login-btn" onclick="handleLogin()"
+      style="background:linear-gradient(135deg, #0f766e, #115e59);box-shadow: 0 10px 25px -5px rgb(15 118 110 / 0.3);">
+      Sign In to Portal
+    </button>
+
+    <div class="divider"></div>
+    <a href="../index.html" style="font-size:var(--text-sm);color:var(--gray-500);display:block;text-align:center;">🏪 Return to Customer Store</a>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="../js/app.js"></script>
+<script>
+  let currentRole = 'admin';
+
+  function setRole(role) {
+    currentRole = role;
+    document.getElementById('toggle-admin').classList.toggle('active', role === 'admin');
+    document.getElementById('toggle-delivery').classList.toggle('active', role === 'delivery');
+
+    const titleEl    = document.getElementById('login-title');
+    const emailInput = document.getElementById('login-email');
+
+    if (role === 'admin') {
+      titleEl.textContent     = 'Admin Login';
+      emailInput.placeholder  = 'admin@mathuraquickmart.in';
+    } else {
+      titleEl.textContent     = 'Delivery Rider Login';
+      emailInput.placeholder  = 'rider@mathuraquickmart.in';
+    }
+  }
+
+  function setLoading(loading) {
+    const btn = document.getElementById('login-btn');
+    if (loading) {
+      btn.classList.add('btn-loading');
+      btn.textContent = 'Signing In...';
+    } else {
+      btn.classList.remove('btn-loading');
+      btn.textContent = 'Sign In to Portal';
+    }
+  }
+
+  function getAuthErrorMessage(code) {
+    switch (code) {
+      case 'auth/user-not-found':     return 'No account found with this email.';
+      case 'auth/wrong-password':     return 'Incorrect password. Please try again.';
+      case 'auth/invalid-email':      return 'Please enter a valid email address.';
+      case 'auth/too-many-requests':  return 'Too many failed attempts. Try again later.';
+      case 'auth/invalid-credential': return 'Invalid email or password.';
+      default:                        return 'Sign in failed. Please try again.';
+    }
+  }
+
+  function handleLogin() {
+    const email    = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+
+    if (!email || !password) {
+      MathuraQuickMart.toast('Please enter your email and password', 'error');
+      return;
+    }
+
+    setLoading(true);
+
+    function doLogin() {
+      const auth    = window.FirebaseAuth;
+      const authFns = window.FirebaseAuthFns;
+      const db      = window.FirebaseDB;
+      const fs      = window.Firestore;
+
+      authFns.signInWithEmailAndPassword(auth, email, password)
+        .then(async (userCredential) => {
+          const fbUser = userCredential.user;
+
+          // Verify role from Firestore users/{uid}
+          let name         = fbUser.displayName || email.split('@')[0];
+          let firestoreRole = null;
+
+          try {
+            const profileSnap = await fs.getDoc(fs.doc(db, 'users', fbUser.uid));
+            if (profileSnap.exists()) {
+              const data   = profileSnap.data();
+              name         = data.name || name;
+              firestoreRole = data.role || null;
+            }
+          } catch (e) { /* Firestore optional */ }
+
+          // Role mismatch – sign out and deny access
+          if (firestoreRole && firestoreRole !== currentRole) {
+            await authFns.signOut(auth);
+            setLoading(false);
+            MathuraQuickMart.toast(
+              `Access Denied. This account is not a ${currentRole === 'admin' ? 'Store Admin' : 'Delivery Rider'}.`,
+              'error'
+            );
+            return;
+          }
+
+          const user = { uid: fbUser.uid, name, email: fbUser.email, role: currentRole };
+          MathuraQuickMart.login(user);
+
+          const redirect = currentRole === 'admin'
+            ? '/admin/dashboard.html'
+            : '/delivery/dashboard.html';
+          setTimeout(() => { window.location.href = redirect; }, 1000);
+        })
+        .catch((error) => {
+          setLoading(false);
+          MathuraQuickMart.toast(getAuthErrorMessage(error.code), 'error');
+        });
+    }
+
+    if (window.FirebaseAuth && window.FirebaseAuthFns) {
+      doLogin();
+    } else {
+      window.addEventListener('firebase-ready', doLogin, { once: true });
+    }
+  }
+
+  // Allow pressing Enter to submit
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleLogin();
+  });
+</script>
+</body>
+</html>

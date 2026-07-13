@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delivery Portal – Mathura Quick Mart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <style>
+    body {
+      background: var(--gray-50);
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid var(--gray-200);
+      border-right: 1px solid var(--gray-200);
+      box-shadow: var(--shadow-xl);
+    }
+    .delivery-header {
+      background: #064e3b;
+      color: var(--white);
+      padding: var(--sp-4) var(--sp-6);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .order-card {
+      background: var(--white);
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--gray-200);
+      padding: var(--sp-4);
+      margin-bottom: var(--sp-4);
+    }
+    .map-nav-sim {
+      width: 100%;
+      height: 200px;
+      background: #e2e8f0;
+      border-radius: var(--radius-lg);
+      margin: var(--sp-3) 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .proof-box {
+      border: 2px dashed var(--gray-300);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-4);
+      text-align: center;
+      cursor: pointer;
+      background: var(--gray-50);
+      margin-top: var(--sp-3);
+    }
+    .proof-box:hover {
+      border-color: var(--primary);
+    }
+  </style>
+
+  <script type='module' src='/js/firebase-init.js'></script>
+</head>
+<body>
+
+<!-- Header -->
+<header class="delivery-header">
+  <div class="flex items-center gap-3">
+    <div style="font-size:1.5rem;">🛵</div>
+    <div>
+      <div style="font-weight:bold;font-size:15px;" id="rider-profile-name">Ramesh Kumar</div>
+      <div style="font-size:10px;opacity:0.8;">Mathura Quick Mart Delivery Agent</div>
+    </div>
+  </div>
+  <a onclick="MathuraQuickMart.logout()" style="color:#fca5a5;cursor:pointer;font-size:12px;font-weight:bold;">Logout</a>
+</header>
+
+<!-- Main panel content -->
+<div class="p-4" style="flex:1;">
+  <div class="tabs mb-4">
+    <div class="tab active" onclick="switchDeliveryTab('assigned')">Active Tasks</div>
+    <div class="tab" onclick="switchDeliveryTab('history')">History</div>
+  </div>
+
+  <!-- Active Tasks Pane -->
+  <div id="pane-assigned">
+    <h2 style="font-size:16px;font-weight:bold;margin-bottom:12px;">Assigned Orders</h2>
+    <div id="assigned-orders-list">
+      <!-- Dynamic list -->
+    </div>
+  </div>
+
+  <!-- History Pane -->
+  <div id="pane-history" class="hidden">
+    <h2 style="font-size:16px;font-weight:bold;margin-bottom:12px;">Completed deliveries</h2>
+    <div class="order-card">
+      <div class="flex justify-between mb-2">
+        <strong>SM240001</strong>
+        <span class="badge badge-green">Delivered</span>
+      </div>
+      <div style="font-size:12px;color:var(--gray-500);">Client: Priya Sharma</div>
+      <div style="font-size:12px;color:var(--gray-500);margin-top:2px;">Delivered at: Dec 23, 10:45 AM</div>
+    </div>
+    <div class="order-card">
+      <div class="flex justify-between mb-2">
+        <strong>SM240003</strong>
+        <span class="badge badge-green">Delivered</span>
+      </div>
+      <div style="font-size:12px;color:var(--gray-500);">Client: Anita Kumar</div>
+      <div style="font-size:12px;color:var(--gray-500);margin-top:2px;">Delivered at: Dec 22, 2:15 PM</div>
+    </div>
+  </div>
+</div>
+
+<!-- Task Details Modal -->
+<div class="modal-overlay hidden" id="task-modal">
+  <div class="modal" style="margin-top:auto;border-bottom-left-radius:0;border-bottom-right-radius:0;">
+    <div class="modal-header">
+      <h3 style="margin:0;">Task Navigation & Update</h3>
+      <button class="btn btn-ghost btn-icon-sm" onclick="closeTaskModal()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px;">
+      <h4 id="task-order-id" style="font-size:16px;font-weight:bold;">SM123456</h4>
+      <div class="divider" style="margin:10px 0;"></div>
+
+      <div style="font-size:13px;color:var(--gray-700);">
+        <div><strong>Customer:</strong> <span id="task-cust-name">John Doe</span></div>
+        <div style="margin-top:4px;"><strong>Contact:</strong> <span id="task-cust-phone">+91 98765 43210</span></div>
+        <div style="margin-top:4px;"><strong>Address:</strong> <span id="task-cust-addr">B-204, Green Park, New Delhi</span></div>
+      </div>
+
+      <!-- Map simulation -->
+      <div class="map-nav-sim">
+        <div style="position:absolute;inset:0;background:#cbd5e1;display:flex;align-items:center;justify-content:center;">
+          <!-- Custom SVG grid -->
+          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <line x1="0" y1="50" x2="500" y2="50" stroke="#fff" stroke-width="12" />
+            <line x1="0" y1="120" x2="500" y2="120" stroke="#fff" stroke-width="12" />
+            <line x1="120" y1="0" x2="120" y2="300" stroke="#fff" stroke-width="12" />
+            <line x1="320" y1="0" x2="320" y2="300" stroke="#fff" stroke-width="12" />
+            <!-- Path highlight -->
+            <path d="M 120 120 L 320 120 L 320 50" fill="none" stroke="var(--primary)" stroke-width="4" stroke-dasharray="5" />
+          </svg>
+          <div style="position:absolute;left:105px;top:105px;font-size:1.5rem;">🛵</div>
+          <div style="position:absolute;left:305px;top:35px;font-size:1.5rem;">🏠</div>
+        </div>
+        <div style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,0.7);color:#fff;font-size:10px;padding:2px 8px;border-radius:4px;">
+          🛰️ Google Maps Active Turn-by-Turn Nav
+        </div>
+      </div>
+
+      <div class="form-group mb-4">
+        <label class="form-label">Update Task Status</label>
+        <select class="form-select" id="task-status" onchange="toggleProofField(this.value)">
+          <option value="out-delivery">Out for Delivery</option>
+          <option value="delivered">Delivered</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+
+      <!-- Proof of Delivery -->
+      <div id="proof-container" class="hidden">
+        <label class="form-label">Proof of Delivery (Photo)</label>
+        <div class="proof-box" onclick="simulateProofUpload()">
+          <span style="font-size:2rem;display:block;margin-bottom:8px;">📸</span>
+          <span style="font-size:12px;color:var(--gray-500);" id="proof-label">Click to snap photo of package or door</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-lg w-full mt-6" onclick="submitStatusUpdate()">Update Status</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="../js/app.js"></script>
+<script>
+  let activeTasks = [];
+  let currentSelectedOrder = null;
+  let hasProofUploaded = false;
+
+  function switchDeliveryTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('pane-assigned').classList.add('hidden');
+    document.getElementById('pane-history').classList.add('hidden');
+
+    const item = Array.from(document.querySelectorAll('.tab')).find(t => t.textContent.toLowerCase().includes(tab));
+    if (item) item.classList.add('active');
+
+    document.getElementById(`pane-${tab}`).classList.remove('hidden');
+  }
+
+  function loadDeliveryTasks() {
+    activeTasks = API.getDeliveryOrders('rider01');
+    const container = document.getElementById('assigned-orders-list');
+
+    if (activeTasks.length === 0) {
+      container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--gray-400)">No pending delivery tasks.</div>`;
+      return;
+    }
+
+    container.innerHTML = activeTasks.map(o => `
+      <div class="order-card">
+        <div class="flex justify-between items-center mb-3">
+          <strong style="color:var(--gray-900);">${o.id}</strong>
+          <span class="status status-${o.status}">${o.status}</span>
+        </div>
+        <div style="font-size:13px;color:var(--gray-700);">
+          <div>👤 <strong>Client:</strong> ${o.customer}</div>
+          <div style="margin-top:2px;">📍 <strong>Address:</strong> ${o.address}</div>
+        </div>
+        <button class="btn btn-outline btn-sm w-full mt-4" onclick="openTaskModal('${o.id}')">Start / Update Task</button>
+      </div>
+    `).join('');
+  }
+
+  function openTaskModal(orderId) {
+    const o = activeTasks.find(task => task.id === orderId);
+    if (!o) return;
+
+    currentSelectedOrder = o;
+    hasProofUploaded = false;
+
+    document.getElementById('task-order-id').textContent = o.id;
+    document.getElementById('task-cust-name').textContent = o.customer;
+    document.getElementById('task-cust-phone').textContent = o.phone;
+    document.getElementById('task-cust-addr').textContent = o.address;
+    document.getElementById('task-status').value = o.status;
+
+    toggleProofField(o.status);
+
+    document.getElementById('task-modal').classList.remove('hidden');
+  }
+
+  function toggleProofField(val) {
+    const container = document.getElementById('proof-container');
+    if (val === 'delivered') {
+      container.classList.remove('hidden');
+    } else {
+      container.classList.add('hidden');
+    }
+  }
+
+  function simulateProofUpload() {
+    hasProofUploaded = true;
+    document.getElementById('proof-label').innerHTML = `✅ <strong>Proof_Capture_01.jpg</strong> uploaded!`;
+    MathuraQuickMart.toast('📸 Photo uploaded as Proof of Delivery', 'success');
+  }
+
+  function closeTaskModal() {
+    document.getElementById('task-modal').classList.add('hidden');
+  }
+
+  function submitStatusUpdate() {
+    const status = document.getElementById('task-status').value;
+
+    if (status === 'delivered' && !hasProofUploaded) {
+      MathuraQuickMart.toast('Please upload proof of delivery photo first!', 'error');
+      return;
+    }
+
+    // Update in local array
+    if (currentSelectedOrder) {
+      currentSelectedOrder.status = status;
+      MathuraQuickMart.toast(`Order ${currentSelectedOrder.id} status updated to ${status.toUpperCase()}!`, 'success');
+
+      // If finished, remove from active tasks list
+      if (status === 'delivered' || status === 'cancelled') {
+        activeTasks = activeTasks.filter(t => t.id !== currentSelectedOrder.id);
+      }
+    }
+
+    closeTaskModal();
+    loadDeliveryTasks();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    MathuraQuickMart.requireAuth();
+    loadDeliveryTasks();
+    if (MathuraQuickMart.state.user) {
+      document.getElementById('rider-profile-name').textContent = MathuraQuickMart.state.user.name;
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login – Mathura Quick Mart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <style>
+    body {
+      background: radial-gradient(circle at 10% 20%, #f0fdf4 0%, #f8fafc 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--sp-4);
+    }
+    .login-container {
+      width: 100%;
+      max-width: 420px;
+    }
+    .btn-loading {
+      opacity: 0.75;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .btn-loading::after {
+      content: '';
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      margin-left: 8px;
+      border: 2px solid rgba(255,255,255,0.5);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+
+  <script type='module' src='/js/firebase-init.js'></script>
+</head>
+<body>
+
+<div class="login-container animate-scale-in">
+  <!-- Logo -->
+  <div style="text-align:center;margin-bottom:var(--sp-6);">
+    <a href="../index.html" class="navbar-logo" style="display:inline-flex;align-items:center;gap:var(--sp-2);">
+      <div class="logo-icon">🛒</div>
+      <div>
+        <div class="logo-text" style="font-size:var(--text-2xl);">Mathura Quick Mart</div>
+      </div>
+    </a>
+    <p style="color:var(--gray-500);font-size:var(--text-xs);margin-top:8px;">Your premium grocery shopping destination</p>
+  </div>
+
+  <div class="card p-8">
+    <h1 style="font-size:var(--text-xl);font-weight:var(--fw-bold);margin-bottom:var(--sp-6);text-align:center;">Welcome Back</h1>
+
+    <div class="form-group mb-4">
+      <label class="form-label" id="username-label">Email Address</label>
+      <input type="email" class="form-input" id="login-email" placeholder="customer@mathuraquickmart.in" required>
+    </div>
+
+    <div class="form-group mb-4">
+      <div style="display:flex;justify-content:between;">
+        <label class="form-label">Password</label>
+        <a href="forgot-password.html" style="font-size:11px;margin-left:auto;">Forgot?</a>
+      </div>
+      <input type="password" class="form-input" id="login-password" placeholder="••••••••" required>
+    </div>
+
+    <div class="form-group mb-6">
+      <label class="filter-checkbox">
+        <input type="checkbox"> Remember me
+      </label>
+    </div>
+
+    <button class="btn btn-primary btn-lg w-full" id="login-btn" onclick="handleLogin()">
+      Sign In
+    </button>
+
+    <div class="divider"></div>
+
+    <p style="font-size:var(--text-sm);color:var(--gray-500);text-align:center;" id="signup-prompt">
+      New to Mathura Quick Mart? <a href="register.html">Create an account</a>
+    </p>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="../js/app.js"></script>
+<script>
+  function setLoading(loading) {
+    const btn = document.getElementById('login-btn');
+    if (loading) {
+      btn.classList.add('btn-loading');
+      btn.textContent = 'Signing In...';
+    } else {
+      btn.classList.remove('btn-loading');
+      btn.textContent = 'Sign In';
+    }
+  }
+
+  function getAuthErrorMessage(code) {
+    switch (code) {
+      case 'auth/user-not-found':      return 'No account found with this email.';
+      case 'auth/wrong-password':      return 'Incorrect password. Please try again.';
+      case 'auth/invalid-email':       return 'Please enter a valid email address.';
+      case 'auth/too-many-requests':   return 'Too many failed attempts. Try again later.';
+      case 'auth/invalid-credential':  return 'Invalid email or password.';
+      default:                         return 'Sign in failed. Please try again.';
+    }
+  }
+
+  async function handleLogin() {
+    const email    = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+
+    if (!email || !password) {
+      MathuraQuickMart.toast('Please enter both email and password', 'error');
+      return;
+    }
+
+    setLoading(true);
+
+    function doLogin() {
+      const auth    = window.FirebaseAuth;
+      const authFns = window.FirebaseAuthFns;
+      const db      = window.FirebaseDB;
+      const fs      = window.Firestore;
+
+      authFns.signInWithEmailAndPassword(auth, email, password)
+        .then(async (userCredential) => {
+          const fbUser = userCredential.user;
+
+          // Fetch extra profile from Firestore
+          let name = fbUser.displayName || email.split('@')[0];
+          let role = 'customer';
+          try {
+            const profileSnap = await fs.getDoc(fs.doc(db, 'users', fbUser.uid));
+            if (profileSnap.exists()) {
+              const data = profileSnap.data();
+              name = data.name || name;
+              role = data.role || 'customer';
+            }
+          } catch (e) { /* Firestore optional */ }
+
+          const user = { uid: fbUser.uid, name, email: fbUser.email, role };
+          MathuraQuickMart.login(user);
+          setTimeout(() => { window.location.href = '/index.html'; }, 1000);
+        })
+        .catch((error) => {
+          setLoading(false);
+          MathuraQuickMart.toast(getAuthErrorMessage(error.code), 'error');
+        });
+    }
+
+    // Wait for Firebase to be ready if not yet
+    if (window.FirebaseAuth && window.FirebaseAuthFns) {
+      doLogin();
+    } else {
+      window.addEventListener('firebase-ready', doLogin, { once: true });
+    }
+  }
+
+  // Allow pressing Enter to submit
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleLogin();
+  });
+</script>
+</body>
+</html>

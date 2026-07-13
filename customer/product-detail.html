@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="View product details, customer reviews, ratings, and recommendations.">
+  <title>Product Details – Mathura Quick Mart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <style>
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 500;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--gray-200);
+      height: var(--header-height);
+      box-shadow: var(--shadow-sm);
+    }
+    .navbar-inner {
+      max-width: var(--container-max);
+      margin: 0 auto;
+      padding: 0 var(--sp-6);
+      height: 100%;
+      display: flex;
+      align-items: center;
+      gap: var(--sp-6);
+    }
+    .navbar-logo {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+    .logo-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: var(--radius-xl);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      box-shadow: var(--shadow-green);
+    }
+    .logo-text {
+      font-family: var(--font-display);
+      font-weight: var(--fw-black);
+      font-size: var(--text-xl);
+      background: linear-gradient(135deg, var(--primary-dark), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .navbar-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+    .nav-action-btn {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: var(--sp-2) var(--sp-3);
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      transition: all var(--transition-fast);
+      color: var(--gray-600);
+      font-size: 1.3rem;
+      text-decoration: none;
+    }
+    .nav-action-btn:hover { background: var(--gray-50); color: var(--primary); }
+    .nav-action-label { font-size: 9px; font-weight: var(--fw-semi); }
+    .nav-cart-btn {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      padding: 0.5rem var(--sp-4);
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: var(--white);
+      border-radius: var(--radius-full);
+      font-size: var(--text-sm);
+      font-weight: var(--fw-semi);
+      cursor: pointer;
+      border: none;
+      transition: all var(--transition-fast);
+      text-decoration: none;
+    }
+    .nav-cart-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-green); color: var(--white); }
+
+    /* ---- Product Detail Container ---- */
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-12);
+      margin-top: var(--sp-6);
+    }
+    .detail-gallery {
+      position: relative;
+    }
+    .detail-gallery-main {
+      background: var(--gray-50);
+      border-radius: var(--radius-2xl);
+      overflow: hidden;
+      border: 1px solid var(--gray-200);
+      position: relative;
+      padding-top: 80%;
+    }
+    .detail-gallery-main img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .detail-info {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-4);
+    }
+    .detail-title {
+      font-size: var(--text-3xl);
+      font-weight: var(--fw-bold);
+      color: var(--gray-900);
+      line-height: 1.3;
+    }
+    .detail-meta {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-4);
+      font-size: var(--text-sm);
+      color: var(--gray-500);
+      flex-wrap: wrap;
+    }
+    .detail-price-box {
+      background: var(--primary-pale);
+      border-radius: var(--radius-xl);
+      padding: var(--sp-4) var(--sp-6);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-4);
+    }
+    .detail-price {
+      font-size: var(--text-3xl);
+      font-weight: var(--fw-black);
+      color: var(--gray-900);
+    }
+    .detail-price-original {
+      font-size: var(--text-lg);
+      color: var(--gray-400);
+      text-decoration: line-through;
+    }
+    .detail-discount {
+      background: var(--secondary-pale);
+      color: var(--secondary-dark);
+      padding: 0.25rem 0.5rem;
+      border-radius: var(--radius-md);
+      font-weight: var(--fw-bold);
+      font-size: var(--text-xs);
+    }
+
+    /* ---- Frequently Bought Together ---- */
+    .fbt-card {
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-xl);
+      padding: var(--sp-6);
+      background: var(--white);
+      margin-top: var(--sp-8);
+    }
+    .fbt-grid {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-4);
+      flex-wrap: wrap;
+    }
+    .fbt-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--sp-2);
+      width: 100px;
+    }
+    .fbt-item-img {
+      width: 70px;
+      height: 70px;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--gray-200);
+    }
+    .fbt-item-name {
+      font-size: 11px;
+      font-weight: var(--fw-medium);
+      color: var(--gray-700);
+      text-align: center;
+      height: 32px;
+      overflow: hidden;
+      line-clamp: 2;
+    }
+    .fbt-plus {
+      font-size: 1.5rem;
+      color: var(--gray-400);
+      font-weight: var(--fw-bold);
+    }
+    .fbt-total {
+      margin-left: auto;
+      padding-left: var(--sp-6);
+      border-left: 1.5px solid var(--gray-200);
+    }
+
+    /* ---- Tab Content Panels ---- */
+    .tab-content {
+      padding: var(--sp-6) 0;
+    }
+
+    /* ---- Review Card ---- */
+    .review-card {
+      border-bottom: 1px solid var(--gray-200);
+      padding: var(--sp-6) 0;
+    }
+    .review-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--sp-2);
+    }
+    .review-user {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+    }
+    .review-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--primary-pale);
+      color: var(--primary-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: var(--fw-bold);
+      font-size: var(--text-sm);
+    }
+
+    /* ---- Write Review Modal ---- */
+    .rate-stars-input {
+      display: flex;
+      gap: var(--sp-2);
+      font-size: 2rem;
+      cursor: pointer;
+      color: var(--gray-200);
+    }
+    .rate-stars-input span.active {
+      color: #f59e0b;
+    }
+
+    /* ---- Responsive ---- */
+    @media (max-width: 768px) {
+      .detail-grid { grid-template-columns: 1fr; gap: var(--sp-8); }
+      .fbt-total { margin-left: 0; padding-left: 0; border-left: none; width: 100%; text-align: center; margin-top: var(--sp-4); }
+    }
+  </style>
+
+  <script type='module' src='/js/firebase-init.js'></script>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar" id="main-navbar">
+  <div class="navbar-inner">
+    <a href="../index.html" class="navbar-logo">
+      <div class="logo-icon">🛒</div>
+      <div>
+        <div class="logo-text">Mathura Quick Mart</div>
+      </div>
+    </a>
+    <div class="navbar-actions">
+      <a href="/customer/wishlist.html" class="nav-action-btn">
+        <span>🤍</span>
+        <span class="num-badge" data-wishlist-count style="display:none">0</span>
+      </a>
+      <div class="dropdown">
+        <button class="nav-action-btn" onclick="toggleDropdown('user-menu')">
+          <span>👤</span>
+        </button>
+        <div class="dropdown-menu" id="user-menu" style="display:none;">
+          <div data-auth style="display:none">
+            <a class="dropdown-item" href="/customer/dashboard.html">📊 Dashboard</a>
+            <a class="dropdown-item" href="/customer/my-orders.html">📦 My Orders</a>
+            <a class="dropdown-item" href="/customer/profile.html">👤 Profile</a>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item" onclick="MathuraQuickMart.logout()">🚪 Logout</div>
+          </div>
+          <div data-guest>
+            <a class="dropdown-item" href="/customer/login.html">🔑 Login</a>
+            <a class="dropdown-item" href="/customer/register.html">📝 Register</a>
+          </div>
+        </div>
+      </div>
+      <a href="/customer/cart.html" class="nav-cart-btn" data-cart-icon>
+        <span>🛒</span>
+        <span class="num-badge" data-cart-count style="display:none">0</span>
+      </a>
+    </div>
+  </div>
+</nav>
+
+<div class="container section-sm">
+  <!-- Breadcrumb -->
+  <div class="breadcrumb mb-6">
+    <a href="../index.html">Home</a>
+    <span class="breadcrumb-sep">/</span>
+    <a href="/customer/products.html" id="breadcrumb-category">Products</a>
+    <span class="breadcrumb-sep">/</span>
+    <span class="breadcrumb-current" id="breadcrumb-title">Product Details</span>
+  </div>
+
+  <!-- Detail Layout -->
+  <div class="detail-grid">
+    <!-- Gallery -->
+    <div class="detail-gallery">
+      <div class="detail-gallery-main">
+        <img src="" id="product-img" alt="Product Image">
+      </div>
+    </div>
+
+    <!-- Info -->
+    <div class="detail-info">
+      <div>
+        <span class="badge badge-green mb-2" id="product-badge">Organic</span>
+        <h1 class="detail-title" id="product-title">Loading Product...</h1>
+        <div class="detail-meta mt-2">
+          <div style="display:flex;align-items:center;gap:4px;">
+            <div class="stars" id="product-stars">★★★★★</div>
+            <span id="product-rating-count">(0 Reviews)</span>
+          </div>
+          <span style="color:var(--gray-300)">|</span>
+          <span id="product-weight">500g</span>
+          <span style="color:var(--gray-300)">|</span>
+          <span class="badge" id="stock-badge">In Stock</span>
+        </div>
+      </div>
+
+      <div class="detail-price-box">
+        <span class="detail-price" id="product-price">₹0</span>
+        <span class="detail-price-original" id="product-original-price">₹0</span>
+        <span class="detail-discount" id="product-discount">0% OFF</span>
+      </div>
+
+      <p style="color:var(--gray-600);font-size:var(--text-sm);line-height:1.7;" id="product-description">
+        No description available.
+      </p>
+
+      <div class="flex items-center gap-4 mt-4">
+        <div class="qty-selector">
+          <button class="qty-btn" onclick="adjustQty(-1)">-</button>
+          <div class="qty-value" id="qty-val">1</div>
+          <button class="qty-btn" onclick="adjustQty(1)">+</button>
+        </div>
+
+        <button class="btn btn-primary btn-lg" onclick="addToCartDetailed()" style="flex:1;">
+          🛒 Add to Cart
+        </button>
+        <button class="btn btn-outline btn-icon-lg" onclick="toggleWishDetailed()" id="wishlist-detail-btn">
+          🤍
+        </button>
+      </div>
+
+      <!-- Frequently Bought Together Widget -->
+      <div class="fbt-card">
+        <h3 class="filter-title mb-4">Frequently Bought Together</h3>
+        <div class="fbt-grid">
+          <div class="fbt-item">
+            <div class="fbt-item-img"><img src="" id="fbt-img-1" alt=""></div>
+            <div class="fbt-item-name" id="fbt-name-1">Main Product</div>
+          </div>
+          <div class="fbt-plus">+</div>
+          <div class="fbt-item">
+            <div class="fbt-item-img"><img src="" id="fbt-img-2" alt=""></div>
+            <div class="fbt-item-name" id="fbt-name-2">Bundle Product</div>
+          </div>
+          <div class="fbt-total">
+            <div style="font-size:var(--text-xs);color:var(--gray-500);">Bundle Price</div>
+            <div style="font-size:var(--text-lg);font-weight:var(--fw-bold);color:var(--gray-900);" id="fbt-bundle-price">₹0</div>
+            <button class="btn btn-secondary btn-sm mt-2" onclick="addFbtBundle()">Add Both to Cart</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail Tabs -->
+  <div style="margin-top:var(--sp-12);">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(event, 'tab-spec')">Specifications</div>
+      <div class="tab" onclick="switchTab(event, 'tab-reviews')">Reviews (<span id="reviews-count-tab">0</span>)</div>
+    </div>
+
+    <!-- Specifications Tab -->
+    <div class="tab-content animate-fade-in" id="tab-spec">
+      <table class="data-table" style="max-width:600px;">
+        <tr>
+          <td style="font-weight:var(--fw-semi);width:180px;">Country of Origin</td>
+          <td>India</td>
+        </tr>
+        <tr>
+          <td style="font-weight:var(--fw-semi);">Shelf Life</td>
+          <td id="spec-shelf">7 Days</td>
+        </tr>
+        <tr>
+          <td style="font-weight:var(--fw-semi);">Storage Type</td>
+          <td id="spec-storage">Refrigerate / Cool Dry Place</td>
+        </tr>
+        <tr>
+          <td style="font-weight:var(--fw-semi);">Supplier</td>
+          <td>Mathura Quick Mart Fresh Farms</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Reviews Tab -->
+    <div class="tab-content animate-fade-in hidden" id="tab-reviews">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h3 class="filter-title" style="margin:0;">Customer Reviews</h3>
+          <p style="font-size:var(--text-xs);color:var(--gray-500);margin-top:4px;">Verified reviews from real buyers</p>
+        </div>
+        <button class="btn btn-outline" onclick="openReviewModal()">Write a Review</button>
+      </div>
+
+      <div id="reviews-list">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Recently Viewed Products -->
+  <section class="section" style="border-top:1px solid var(--gray-200);margin-top:var(--sp-12);">
+    <div class="section-header">
+      <h2 class="section-title">Recently Viewed</h2>
+    </div>
+    <div class="products-grid" id="recently-viewed-grid">
+      <!-- Rendered dynamically -->
+    </div>
+  </section>
+</div>
+
+<!-- Write Review Modal -->
+<div class="modal-overlay hidden" id="review-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 style="margin:0;">Write a Review</h3>
+      <button class="btn btn-ghost btn-icon-sm" onclick="closeReviewModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group mb-4">
+        <label class="form-label">Rating</label>
+        <div class="rate-stars-input" id="stars-input">
+          <span onclick="setReviewRating(1)">★</span>
+          <span onclick="setReviewRating(2)">★</span>
+          <span onclick="setReviewRating(3)">★</span>
+          <span onclick="setReviewRating(4)">★</span>
+          <span onclick="setReviewRating(5)">★</span>
+        </div>
+      </div>
+      <div class="form-group mb-4">
+        <label class="form-label">Your Name</label>
+        <input type="text" class="form-input" id="review-name" placeholder="John Doe">
+      </div>
+      <div class="form-group mb-6">
+        <label class="form-label">Comment</label>
+        <textarea class="form-textarea" id="review-comment" placeholder="Tell us what you liked or disliked about this product..."></textarea>
+      </div>
+      <button class="btn btn-primary w-full" onclick="submitReview()">Submit Review</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="../js/app.js"></script>
+<script>
+  let activeProduct = null;
+  let companionProduct = null;
+  let detailedQty = 1;
+  let reviewRatingInput = 5;
+
+  function adjustQty(amount) {
+    detailedQty += amount;
+    if (detailedQty < 1) detailedQty = 1;
+    document.getElementById('qty-val').textContent = detailedQty;
+  }
+
+  function addToCartDetailed() {
+    if (activeProduct) {
+      MathuraQuickMart.addToCart(activeProduct, detailedQty);
+    }
+  }
+
+  function toggleWishDetailed() {
+    if (!activeProduct) return;
+    const isNow = MathuraQuickMart.toggleWishlist(activeProduct);
+    const btn = document.getElementById('wishlist-detail-btn');
+    if (btn) {
+      btn.textContent = isNow ? '❤️' : '🤍';
+      btn.classList.toggle('active', isNow);
+    }
+  }
+
+  function addFbtBundle() {
+    if (activeProduct && companionProduct) {
+      MathuraQuickMart.addToCart(activeProduct, 1);
+      MathuraQuickMart.addToCart(companionProduct, 1);
+      MathuraQuickMart.toast('✨ Bundle added to cart!', 'success');
+    }
+  }
+
+  function switchTab(event, tabId) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+
+    event.target.classList.add('active');
+    document.getElementById(tabId).classList.remove('hidden');
+  }
+
+  function openReviewModal() {
+    document.getElementById('review-modal').classList.remove('hidden');
+    setReviewRating(5);
+  }
+
+  function closeReviewModal() {
+    document.getElementById('review-modal').classList.add('hidden');
+  }
+
+  function setReviewRating(rating) {
+    reviewRatingInput = rating;
+    const stars = document.querySelectorAll('#stars-input span');
+    stars.forEach((s, idx) => {
+      s.classList.toggle('active', idx < rating);
+    });
+  }
+
+  function submitReview() {
+    const name = document.getElementById('review-name').value;
+    const comment = document.getElementById('review-comment').value;
+
+    if (!name || !comment) {
+      MathuraQuickMart.toast('Please fill all review fields', 'error');
+      return;
+    }
+
+    const review = {
+      id: Date.now(),
+      productId: activeProduct.id,
+      user: name,
+      rating: reviewRatingInput,
+      date: new Date().toISOString().split('T')[0],
+      comment: comment,
+      verified: true
+    };
+
+    // Save to Firestore
+    API.addReview(review);
+
+    // Prepend to current review list in UI
+    const container = document.getElementById('reviews-list');
+    const existing = container.innerHTML;
+    container.innerHTML = `
+      <div class="review-card animate-fade-in">
+        <div class="review-header">
+          <div class="review-user">
+            <div class="review-avatar">${name.charAt(0).toUpperCase()}</div>
+            <div>
+              <div class="review-name" style="font-weight:var(--fw-bold);">${name}</div>
+              <span class="badge badge-green" style="font-size:9px;">Verified Buyer</span>
+            </div>
+          </div>
+          <div class="stars">${renderStars(reviewRatingInput)}</div>
+        </div>
+        <p style="font-size:var(--text-sm);color:var(--gray-600);">${comment}</p>
+        <div style="font-size:10px;color:var(--gray-400);margin-top:8px;">Reviewed on ${review.date}</div>
+      </div>
+    ` + existing;
+
+    MathuraQuickMart.toast('🎉 Review submitted successfully!', 'success');
+    closeReviewModal();
+    document.getElementById('review-name').value = '';
+    document.getElementById('review-comment').value = '';
+  }
+
+  function loadProductDetails() {
+    const id = MathuraQuickMart.getUrlParam('id');
+    const product = API.getProduct(id || 1);
+    if (!product) return;
+
+    activeProduct = product;
+    MathuraQuickMart.addRecentlyViewed(product);
+
+    // Populate Fields
+    document.getElementById('breadcrumb-title').textContent = product.name;
+    document.getElementById('breadcrumb-category').textContent = product.category;
+    document.getElementById('breadcrumb-category').href = `/customer/products.html?category=${encodeURIComponent(product.category)}`;
+
+    const pImg = document.getElementById('product-img');
+    pImg.src = product.image;
+    pImg.alt = product.name;
+
+    document.getElementById('product-title').textContent = product.name;
+    document.getElementById('product-price').textContent = `₹${product.price}`;
+    document.getElementById('product-original-price').textContent = product.originalPrice ? `₹${product.originalPrice}` : '';
+    document.getElementById('product-discount').textContent = product.discount ? `${product.discount}% OFF` : '';
+    document.getElementById('product-discount').style.display = product.discount ? '' : 'none';
+
+    document.getElementById('product-badge').textContent = product.badge || 'Fresh';
+    document.getElementById('product-weight').textContent = product.weight;
+    document.getElementById('product-stars').innerHTML = renderStars(product.rating);
+    document.getElementById('product-rating-count').textContent = `(${product.reviews} Reviews)`;
+    document.getElementById('reviews-count-tab').textContent = product.reviews;
+
+    // Stock Badge
+    const stockBadge = document.getElementById('stock-badge');
+    const stockClass = product.stock <= 10 ? 'badge-red' : product.stock <= 30 ? 'badge-orange' : 'badge-green';
+    const stockLabel = product.stock <= 0 ? 'Out of Stock' : product.stock <= 10 ? `Only ${product.stock} Left` : 'In Stock';
+    stockBadge.className = `badge ${stockClass}`;
+    stockBadge.textContent = stockLabel;
+
+    // Wishlist button state
+    const inWish = MathuraQuickMart.isInWishlist(product.id);
+    const wishBtn = document.getElementById('wishlist-detail-btn');
+    wishBtn.textContent = inWish ? '❤️' : '🤍';
+    wishBtn.classList.toggle('active', inWish);
+
+    // Description text customizer based on category
+    let descText = `${product.name} is a high-quality fresh product, selected carefully from our registered local farmers. Rich in natural nutrients, taste, and freshness, it's perfect for a healthy daily diet. Mathura Quick Mart ensures strict quality controls and fast contactless delivery.`;
+    if (product.category === 'Dairy & Eggs') {
+      descText = `Fresh dairy product sourced directly from local modern dairy plants. Standardised, pasteurised, and stored under ideal chilled conditions to retain natural vitamins, calcium, and creamy texture. Deliver fresh within 24 hours of packaging.`;
+    }
+    document.getElementById('product-description').textContent = descText;
+
+    // Specific specs
+    if (product.category === 'Fruits & Vegetables') {
+      document.getElementById('spec-shelf').textContent = '4 to 6 Days';
+      document.getElementById('spec-storage').textContent = 'Refrigerate immediately';
+    } else if (product.category === 'Bakery') {
+      document.getElementById('spec-shelf').textContent = '3 Days';
+      document.getElementById('spec-storage').textContent = 'Store in a cool dry place, airtight container';
+    }
+
+    // Load FBT (Frequently bought together)
+    const allOfCategory = API.getProducts({ category: product.category });
+    const companion = allOfCategory.find(p => p.id !== product.id) || API.getProduct(2);
+    if (companion) {
+      companionProduct = companion;
+      document.getElementById('fbt-name-1').textContent = product.name;
+      document.getElementById('fbt-img-1').src = product.image;
+      document.getElementById('fbt-name-2').textContent = companion.name;
+      document.getElementById('fbt-img-2').src = companion.image;
+      document.getElementById('fbt-bundle-price').textContent = `₹${product.price + companion.price}`;
+    }
+
+    // Load reviews
+    const reviews = API.reviews.filter(r => r.productId === product.id || product.id === 1);
+    document.getElementById('reviews-list').innerHTML = reviews.map(r => `
+      <div class="review-card">
+        <div class="review-header">
+          <div class="review-user">
+            <div class="review-avatar">${r.user.charAt(0)}</div>
+            <div>
+              <div style="font-weight:var(--fw-semi);">${r.user}</div>
+              ${r.verified ? '<span class="badge badge-green" style="font-size:9px;">Verified Buyer</span>' : ''}
+            </div>
+          </div>
+          <div class="stars">${renderStars(r.rating)}</div>
+        </div>
+        <p style="font-size:var(--text-sm);color:var(--gray-600);">${r.comment}</p>
+        <div style="font-size:10px;color:var(--gray-400);margin-top:8px;">Reviewed on ${r.date}</div>
+      </div>
+    `).join('');
+
+    // Load recently viewed
+    const recents = MathuraQuickMart.state.recentlyViewed.filter(p => p.id !== product.id);
+    const recGrid = document.getElementById('recently-viewed-grid');
+    if (recGrid) {
+      if (recents.length === 0) {
+        recGrid.parentElement.style.display = 'none';
+      } else {
+        recGrid.innerHTML = recents.slice(0, 4).map(p => renderProductCard(p)).join('');
+      }
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadProductDetails();
+
+    if (window.dbReady) {
+      loadProductDetails();
+    } else {
+      window.addEventListener('db-ready', () => {
+        loadProductDetails();
+      });
+    }
+  });
+</script>
+</body>
+</html>

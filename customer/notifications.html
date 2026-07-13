@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Stay updated with Mathura Quick Mart notifications. Order updates, offers, and alerts all in one place.">
+  <title>Notifications – Mathura Quick Mart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <style>
+    .navbar {
+      position: sticky; top: 0; z-index: 500;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--gray-200);
+      height: var(--header-height);
+      box-shadow: var(--shadow-sm);
+    }
+    .navbar-inner {
+      max-width: var(--container-max); margin: 0 auto;
+      padding: 0 var(--sp-6); height: 100%;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .navbar-logo { display: flex; align-items: center; gap: var(--sp-2); text-decoration: none; }
+    .logo-icon { width: 38px; height: 38px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+    .logo-text { font-family: var(--font-display); font-weight: var(--fw-black); font-size: var(--text-xl); background: linear-gradient(135deg, var(--primary-dark), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    .notif-container { max-width: 700px; }
+    .notif-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: var(--sp-6);
+    }
+
+    .notif-item {
+      display: flex; gap: var(--sp-4); padding: var(--sp-4);
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-xl);
+      margin-bottom: var(--sp-3);
+      transition: all var(--transition-fast);
+      cursor: pointer;
+    }
+    .notif-item:hover { border-color: var(--primary-light); box-shadow: var(--shadow-sm); }
+    .notif-item.unread { background: var(--primary-pale); border-color: var(--primary-light); }
+    .notif-item.unread .notif-dot { display: block; }
+
+    .notif-icon {
+      width: 44px; height: 44px; border-radius: var(--radius-lg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; flex-shrink: 0;
+    }
+    .notif-icon.order { background: #eff6ff; }
+    .notif-icon.promo { background: var(--secondary-pale); }
+    .notif-icon.delivery { background: #ecfdf5; }
+    .notif-icon.alert { background: #fef2f2; }
+
+    .notif-content { flex: 1; }
+    .notif-title { font-size: var(--text-sm); font-weight: var(--fw-semi); color: var(--gray-800); margin-bottom: 4px; }
+    .notif-desc { font-size: var(--text-xs); color: var(--gray-500); line-height: 1.5; }
+    .notif-time { font-size: 10px; color: var(--gray-400); margin-top: 6px; }
+    .notif-dot {
+      display: none; width: 8px; height: 8px;
+      background: var(--primary); border-radius: 50%;
+      flex-shrink: 0; margin-top: 4px;
+    }
+  </style>
+
+  <script type='module' src='/js/firebase-init.js'></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="../index.html" class="navbar-logo">
+      <div class="logo-icon">🛒</div>
+      <div><div class="logo-text">Mathura Quick Mart</div></div>
+    </a>
+    <div class="flex items-center gap-3">
+      <a href="dashboard.html" class="btn btn-ghost btn-sm">📊 Dashboard</a>
+      <a href="../index.html" class="btn btn-outline btn-sm">Shop Store</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container section-sm notif-container">
+  <div class="breadcrumb mb-6">
+    <a href="../index.html">Home</a>
+    <span class="breadcrumb-sep">/</span>
+    <span class="breadcrumb-current">Notifications</span>
+  </div>
+
+  <div class="notif-header">
+    <div>
+      <h1 style="font-size:var(--text-2xl);font-weight:var(--fw-bold);color:var(--gray-900);">Notifications</h1>
+      <p style="font-size:var(--text-sm);color:var(--gray-500);margin-top:4px;">Stay updated with your orders and offers</p>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="markAllRead()">✓ Mark all read</button>
+  </div>
+
+  <div id="notifications-list">
+    <!-- Today -->
+    <div style="font-size:11px;font-weight:var(--fw-bold);color:var(--gray-400);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:var(--sp-3);">Today</div>
+
+    <div class="notif-item unread" onclick="this.classList.remove('unread')">
+      <div class="notif-icon delivery">🛵</div>
+      <div class="notif-content">
+        <div class="notif-title">Order SM240005 is out for delivery!</div>
+        <div class="notif-desc">Your delivery rider Ramesh is on the way. Estimated arrival in 15 minutes.</div>
+        <div class="notif-time">10 minutes ago</div>
+      </div>
+      <div class="notif-dot"></div>
+    </div>
+
+    <div class="notif-item unread" onclick="this.classList.remove('unread')">
+      <div class="notif-icon promo">🎉</div>
+      <div class="notif-content">
+        <div class="notif-title">Flash Sale: 30% off on Fresh Fruits!</div>
+        <div class="notif-desc">Limited time offer on mangoes, apples, and seasonal fruits. Use code FRUITY30.</div>
+        <div class="notif-time">2 hours ago</div>
+      </div>
+      <div class="notif-dot"></div>
+    </div>
+
+    <div class="notif-item unread" onclick="this.classList.remove('unread')">
+      <div class="notif-icon order">📦</div>
+      <div class="notif-content">
+        <div class="notif-title">Order SM240005 has been packed</div>
+        <div class="notif-desc">Your order has been packed and is being assigned to a delivery partner.</div>
+        <div class="notif-time">3 hours ago</div>
+      </div>
+      <div class="notif-dot"></div>
+    </div>
+
+    <!-- Yesterday -->
+    <div style="font-size:11px;font-weight:var(--fw-bold);color:var(--gray-400);text-transform:uppercase;letter-spacing:0.08em;margin:var(--sp-6) 0 var(--sp-3);">Yesterday</div>
+
+    <div class="notif-item" onclick="this.classList.remove('unread')">
+      <div class="notif-icon order">✅</div>
+      <div class="notif-content">
+        <div class="notif-title">Order SM240004 delivered successfully</div>
+        <div class="notif-desc">Your order has been delivered. Thank you for shopping with Mathura Quick Mart!</div>
+        <div class="notif-time">Yesterday, 6:30 PM</div>
+      </div>
+      <div class="notif-dot"></div>
+    </div>
+
+    <div class="notif-item" onclick="this.classList.remove('unread')">
+      <div class="notif-icon promo">🏷️</div>
+      <div class="notif-content">
+        <div class="notif-title">Price drop alert: Organic Honey</div>
+        <div class="notif-desc">An item in your wishlist is now ₹120 cheaper! Get it before it's gone.</div>
+        <div class="notif-time">Yesterday, 2:15 PM</div>
+      </div>
+      <div class="notif-dot"></div>
+    </div>
+
+    <!-- Earlier -->
+    <div style="font-size:11px;font-weight:var(--fw-bold);color:var(--gray-400);text-transform:uppercase;letter-spacing:0.08em;margin:var(--sp-6) 0 var(--sp-3);">Earlier This Week</div>
+
+    <div class="notif-item" onclick="this.classList.remove('unread')">
+      <div class="notif-icon alert">💳</div>
+      <div class="notif-content">
+        <div class="notif-title">Payment received: ₹892</div>
+        <div class="notif-desc">Payment for order SM240004 has been confirmed via UPI.</div>
+        <div class="notif-time">2 days ago</div>
+      </div>
+      <div class="notif-dot"></div>
+    </div>
+
+    <div class="notif-item" onclick="this.classList.remove('unread')">
+      <div class="notif-icon promo">🎊</div>
+      <div class="notif-content">
+        <div class="notif-title">Weekend Special: Free delivery on all orders!</div>
+        <div class="notif-desc">Enjoy free delivery this weekend with no minimum order. Valid till Sunday.</div>
+        <div class="notif-time">3 days ago</div>
+      </div>
+      <div class="notif-dot"></div>
+    </div>
+
+    <div class="notif-item" onclick="this.classList.remove('unread')">
+      <div class="notif-icon order">⭐</div>
+      <div class="notif-content">
+        <div class="notif-title">Rate your recent order SM240003</div>
+        <div class="notif-desc">How was your experience? Your feedback helps us serve you better.</div>
+        <div class="notif-time">4 days ago</div>
+      </div>
+      <div class="notif-dot"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="../js/app.js"></script>
+<script>
+  function markAllRead() {
+    document.querySelectorAll('.notif-item.unread').forEach(item => {
+      item.classList.remove('unread');
+    });
+    MathuraQuickMart.toast('✓ All notifications marked as read', 'success');
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Secure checkout at MathuraQuickMart. Confirm delivery details, select address via map, choose payment method, and complete order.">
+  <title>Checkout – Mathura Quick Mart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 500;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--gray-200);
+      height: var(--header-height);
+      box-shadow: var(--shadow-sm);
+    }
+    .navbar-inner {
+      max-width: var(--container-max);
+      margin: 0 auto;
+      padding: 0 var(--sp-6);
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .navbar-logo { display: flex; align-items: center; gap: var(--sp-2); text-decoration: none; }
+    .logo-icon { width: 38px; height: 38px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+    .logo-text { font-family: var(--font-display); font-weight: var(--fw-black); font-size: var(--text-xl); background: linear-gradient(135deg, var(--primary-dark), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    .checkout-grid {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: var(--sp-8);
+      margin-top: var(--sp-6);
+    }
+
+    .checkout-section {
+      background: var(--white);
+      border-radius: var(--radius-xl);
+      padding: var(--sp-6);
+      border: 1px solid var(--gray-200);
+      margin-bottom: var(--sp-6);
+    }
+    .checkout-section-title {
+      font-size: var(--text-base);
+      font-weight: var(--fw-bold);
+      margin-bottom: var(--sp-4);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      border-bottom: 1.5px solid var(--gray-100);
+      padding-bottom: var(--sp-3);
+    }
+
+    .address-card {
+      border: 1.5px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-4);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      position: relative;
+    }
+    .address-card.selected {
+      border-color: var(--primary);
+      background: var(--primary-pale);
+    }
+    .address-card-badge {
+      position: absolute;
+      top: var(--sp-4);
+      right: var(--sp-4);
+    }
+
+    /* ---- Simulated Map ---- */
+    .map-container {
+      width: 100%;
+      height: 240px;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--gray-200);
+      position: relative;
+      background: #e5e9f0;
+      margin-bottom: var(--sp-4);
+    }
+    .map-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background: radial-gradient(circle at center, #f5f6f8 0%, #e4e6eb 100%);
+      padding: var(--sp-4);
+    }
+    .map-pin {
+      font-size: 2.5rem;
+      animation: bounce 1.5s infinite;
+    }
+
+    .payment-option {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-4);
+      padding: var(--sp-4);
+      border: 1.5px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      margin-bottom: var(--sp-3);
+    }
+    .payment-option:hover {
+      border-color: var(--primary-light);
+    }
+    .payment-option.selected {
+      border-color: var(--primary);
+      background: var(--primary-pale);
+    }
+    .payment-icon {
+      font-size: 1.5rem;
+      width: 40px;
+      text-align: center;
+    }
+
+    .summary-card {
+      background: var(--white);
+      border-radius: var(--radius-xl);
+      padding: var(--sp-6);
+      border: 1px solid var(--gray-200);
+      height: fit-content;
+      position: sticky;
+      top: calc(var(--header-height) + 20px);
+    }
+    .summary-row { display: flex; justify-content: space-between; font-size: var(--text-sm); margin-bottom: var(--sp-3); color: var(--gray-600); }
+    .summary-row.total { font-size: var(--text-lg); font-weight: var(--fw-bold); color: var(--gray-900); border-top: 1px solid var(--gray-200); padding-top: var(--sp-4); margin-top: var(--sp-4); }
+
+    /* ---- Responsive ---- */
+    @media (max-width: 768px) {
+      .checkout-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+
+  <script type='module' src='/js/firebase-init.js'></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="../index.html" class="navbar-logo">
+      <div class="logo-icon">🛒</div>
+      <div>
+        <div class="logo-text">Mathura Quick Mart</div>
+      </div>
+    </a>
+    <span style="font-weight:var(--fw-bold);color:var(--gray-500);font-size:var(--text-sm)">🔒 Secure Checkout</span>
+  </div>
+</nav>
+
+<div class="container section-sm">
+  <!-- Steps -->
+  <div class="steps" style="max-width:600px;margin: 0 auto var(--sp-8);">
+    <div class="step done">
+      <div class="step-num">1</div>
+      <span class="step-label">Cart</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="step active">
+      <div class="step-num">2</div>
+      <span class="step-label">Checkout</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <span class="step-label">Confirmation</span>
+    </div>
+  </div>
+
+  <div class="checkout-grid">
+    <!-- Left Details form -->
+    <div>
+      <!-- Address selection with maps -->
+      <section class="checkout-section">
+        <h2 class="checkout-section-title"><span>📍</span> Select Delivery Address</h2>
+
+        <!-- Map wrapper -->
+        <div class="map-container" style="margin-bottom: 16px;">
+          <div id="map" style="height:400px; width:100%; border-radius: 8px; border: 1px solid var(--gray-200); z-index: 1;"></div>
+          <div style="margin-top: 12px; text-align: center;">
+            <button class="btn btn-secondary btn-sm" onclick="useCurrentLocation()">📍 Use Current Location</button>
+          </div>
+        </div>
+
+        <div class="form-group mb-4">
+          <label class="form-label">Search Address (Autocomplete)</label>
+          <input type="text" class="form-input" id="address-search" placeholder="Type colony, landmark, or street name..." oninput="simulateAutocomplete(this.value)">
+          <div id="autocomplete-suggestions" style="border: 1px solid var(--gray-200);display:none;border-radius:8px;overflow:hidden;background:#fff;margin-top:4px;box-shadow:var(--shadow-md);"></div>
+        </div>
+
+        <div class="grid grid-2 mb-4" style="gap:var(--sp-4);">
+          <div class="form-group">
+            <label class="form-label">Flat / House No.</label>
+            <input type="text" class="form-input" id="flat-no" placeholder="B-204, Royal Residency">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Street / Area</label>
+            <input type="text" class="form-input" id="street-address" placeholder="42, Green Park Main">
+          </div>
+        </div>
+
+        <div class="grid grid-2 mb-4" style="gap:var(--sp-4);">
+          <div class="form-group">
+            <label class="form-label">City</label>
+            <input type="text" class="form-input" id="city" value="Ramanathapuram">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Pincode</label>
+            <input type="text" class="form-input" id="pincode" value="">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Address Type</label>
+          <div style="display:flex;gap:12px;">
+            <label class="filter-checkbox">
+              <input type="radio" name="address-type" value="Home" checked> Home
+            </label>
+            <label class="filter-checkbox">
+              <input type="radio" name="address-type" value="Office"> Office
+            </label>
+            <label class="filter-checkbox">
+              <input type="radio" name="address-type" value="Other"> Other
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- Contact details -->
+      <section class="checkout-section">
+        <h2 class="checkout-section-title"><span>👤</span> Contact Details</h2>
+        <div class="grid grid-2" style="gap:var(--sp-4);">
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" class="form-input" id="contact-name" placeholder="John Doe">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mobile Number</label>
+            <input type="text" class="form-input" id="contact-phone" placeholder="+91 XXXXX XXXXX">
+          </div>
+        </div>
+      </section>
+
+      <!-- Payment methods -->
+      <section class="checkout-section">
+        <h2 class="checkout-section-title"><span>💳</span> Select Payment Method</h2>
+
+        <div class="payment-option selected" onclick="selectPayment('upi')">
+          <input type="radio" name="pay-radio" id="pay-upi" checked>
+          <div class="payment-icon">📱</div>
+          <div>
+            <div style="font-weight:var(--fw-bold);">UPI (GPay / PhonePe / Paytm)</div>
+            <div style="font-size:11px;color:var(--gray-500);">Instant checkout using UPI apps</div>
+          </div>
+        </div>
+
+        <div class="payment-option" onclick="selectPayment('card')">
+          <input type="radio" name="pay-radio" id="pay-card">
+          <div class="payment-icon">💳</div>
+          <div>
+            <div style="font-weight:var(--fw-bold);">Credit / Debit Card</div>
+            <div style="font-size:11px;color:var(--gray-500);">Visa, MasterCard, RuPay, Amex</div>
+          </div>
+        </div>
+
+        <div class="payment-option" onclick="selectPayment('netbanking')">
+          <input type="radio" name="pay-radio" id="pay-netbanking">
+          <div class="payment-icon">🏦</div>
+          <div>
+            <div style="font-weight:var(--fw-bold);">Net Banking</div>
+            <div style="font-size:11px;color:var(--gray-500);">All major Indian banks supported</div>
+          </div>
+        </div>
+
+        <div class="payment-option" onclick="selectPayment('cod')">
+          <input type="radio" name="pay-radio" id="pay-cod">
+          <div class="payment-icon">💵</div>
+          <div>
+            <div style="font-weight:var(--fw-bold);">Cash on Delivery (COD)</div>
+            <div style="font-size:11px;color:var(--gray-500);">Pay in cash or card when delivered</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Right Sidebar order summary -->
+    <aside class="summary-card">
+      <h2 style="font-size:var(--text-base);font-weight:var(--fw-bold);margin-bottom:var(--sp-4);">Order Summary</h2>
+
+      <div class="summary-row">
+        <span>Cart Items Subtotal</span>
+        <span id="sum-subtotal">₹0</span>
+      </div>
+      <div class="summary-row">
+        <span>Delivery Fee</span>
+        <span id="sum-delivery">FREE</span>
+      </div>
+      <div class="summary-row" id="sum-coupon-row" style="display:none;color:var(--success);">
+        <span>Coupon Discount</span>
+        <span id="sum-discount">-₹0</span>
+      </div>
+      <div class="summary-row total">
+        <span>Amount Payable</span>
+        <span id="sum-payable">₹0</span>
+      </div>
+
+      <div class="divider"></div>
+      <p style="font-size:11px;color:var(--gray-500);line-height:1.5;margin-bottom:12px;">By placing this order, you agree to Mathura Quick Mart's Terms & Conditions and Privacy Policy.</p>
+
+      <button class="btn btn-primary btn-lg w-full" onclick="placeOrder()">
+        🔒 Place Order & Pay
+      </button>
+    </aside>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  let paymentMethod = 'upi';
+  let activeCoupon = null;
+
+  function loadOrderSummary() {
+    const subtotal = MathuraQuickMart.getCartTotal();
+    const delivery = 0;
+
+    // Load active coupon from localStorage
+    const savedCoupon = localStorage.getItem('mathuraquickmart_active_coupon');
+    let discount = 0;
+    if (savedCoupon) {
+      activeCoupon = JSON.parse(savedCoupon);
+      discount = activeCoupon.discount;
+      document.getElementById('sum-coupon-row').style.display = 'flex';
+      document.getElementById('sum-discount').textContent = `-₹${discount}`;
+    }
+
+    const total = subtotal + delivery - discount;
+
+    document.getElementById('sum-subtotal').textContent = `₹${subtotal}`;
+    document.getElementById('sum-delivery').textContent = delivery === 0 ? 'FREE' : `₹${delivery}`;
+    document.getElementById('sum-payable').textContent = `₹${Math.round(total)}`;
+  }
+
+  function selectPayment(method) {
+    paymentMethod = method;
+    document.querySelectorAll('.payment-option').forEach(o => o.classList.remove('selected'));
+    document.querySelectorAll('[name="pay-radio"]').forEach(r => r.checked = false);
+
+    const matchBtn = document.getElementById(`pay-${method}`);
+    if (matchBtn) {
+      matchBtn.checked = true;
+      matchBtn.closest('.payment-option').classList.add('selected');
+    }
+  }
+
+  function useCurrentLocation() {
+    if (!navigator.geolocation) {
+      MathuraQuickMart.toast('Geolocation is not supported by your browser.', 'error');
+      return;
+    }
+
+    MathuraQuickMart.toast('Fetching current location...', 'info');
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+
+      if (window.checkoutMap) {
+        window.checkoutMap.setView([lat, lon], 15);
+        if (window.checkoutMarker) {
+          window.checkoutMarker.setLatLng([lat, lon]);
+        } else {
+          window.checkoutMarker = L.marker([lat, lon]).addTo(window.checkoutMap);
+        }
+      }
+
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+        const data = await response.json();
+        
+        if (data && data.address) {
+          const address = data.address;
+          document.getElementById('city').value = address.city || address.town || address.village || address.state_district || 'New Delhi';
+          document.getElementById('pincode').value = address.postcode || '';
+          
+          let street = '';
+          if (address.road) street += address.road + ', ';
+          if (address.suburb) street += address.suburb + ', ';
+          if (address.neighbourhood) street += address.neighbourhood;
+          
+          document.getElementById('street-address').value = street.replace(/,\s*$/, '');
+          document.getElementById('address-search').value = data.display_name || '';
+          
+          MathuraQuickMart.toast('📍 Address fields updated from current location!', 'success');
+        } else {
+          MathuraQuickMart.toast('📍 Coordinates found, but address details unavailable.', 'warning');
+        }
+      } catch (err) {
+        console.error('Error in reverse geocoding:', err);
+        MathuraQuickMart.toast('📍 Coordinates found, but failed to fetch address name.', 'warning');
+      }
+    }, (error) => {
+      console.error('Geolocation error:', error);
+      MathuraQuickMart.toast('Unable to retrieve location. Please check browser permissions.', 'error');
+    });
+  }
+
+  let autocompleteTimeout;
+  function simulateAutocomplete(val) {
+    const list = document.getElementById('autocomplete-suggestions');
+    if (!val || val.length < 3) { list.style.display = 'none'; return; }
+    
+    clearTimeout(autocompleteTimeout);
+    autocompleteTimeout = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5&countrycodes=in`);
+        const data = await res.json();
+        
+        if (data && data.length > 0) {
+          list.style.display = 'block';
+          list.innerHTML = data.map(item => `
+            <div style="padding:10px;cursor:pointer;border-bottom:1px solid #f0f0f0;" 
+                 onclick="selectRealSuggestion('${item.display_name.replace(/'/g, "\\'")}', ${item.lat}, ${item.lon})">
+              📍 ${item.display_name}
+            </div>
+          `).join('');
+        } else {
+          list.style.display = 'none';
+        }
+      } catch (err) {
+        console.error('Error fetching suggestions', err);
+      }
+    }, 500);
+  }
+
+  async function selectRealSuggestion(address, lat, lon) {
+    document.getElementById('address-search').value = address;
+    document.getElementById('autocomplete-suggestions').style.display = 'none';
+    
+    if (window.checkoutMap) {
+      window.checkoutMap.setView([lat, lon], 15);
+      if (window.checkoutMarker) {
+        window.checkoutMarker.setLatLng([lat, lon]);
+      } else {
+        window.checkoutMarker = L.marker([lat, lon]).addTo(window.checkoutMap);
+      }
+    }
+    
+    // Reverse geocode to fill the form fields
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+      const data = await response.json();
+      
+      if (data && data.address) {
+        const addr = data.address;
+        document.getElementById('city').value = addr.city || addr.town || addr.village || addr.state_district || 'New Delhi';
+        document.getElementById('pincode').value = addr.postcode || '';
+        
+        let street = '';
+        if (addr.road) street += addr.road + ', ';
+        if (addr.suburb) street += addr.suburb + ', ';
+        if (addr.neighbourhood) street += addr.neighbourhood;
+        
+        document.getElementById('street-address').value = street.replace(/,\s*$/, '');
+        MathuraQuickMart.toast('📍 Address fields updated!', 'success');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function placeOrder() {
+    const name = document.getElementById('contact-name').value;
+    const phone = document.getElementById('contact-phone').value;
+    const flat = document.getElementById('flat-no').value;
+    const street = document.getElementById('street-address').value;
+    const pincode = document.getElementById('pincode').value;
+
+    if (!name || !phone || !flat || !street || !pincode) {
+      MathuraQuickMart.toast('Please fill in all address and contact details', 'error');
+      return;
+    }
+
+    const cart = MathuraQuickMart.getCart();
+    if (cart.length === 0) {
+      MathuraQuickMart.toast('Your cart is empty', 'error');
+      return;
+    }
+
+    const user = MathuraQuickMart.state.user;
+    const orderData = {
+      userId: user ? user.uid : null,
+      customerName: name,
+      customerPhone: phone,
+      address: `${flat}, ${street}, New Delhi - ${pincode}`,
+      paymentMethod: paymentMethod.toUpperCase(),
+      subtotal: MathuraQuickMart.getCartTotal(),
+      couponCode: activeCoupon ? activeCoupon.code : null,
+      discount: activeCoupon ? activeCoupon.discount : 0,
+      items: cart
+    };
+
+    const btn = document.querySelector('button[onclick="placeOrder()"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Placing Order...'; }
+
+    API.placeOrder(orderData).then((order) => {
+      MathuraQuickMart.clearCart();
+      MathuraQuickMart.toast('🎉 Order placed successfully! Sending confirmation email/SMS.', 'success');
+      localStorage.setItem('mathuraquickmart_last_order', JSON.stringify(order));
+      setTimeout(() => {
+        window.location.href = '/customer/order-confirmation.html';
+      }, 1500);
+    }).catch((err) => {
+      MathuraQuickMart.toast('Failed to place order. Please try again.', 'error');
+      if (btn) { btn.disabled = false; btn.textContent = 'Place Order'; }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // Initialize Map
+    if (document.getElementById('map') && typeof L !== 'undefined') {
+      window.checkoutMap = L.map('map').setView([9.3754, 78.8691], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(window.checkoutMap);
+      window.checkoutMarker = L.marker([9.3754, 78.8691])
+        .addTo(window.checkoutMap)
+        .bindPopup("<b>Mathura Quick Mart</b><br>Madakottan, Ramanathapuram")
+        .openPopup();
+    }
+
+    // Fill contact details if logged in
+    const user = MathuraQuickMart.state.user;
+    if (user) {
+      document.getElementById('contact-name').value = user.name || '';
+      
+      // Fetch phone from Firestore
+      const fetchPhone = async () => {
+        if (window.FirebaseDB && window.Firestore) {
+          const db = window.FirebaseDB;
+          const fs = window.Firestore;
+          try {
+            const snap = await fs.getDoc(fs.doc(db, 'users', user.uid));
+            if (snap.exists()) {
+              const data = snap.data();
+              if (data.phone) {
+                document.getElementById('contact-phone').value = data.phone;
+              }
+              if (data.name) {
+                document.getElementById('contact-name').value = data.name;
+              }
+            }
+          } catch (e) { console.warn('Could not fetch phone from Firestore', e); }
+        }
+      };
+      
+      if (window.FirebaseDB && window.Firestore) {
+        fetchPhone();
+      } else {
+        window.addEventListener('firebase-ready', fetchPhone, { once: true });
+      }
+    }
+    loadOrderSummary();
+  });
+</script>
+</body>
+</html>

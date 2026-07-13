@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Workspace – Mathura Quick Mart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <style>
+    /* Custom Admin Sidebar tweaks */
+    .admin-sidebar {
+      background: #022c22; /* Rich Dark Green */
+    }
+    .chart-container {
+      background: var(--white);
+      border-radius: var(--radius-xl);
+      padding: var(--sp-6);
+      border: 1px solid var(--gray-200);
+      margin-bottom: var(--sp-6);
+    }
+    /* Dynamic grid layouts */
+    .crud-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--sp-6);
+    }
+    /* Image preview helper */
+    .img-preview {
+      width: 60px;
+      height: 60px;
+      border-radius: var(--radius-lg);
+      object-fit: cover;
+      border: 1px solid var(--gray-200);
+    }
+  </style>
+
+  <script type='module' src='/js/firebase-init.js'></script>
+</head>
+<body class="admin-layout">
+
+<!-- Admin Sidebar -->
+<aside class="admin-sidebar" id="admin-sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">🛒</div>
+    <div>
+      <div class="sidebar-logo-text">Mathura Quick Mart</div>
+      <div class="sidebar-logo-sub">ADMIN WORKSPACE</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="sidebar-section-label">General</div>
+    <a class="sidebar-item active" onclick="switchTab('analytics')">
+      <span class="sidebar-item-icon">📊</span> Analytics Overview
+    </a>
+    <a class="sidebar-item" onclick="switchTab('orders')">
+      <span class="sidebar-item-icon">📦</span> Order Management
+    </a>
+    <a class="sidebar-item" onclick="switchTab('products')">
+      <span class="sidebar-item-icon">🍎</span> Product Catalogue
+    </a>
+    <a class="sidebar-item" onclick="switchTab('categories')">
+      <span class="sidebar-item-icon">🗂️</span> Categories
+    </a>
+
+    <div class="sidebar-section-label">Management</div>
+    <a class="sidebar-item" onclick="switchTab('inventory')">
+      <span class="sidebar-item-icon">📈</span> Stock & Inventory
+    </a>
+    <a class="sidebar-item" onclick="switchTab('customers')">
+      <span class="sidebar-item-icon">👥</span> Customers
+    </a>
+    <a class="sidebar-item" onclick="switchTab('delivery')">
+      <span class="sidebar-item-icon">🛵</span> Delivery Logistics
+    </a>
+    <a class="sidebar-item" onclick="switchTab('coupons')">
+      <span class="sidebar-item-icon">🎟️</span> Coupons & Offers
+    </a>
+
+    <div class="sidebar-section-label">System</div>
+    <a class="sidebar-item" onclick="switchTab('reports')">
+      <span class="sidebar-item-icon">📥</span> Report Center
+    </a>
+    <a class="sidebar-item" onclick="switchTab('settings')">
+      <span class="sidebar-item-icon">⚙️</span> Store Settings
+    </a>
+
+    <div class="divider" style="background:rgba(255,255,255,0.1);margin:20px 0;"></div>
+    <a href="../index.html" class="sidebar-item">
+      <span class="sidebar-item-icon">🏪</span> View Storefront
+    </a>
+    <a onclick="MathuraQuickMart.logout()" class="sidebar-item" style="color:var(--error);">
+      <span class="sidebar-item-icon">🚪</span> Logout
+    </a>
+  </nav>
+</aside>
+
+<!-- Admin Main Container -->
+<div class="admin-main">
+  <!-- Topbar -->
+  <header class="admin-topbar">
+    <button class="btn btn-ghost btn-icon-sm" id="sidebar-toggle" style="display:none;">☰</button>
+    <div style="font-weight:var(--fw-bold);color:var(--gray-800);" id="topbar-title">Analytics Overview</div>
+    <div class="flex items-center gap-4">
+      <!-- Admin profile name -->
+      <div style="text-align:right;">
+        <div style="font-weight:var(--fw-bold);font-size:var(--text-sm);">Store Manager</div>
+        <div style="font-size:10px;color:var(--gray-400);">Mathura Quick Mart Admin</div>
+      </div>
+      <div style="width:40px;height:40px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;">A</div>
+    </div>
+  </header>
+
+  <!-- Admin Content Panel -->
+  <div class="admin-content">
+
+    <!-- TAB: Analytics -->
+    <div id="tab-analytics" class="admin-tab-panel">
+      <!-- Stats Cards -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-info">
+            <span class="stat-label">Total Revenue</span>
+            <span class="stat-value">₹28.4L</span>
+            <span class="stat-change up">▲ 12.5% this month</span>
+          </div>
+          <div class="stat-icon" style="background:#dcfce7;color:#16a34a;">💰</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-info">
+            <span class="stat-label">Total Orders</span>
+            <span class="stat-value">12,847</span>
+            <span class="stat-change up">▲ 8.2% this week</span>
+          </div>
+          <div class="stat-icon" style="background:#eff6ff;color:#1d4ed8;">📦</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-info">
+            <span class="stat-label">Total Customers</span>
+            <span class="stat-value">8,934</span>
+            <span class="stat-change up">▲ 15% growth</span>
+          </div>
+          <div class="stat-icon" style="background:#f5f3ff;color:#7c3aed;">👥</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-info">
+            <span class="stat-label">Low Stock Items</span>
+            <span class="stat-value" style="color:var(--error);" id="low-stock-count-badge">3</span>
+            <span class="stat-change down">▼ Needs replenishment</span>
+          </div>
+          <div class="stat-icon" style="background:#fef2f2;color:#dc2626;">⚠️</div>
+        </div>
+      </div>
+
+      <!-- Sales charts & Low Stock Alerts -->
+      <div class="grid grid-2" style="gap:var(--sp-6);margin-bottom:var(--sp-8);">
+        <!-- Chart Simulator -->
+        <div class="chart-container">
+          <h3 class="filter-title mb-4">Sales Analytics (Last 6 Months)</h3>
+          <div style="height:240px;display:flex;align-items:flex-end;justify-content:space-between;padding-top:20px;border-bottom:2px solid var(--gray-200);border-left:2px solid var(--gray-200);position:relative;">
+            <!-- Simple SVG Chart Simulation -->
+            <div style="width:12%;height:60%;background:linear-gradient(to top, var(--primary), var(--primary-light));border-radius:4px 4px 0 0;text-align:center;">
+              <span style="font-size:10px;color:var(--gray-600);position:absolute;bottom:-20px;">Jul</span>
+            </div>
+            <div style="width:12%;height:75%;background:linear-gradient(to top, var(--primary), var(--primary-light));border-radius:4px 4px 0 0;">
+              <span style="font-size:10px;color:var(--gray-600);position:absolute;bottom:-20px;">Aug</span>
+            </div>
+            <div style="width:12%;height:68%;background:linear-gradient(to top, var(--primary), var(--primary-light));border-radius:4px 4px 0 0;">
+              <span style="font-size:10px;color:var(--gray-600);position:absolute;bottom:-20px;">Sep</span>
+            </div>
+            <div style="width:12%;height:82%;background:linear-gradient(to top, var(--primary), var(--primary-light));border-radius:4px 4px 0 0;">
+              <span style="font-size:10px;color:var(--gray-600);position:absolute;bottom:-20px;">Oct</span>
+            </div>
+            <div style="width:12%;height:95%;background:linear-gradient(to top, var(--primary), var(--primary-light));border-radius:4px 4px 0 0;">
+              <span style="font-size:10px;color:var(--gray-600);position:absolute;bottom:-20px;">Nov</span>
+            </div>
+            <div style="width:12%;height:90%;background:linear-gradient(to top, var(--primary), var(--primary-light));border-radius:4px 4px 0 0;">
+              <span style="font-size:10px;color:var(--gray-600);position:absolute;bottom:-20px;">Dec</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Low Stock Widget -->
+        <div class="chart-container">
+          <h3 class="filter-title mb-4">Low Stock Alerts</h3>
+          <div class="flex flex-col gap-4" id="low-stock-container">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Orders table -->
+      <div class="chart-container">
+        <h3 class="filter-title mb-4">Recent Orders</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Customer</th>
+              <th>Items</th>
+              <th>Total Amount</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="recent-orders-tbody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB: Orders -->
+    <div id="tab-orders" class="admin-tab-panel hidden">
+      <div class="crud-header">
+        <h2>Order Management</h2>
+        <div class="flex gap-2">
+          <button class="btn btn-outline btn-sm" onclick="filterAdminOrders('all')">All</button>
+          <button class="btn btn-outline btn-sm" onclick="filterAdminOrders('processing')">Processing</button>
+          <button class="btn btn-outline btn-sm" onclick="filterAdminOrders('out-delivery')">Out for Delivery</button>
+          <button class="btn btn-outline btn-sm" onclick="filterAdminOrders('delivered')">Delivered</button>
+        </div>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Order ID</th>
+            <th>Customer</th>
+            <th>Method</th>
+            <th>Total Amount</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="admin-orders-tbody">
+          <!-- Populated dynamically -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB: Products -->
+    <div id="tab-products" class="admin-tab-panel hidden">
+      <div class="crud-header">
+        <h2>Product Catalogue</h2>
+        <button class="btn btn-primary" onclick="openProductModal()">➕ Add Product</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Product Image</th>
+            <th>Product Name</th>
+            <th>Category</th>
+            <th>Price</th>
+            <th>Stock</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="admin-products-tbody">
+          <!-- Populated dynamically -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB: Categories -->
+    <div id="tab-categories" class="admin-tab-panel hidden">
+      <div class="crud-header">
+        <h2>Category Management</h2>
+        <button class="btn btn-primary" onclick="openCategoryModal()">➕ Add Category</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Icon</th>
+            <th>Category Name</th>
+            <th>Item Count</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="admin-categories-tbody">
+          <!-- Populated dynamically -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB: Inventory -->
+    <div id="tab-inventory" class="admin-tab-panel hidden">
+      <div class="crud-header">
+        <h2>Stock & Inventory</h2>
+        <button class="btn btn-outline" onclick="MathuraQuickMart.toast('Stock sheet exported!', 'success')">📤 Export Stock sheet</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Product Name</th>
+            <th>Stock Status</th>
+            <th>Stock Available</th>
+            <th>Replenish Qty</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="admin-inventory-tbody">
+          <!-- Populated dynamically -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB: Customers -->
+    <div id="tab-customers" class="admin-tab-panel hidden">
+      <div class="crud-header">
+        <h2>Customer Management</h2>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Orders Placed</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Priya Sharma</td>
+            <td>priya@gmail.com</td>
+            <td>12 orders</td>
+            <td><span class="badge badge-green">Active</span></td>
+          </tr>
+          <tr>
+            <td>Rahul Mehta</td>
+            <td>rahul@yahoo.com</td>
+            <td>9 orders</td>
+            <td><span class="badge badge-green">Active</span></td>
+          </tr>
+          <tr>
+            <td>Anita Kumar</td>
+            <td>anita@outlook.com</td>
+            <td>18 orders</td>
+            <td><span class="badge badge-green">Active</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB: Delivery -->
+    <div id="tab-delivery" class="admin-tab-panel hidden">
+      <div class="crud-header">
+        <h2>Delivery Logistics</h2>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Delivery Boy</th>
+            <th>Active Orders</th>
+            <th>Status</th>
+            <th>Assigned Orders</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Ramesh Kumar</td>
+            <td>SM240002</td>
+            <td><span class="badge badge-green">On Duty (Out)</span></td>
+            <td><button class="btn btn-outline btn-sm">Assign Order</button></td>
+          </tr>
+          <tr>
+            <td>Vikram Singh</td>
+            <td>None</td>
+            <td><span class="badge badge-orange">Idle</span></td>
+            <td><button class="btn btn-outline btn-sm">Assign Order</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB: Coupons -->
+    <div id="tab-coupons" class="admin-tab-panel hidden">
+      <div class="crud-header">
+        <h2>Coupon & Offer Management</h2>
+        <button class="btn btn-primary" onclick="openCouponModal()">➕ Add Coupon</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Discount Value</th>
+            <th>Min Order Req.</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="admin-coupons-tbody">
+          <!-- Populated dynamically -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB: Reports -->
+    <div id="tab-reports" class="admin-tab-panel hidden">
+      <h2>Report Center</h2>
+      <div class="grid grid-3 gap-6 mt-6" style="gap:var(--sp-4);">
+        <div class="card-flat p-6">
+          <h3>Sales Analytics</h3>
+          <p style="font-size:var(--text-xs);color:var(--gray-500);margin-top:8px;">Generate visual charts, PDF sales invoices, and monthly summaries.</p>
+          <button class="btn btn-primary w-full mt-4" onclick="MathuraQuickMart.toast('Sales Report Compiled & Downloaded! 📁', 'success')">Download Sales PDF</button>
+        </div>
+        <div class="card-flat p-6">
+          <h3>Inventory Auditing</h3>
+          <p style="font-size:var(--text-xs);color:var(--gray-500);margin-top:8px;">Low stock alert history, daily usage and store damage audits.</p>
+          <button class="btn btn-primary w-full mt-4" onclick="MathuraQuickMart.toast('Inventory Audit Saved! 📁', 'success')">Download Inventory CSV</button>
+        </div>
+        <div class="card-flat p-6">
+          <h3>Customer Insights</h3>
+          <p style="font-size:var(--text-xs);color:var(--gray-500);margin-top:8px;">Buying frequency, average orders size, top locations geocoding details.</p>
+          <button class="btn btn-primary w-full mt-4" onclick="MathuraQuickMart.toast('Customer Metrics Exported! 📁', 'success')">Download User Metrics</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Settings -->
+    <div id="tab-settings" class="admin-tab-panel hidden">
+      <h2>Store Settings</h2>
+      <div class="card-flat p-6 mt-6" style="max-width:600px;">
+        <div class="form-group mb-4">
+          <label class="form-label">Store Outlet Location</label>
+          <input type="text" class="form-input" value="123 Market Street, Green Park, New Delhi">
+        </div>
+        <div class="form-group mb-4">
+          <label class="form-label">Base Delivery Charge (Orders below ₹499)</label>
+          <input type="number" class="form-input" value="40">
+        </div>
+        <div class="form-group mb-4">
+          <label class="form-label">Store Sales Tax / GST (%)</label>
+          <input type="number" class="form-input" value="5">
+        </div>
+        <button class="btn btn-primary" onclick="MathuraQuickMart.toast('Settings saved successfully!', 'success')">Save Store Config</button>
+      </div>
+
+      <!-- Seed Database Section -->
+      <div class="card-flat p-6 mt-6" style="max-width:600px;border-left:4px solid var(--primary);">
+        <h3 style="margin-bottom:8px;">🔥 Firestore Database</h3>
+        <p style="font-size:var(--text-sm);color:var(--gray-500);margin-bottom:16px;">Seed the Firestore database with initial product, category, and coupon data. This only runs if Firestore collections are empty. You must be logged in as Admin for this to succeed.</p>
+        <button class="btn btn-primary" id="seed-btn" onclick="runSeedDatabase()">🌱 Seed Database with Initial Data</button>
+        <div id="seed-status" style="margin-top:12px;font-size:var(--text-sm);color:var(--gray-500);"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Add Product Modal -->
+<div class="modal-overlay hidden" id="product-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 style="margin:0;" id="prod-modal-title">Add New Product</h3>
+      <button class="btn btn-ghost btn-icon-sm" onclick="closeProductModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-prod-id">
+      <div class="form-group mb-4">
+        <label class="form-label">Product Name</label>
+        <input type="text" class="form-input" id="prod-name" placeholder="e.g. Fresh Mangoes">
+      </div>
+      <div class="form-group mb-4">
+        <label class="form-label">Category</label>
+        <select class="form-select" id="prod-category">
+          <!-- Dynamic -->
+        </select>
+      </div>
+      <div class="grid grid-2 mb-4" style="gap:var(--sp-4);">
+        <div class="form-group">
+          <label class="form-label">Price (₹)</label>
+          <input type="number" class="form-input" id="prod-price" placeholder="99">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Original Price (₹)</label>
+          <input type="number" class="form-input" id="prod-orig-price" placeholder="129">
+        </div>
+      </div>
+      <div class="grid grid-2 mb-4" style="gap:var(--sp-4);">
+        <div class="form-group">
+          <label class="form-label">Quantity / Weight</label>
+          <input type="text" class="form-input" id="prod-weight" placeholder="1 kg">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Stock Quantity</label>
+          <input type="number" class="form-input" id="prod-stock" value="50">
+        </div>
+      </div>
+      <div class="form-group mb-6">
+        <label class="form-label">Product Image URL</label>
+        <input type="text" class="form-input" id="prod-image" value="https://images.unsplash.com/photo-1542838132-92c53300491e?w=400">
+      </div>
+      <button class="btn btn-primary w-full" onclick="saveProduct()">Save Product Information</button>
+    </div>
+  </div>
+</div>
+
+<!-- Category Modal -->
+<div class="modal-overlay hidden" id="category-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 style="margin:0;" id="cat-modal-title">Add New Category</h3>
+      <button class="btn btn-ghost btn-icon-sm" onclick="closeCategoryModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-cat-id">
+      <input type="hidden" id="edit-cat-origname">
+      <div class="form-group mb-4">
+        <label class="form-label">Category Name</label>
+        <input type="text" class="form-input" id="cat-name" placeholder="e.g. Frozen Foods">
+      </div>
+      <div class="grid grid-2 mb-4" style="gap:var(--sp-4);">
+        <div class="form-group">
+          <label class="form-label">Icon (Emoji)</label>
+          <input type="text" class="form-input" id="cat-icon" placeholder="🧊" maxlength="4">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Item Count</label>
+          <input type="number" class="form-input" id="cat-count" value="0" min="0">
+        </div>
+      </div>
+      <div class="form-group mb-6">
+        <label class="form-label">Accent Color (hex)</label>
+        <input type="color" class="form-input" id="cat-color" value="#22c55e" style="height:42px;padding:4px;">
+      </div>
+      <button class="btn btn-primary w-full" onclick="saveCategory()">Save Category</button>
+    </div>
+  </div>
+</div>
+
+<!-- Coupon Modal -->
+<div class="modal-overlay hidden" id="coupon-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 style="margin:0;" id="coup-modal-title">Add New Coupon</h3>
+      <button class="btn btn-ghost btn-icon-sm" onclick="closeCouponModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-coup-origcode">
+      <div class="form-group mb-4">
+        <label class="form-label">Coupon Code</label>
+        <input type="text" class="form-input" id="coup-code" placeholder="e.g. SAVE30" style="text-transform:uppercase;">
+      </div>
+      <div class="grid grid-2 mb-4" style="gap:var(--sp-4);">
+        <div class="form-group">
+          <label class="form-label">Discount Type</label>
+          <select class="form-select" id="coup-type">
+            <option value="percent">Percentage (%)</option>
+            <option value="flat">Flat Amount (₹)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Discount Value</label>
+          <input type="number" class="form-input" id="coup-discount" placeholder="10" min="0">
+        </div>
+      </div>
+      <div class="form-group mb-4">
+        <label class="form-label">Minimum Order Amount (₹)</label>
+        <input type="number" class="form-input" id="coup-minorder" placeholder="299" min="0">
+      </div>
+      <div class="form-group mb-6">
+        <label class="form-label">Description</label>
+        <input type="text" class="form-input" id="coup-desc" placeholder="e.g. 10% off on all orders">
+      </div>
+      <button class="btn btn-primary w-full" onclick="saveCoupon()">Save Coupon</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="../js/app.js"></script>
+<script src="../js/seed-db.js"></script>
+<script>
+  function switchTab(tabName) {
+    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    document.querySelectorAll('.admin-tab-panel').forEach(p => p.classList.add('hidden'));
+
+    // Highlight selected
+    const item = Array.from(document.querySelectorAll('.sidebar-item')).find(i => i.textContent.toLowerCase().includes(tabName));
+    if (item) item.classList.add('active');
+
+    document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+    document.getElementById('topbar-title').textContent = tabName.charAt(0).toUpperCase() + tabName.slice(1) + ' Control';
+
+    if (tabName === 'products') renderAdminProducts();
+    if (tabName === 'categories') renderAdminCategories();
+    if (tabName === 'inventory') renderAdminInventory();
+    if (tabName === 'orders') renderAdminOrders();
+    if (tabName === 'coupons') renderAdminCoupons();
+    if (tabName === 'analytics') loadDashboardStats();
+  }
+
+  function loadDashboardStats() {
+    const stats = API.getAdminStats();
+
+    // Render low stock
+    document.getElementById('low-stock-count-badge').textContent = stats.lowStock.length;
+    document.getElementById('low-stock-container').innerHTML = stats.lowStock.map(p => `
+      <div class="flex justify-between items-center" style="font-size:var(--text-sm);">
+        <span>${p.name}</span>
+        <strong style="color:var(--error);">${p.stock} units left</strong>
+      </div>
+    `).join('');
+
+    // Recent orders
+    document.getElementById('recent-orders-tbody').innerHTML = stats.recentOrders.map(o => `
+      <tr>
+        <td><strong>${o.id}</strong></td>
+        <td>${o.customer}</td>
+        <td>${o.items} items</td>
+        <td><strong>₹${o.total}</strong></td>
+        <td><span class="status status-${o.status}">${o.status}</span></td>
+        <td>${o.date}</td>
+      </tr>
+    `).join('');
+  }
+
+  function renderAdminProducts() {
+    const list = API.products;
+    document.getElementById('admin-products-tbody').innerHTML = list.map(p => `
+      <tr>
+        <td><img class="img-preview" src="${p.image}"></td>
+        <td><strong>${p.name}</strong></td>
+        <td>${p.category}</td>
+        <td><strong>₹${p.price}</strong></td>
+        <td><span class="badge ${p.stock <= 10 ? 'badge-red' : 'badge-green'}">${p.stock} pcs</span></td>
+        <td>
+          <button class="btn btn-outline btn-sm" onclick="editProduct(${p.id})">Edit</button>
+          <button class="btn btn-ghost btn-sm" onclick="deleteProduct(${p.id})" style="color:var(--error)">Delete</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function renderAdminCategories() {
+    document.getElementById('admin-categories-tbody').innerHTML = API.categories.map(c => `
+      <tr>
+        <td style="font-size:1.5rem">${c.icon}</td>
+        <td><strong>${c.name}</strong></td>
+        <td>${c.count} products</td>
+        <td>
+          <button class="btn btn-outline btn-sm" onclick="editCategory('${c.name}')">Edit</button>
+          <button class="btn btn-ghost btn-sm" onclick="deleteCategoryAdmin('${c.name}')" style="color:var(--error)">Delete</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // ---- Category Modal Functions ----
+  function openCategoryModal() {
+    document.getElementById('cat-modal-title').textContent = 'Add New Category';
+    document.getElementById('edit-cat-id').value = '';
+    document.getElementById('edit-cat-origname').value = '';
+    document.getElementById('cat-name').value = '';
+    document.getElementById('cat-icon').value = '🛍️';
+    document.getElementById('cat-count').value = '0';
+    document.getElementById('cat-color').value = '#22c55e';
+    document.getElementById('category-modal').classList.remove('hidden');
+  }
+
+  function editCategory(name) {
+    const c = API.categories.find(cat => cat.name === name);
+    if (!c) return;
+    document.getElementById('cat-modal-title').textContent = 'Edit Category';
+    document.getElementById('edit-cat-id').value = c.id || '';
+    document.getElementById('edit-cat-origname').value = c.name;
+    document.getElementById('cat-name').value = c.name;
+    document.getElementById('cat-icon').value = c.icon || '';
+    document.getElementById('cat-count').value = c.count || 0;
+    document.getElementById('cat-color').value = c.color || '#22c55e';
+    document.getElementById('category-modal').classList.remove('hidden');
+  }
+
+  function closeCategoryModal() {
+    document.getElementById('category-modal').classList.add('hidden');
+  }
+
+  async function saveCategory() {
+    const name = document.getElementById('cat-name').value.trim();
+    const icon = document.getElementById('cat-icon').value.trim();
+    const count = parseInt(document.getElementById('cat-count').value) || 0;
+    const color = document.getElementById('cat-color').value;
+    const origName = document.getElementById('edit-cat-origname').value;
+    const editId = document.getElementById('edit-cat-id').value;
+
+    if (!name || !icon) {
+      MathuraQuickMart.toast('Please fill in Category Name and Icon', 'error');
+      return;
+    }
+
+    // If editing and name changed, delete old entry first
+    if (origName && origName !== name) {
+      await API.deleteCategory(origName);
+    }
+
+    const nextId = editId ? parseInt(editId) : (Math.max(0, ...API.categories.map(c => c.id || 0)) + 1);
+    const category = { id: nextId, name, icon, count, color };
+    await API.saveCategory(category);
+    MathuraQuickMart.toast(`Category "${name}" saved!`, 'success');
+    closeCategoryModal();
+    renderAdminCategories();
+  }
+
+  async function deleteCategoryAdmin(name) {
+    if (!confirm(`Delete category "${name}"? This will not delete the products inside it.`)) return;
+    await API.deleteCategory(name);
+    MathuraQuickMart.toast(`Category "${name}" deleted!`, 'success');
+    renderAdminCategories();
+  }
+
+  function renderAdminInventory() {
+    document.getElementById('admin-inventory-tbody').innerHTML = API.products.map(p => `
+      <tr>
+        <td><strong>${p.name}</strong></td>
+        <td><span class="badge ${p.stock <= 10 ? 'badge-red' : 'badge-green'}">${p.stock <= 10 ? 'Low Stock' : 'Good'}</span></td>
+        <td><strong>${p.stock} units</strong></td>
+        <td><input type="number" id="replenish-${p.id}" class="form-input" style="width:80px;padding:0.25rem 0.5rem;" value="20"></td>
+        <td><button class="btn btn-primary btn-sm" onclick="addInventory(${p.id})">Replenish</button></td>
+      </tr>
+    `).join('');
+  }
+
+  function addInventory(id) {
+    const qty = parseInt(document.getElementById(`replenish-${id}`).value);
+    const prod = API.getProduct(id);
+    if (prod) {
+      prod.stock += qty;
+      API.saveProduct(prod);
+      MathuraQuickMart.toast(`Replenished ${qty} units for ${prod.name}!`, 'success');
+      renderAdminInventory();
+    }
+  }
+
+  function renderAdminOrders() {
+    const orders = MathuraQuickMart.state.orders.length > 0 ? MathuraQuickMart.state.orders : API.orders;
+    document.getElementById('admin-orders-tbody').innerHTML = orders.map(o => `
+      <tr>
+        <td><strong>${o.id}</strong></td>
+        <td>${o.customerName || 'Walk-in User'}</td>
+        <td>${o.paymentMethod || 'COD'}</td>
+        <td><strong>₹${o.total || o.subtotal}</strong></td>
+        <td>
+          <select class="form-select" style="padding:0.25rem;font-size:12px;width:130px;" onchange="updateAdminOrderStatus('${o.id}', this.value)">
+            <option value="pending" ${o.status === 'pending' ? 'selected' : ''}>Pending</option>
+            <option value="confirmed" ${o.status === 'confirmed' ? 'selected' : ''}>Confirmed</option>
+            <option value="processing" ${o.status === 'processing' ? 'selected' : ''}>Processing</option>
+            <option value="packed" ${o.status === 'packed' ? 'selected' : ''}>Packed</option>
+            <option value="out-delivery" ${o.status === 'out-delivery' ? 'selected' : ''}>Out for Delivery</option>
+            <option value="delivered" ${o.status === 'delivered' ? 'selected' : ''}>Delivered</option>
+            <option value="cancelled" ${o.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+          </select>
+        </td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="MathuraQuickMart.toast('Order invoice generated!', 'success')">📄 Invoice</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function updateAdminOrderStatus(id, val) {
+    const orders = API.orders;
+    const match = orders.find(o => o.id === id) || MathuraQuickMart.state.orders.find(o => o.id === id);
+    if (match) {
+      match.status = val;
+      API.saveOrder(match);
+      MathuraQuickMart.toast(`Order ${id} updated to ${val.toUpperCase()}!`, 'success');
+    } else {
+      MathuraQuickMart.toast(`Status updated! (Mock order)`, 'success');
+    }
+  }
+
+  function renderAdminCoupons() {
+    document.getElementById('admin-coupons-tbody').innerHTML = API.coupons.map(c => `
+      <tr>
+        <td><strong>${c.code}</strong></td>
+        <td>${c.type === 'percent' ? c.discount + '%' : '₹' + c.discount} off</td>
+        <td>₹${c.minOrder}</td>
+        <td style="font-size:var(--text-xs);color:var(--gray-500);">${c.description || '-'}</td>
+        <td><span class="badge badge-green">Active</span></td>
+        <td>
+          <button class="btn btn-outline btn-sm" onclick="editCoupon('${c.code}')">Edit</button>
+          <button class="btn btn-ghost btn-sm" onclick="deleteCouponAdmin('${c.code}')" style="color:var(--error)">Delete</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // ---- Coupon Modal Functions ----
+  function openCouponModal() {
+    document.getElementById('coup-modal-title').textContent = 'Add New Coupon';
+    document.getElementById('edit-coup-origcode').value = '';
+    document.getElementById('coup-code').value = '';
+    document.getElementById('coup-type').value = 'percent';
+    document.getElementById('coup-discount').value = '';
+    document.getElementById('coup-minorder').value = '';
+    document.getElementById('coup-desc').value = '';
+    document.getElementById('coupon-modal').classList.remove('hidden');
+  }
+
+  function editCoupon(code) {
+    const c = API.coupons.find(coup => coup.code === code);
+    if (!c) return;
+    document.getElementById('coup-modal-title').textContent = 'Edit Coupon';
+    document.getElementById('edit-coup-origcode').value = c.code;
+    document.getElementById('coup-code').value = c.code;
+    document.getElementById('coup-type').value = c.type || 'percent';
+    document.getElementById('coup-discount').value = c.discount;
+    document.getElementById('coup-minorder').value = c.minOrder;
+    document.getElementById('coup-desc').value = c.description || '';
+    document.getElementById('coupon-modal').classList.remove('hidden');
+  }
+
+  function closeCouponModal() {
+    document.getElementById('coupon-modal').classList.add('hidden');
+  }
+
+  async function saveCoupon() {
+    const code = document.getElementById('coup-code').value.trim().toUpperCase();
+    const type = document.getElementById('coup-type').value;
+    const discount = parseFloat(document.getElementById('coup-discount').value);
+    const minOrder = parseFloat(document.getElementById('coup-minorder').value) || 0;
+    const description = document.getElementById('coup-desc').value.trim();
+    const origCode = document.getElementById('edit-coup-origcode').value;
+
+    if (!code || !discount) {
+      MathuraQuickMart.toast('Please fill in Coupon Code and Discount Value', 'error');
+      return;
+    }
+
+    // If editing and code changed, delete old entry
+    if (origCode && origCode !== code) {
+      await API.deleteCoupon(origCode);
+    }
+
+    const coupon = { code, type, discount, minOrder, description };
+    await API.saveCoupon(coupon);
+    MathuraQuickMart.toast(`Coupon "${code}" saved!`, 'success');
+    closeCouponModal();
+    renderAdminCoupons();
+  }
+
+  async function deleteCouponAdmin(code) {
+    if (!confirm(`Delete coupon "${code}"?`)) return;
+    await API.deleteCoupon(code);
+    MathuraQuickMart.toast(`Coupon "${code}" deleted!`, 'success');
+    renderAdminCoupons();
+  }
+
+  // CRUD Product Actions
+  function openProductModal() {
+    document.getElementById('prod-modal-title').textContent = 'Add New Product';
+    document.getElementById('edit-prod-id').value = '';
+    document.getElementById('prod-name').value = '';
+    document.getElementById('prod-price').value = '';
+    document.getElementById('prod-orig-price').value = '';
+    document.getElementById('prod-weight').value = '';
+    document.getElementById('prod-stock').value = 50;
+
+    const select = document.getElementById('prod-category');
+    select.innerHTML = API.categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+
+    document.getElementById('product-modal').classList.remove('hidden');
+  }
+
+  function editProduct(id) {
+    const p = API.getProduct(id);
+    if (!p) return;
+
+    openProductModal();
+    document.getElementById('prod-modal-title').textContent = 'Edit Product';
+    document.getElementById('edit-prod-id').value = p.id;
+    document.getElementById('prod-name').value = p.name;
+    document.getElementById('prod-price').value = p.price;
+    document.getElementById('prod-orig-price').value = p.originalPrice || '';
+    document.getElementById('prod-weight').value = p.weight;
+    document.getElementById('prod-stock').value = p.stock;
+    document.getElementById('prod-category').value = p.category;
+    document.getElementById('prod-image').value = p.image;
+  }
+
+  function deleteProduct(id) {
+    if (confirm('Are you sure you want to delete this product from the catalog?')) {
+      API.deleteProduct(id);
+      MathuraQuickMart.toast('Product deleted from database catalogue!', 'success');
+      renderAdminProducts();
+    }
+  }
+
+  function closeProductModal() {
+    document.getElementById('product-modal').classList.add('hidden');
+  }
+
+  function saveProduct() {
+    const editId = document.getElementById('edit-prod-id').value;
+    const name = document.getElementById('prod-name').value;
+    const cat = document.getElementById('prod-category').value;
+    const price = parseFloat(document.getElementById('prod-price').value);
+    const orig = parseFloat(document.getElementById('prod-orig-price').value) || null;
+    const weight = document.getElementById('prod-weight').value;
+    const stock = parseInt(document.getElementById('prod-stock').value);
+    const img = document.getElementById('prod-image').value;
+
+    if (!name || !price || !weight) {
+      MathuraQuickMart.toast('Please check required fields', 'error');
+      return;
+    }
+
+    if (editId) {
+      const match = API.getProduct(editId);
+      if (match) {
+        match.name = name;
+        match.category = cat;
+        match.price = price;
+        match.originalPrice = orig;
+        match.weight = weight;
+        match.stock = stock;
+        match.image = img;
+        API.saveProduct(match);
+        MathuraQuickMart.toast('Product info updated successfully!', 'success');
+      }
+    } else {
+      const newP = {
+        id: Date.now(),
+        name,
+        category: cat,
+        price,
+        originalPrice: orig,
+        weight,
+        stock,
+        image: img,
+        rating: 5,
+        reviews: 0,
+        featured: false,
+        bestSeller: false,
+        isNew: true
+      };
+      API.saveProduct(newP);
+      MathuraQuickMart.toast('Product added to catalogue database!', 'success');
+    }
+
+    closeProductModal();
+    renderAdminProducts();
+  }
+
+  function reloadAdminData() {
+    loadDashboardStats();
+    renderAdminProducts();
+    renderAdminCategories();
+    renderAdminInventory();
+    renderAdminOrders();
+    renderAdminCoupons();
+  }
+
+  // ---- Seed Database from Settings ----
+  async function runSeedDatabase() {
+    const btn = document.getElementById('seed-btn');
+    const status = document.getElementById('seed-status');
+    if (!window.seedDatabase) {
+      status.textContent = '❌ seed-db.js not loaded.';
+      return;
+    }
+    if (!window.FirebaseDB || !window.Firestore) {
+      status.textContent = '❌ Firebase not ready. Please wait and try again.';
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = '⏳ Seeding...';
+    status.textContent = 'Seeding in progress, please wait...';
+    try {
+      await window.seedDatabase();
+      status.textContent = '✅ Database seeded successfully! Products, categories and coupons are now in Firestore.';
+      MathuraQuickMart.toast('🔥 Firestore database seeded!', 'success');
+      reloadAdminData();
+    } catch(e) {
+      status.textContent = '❌ Seed failed: ' + e.message;
+      MathuraQuickMart.toast('Seeding failed: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🌱 Seed Database with Initial Data';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadDashboardStats();
+
+    if (window.dbReady) {
+      reloadAdminData();
+    } else {
+      window.addEventListener('db-ready', () => {
+        reloadAdminData();
+      });
+    }
+  });
+</script>
+</body>
+</html>
