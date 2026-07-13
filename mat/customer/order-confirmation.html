@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Confirmed – Mathura Quick Mart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <style>
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 500;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--gray-200);
+      height: var(--header-height);
+      box-shadow: var(--shadow-sm);
+    }
+    .navbar-inner {
+      max-width: var(--container-max);
+      margin: 0 auto;
+      padding: 0 var(--sp-6);
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .navbar-logo { display: flex; align-items: center; gap: var(--sp-2); text-decoration: none; }
+    .logo-icon { width: 38px; height: 38px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+    .logo-text { font-family: var(--font-display); font-weight: var(--fw-black); font-size: var(--text-xl); background: linear-gradient(135deg, var(--primary-dark), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    .confirm-box {
+      max-width: 560px;
+      margin: 0 auto;
+      text-align: center;
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-2xl);
+      padding: var(--sp-10);
+      box-shadow: var(--shadow-lg);
+    }
+    .check-icon {
+      width: 72px;
+      height: 72px;
+      background: var(--primary-pale);
+      color: var(--primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      margin: 0 auto var(--sp-6);
+      box-shadow: var(--shadow-green);
+    }
+  </style>
+
+  <script type='module' src='/js/firebase-init.js'></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="../index.html" class="navbar-logo">
+      <div class="logo-icon">🛒</div>
+      <div>
+        <div class="logo-text">Mathura Quick Mart</div>
+      </div>
+    </a>
+  </div>
+</nav>
+
+<div class="container section-lg">
+  <div class="confirm-box animate-scale-in">
+    <div class="check-icon">✓</div>
+    <h1 style="font-size:var(--text-3xl);margin-bottom:var(--sp-2);">Order Placed Successfully!</h1>
+    <p style="color:var(--gray-500);margin-bottom:var(--sp-6);">Thank you for shopping with MathuraQuickMart. Your order has been confirmed.</p>
+
+    <div class="card-flat p-6 mb-6" style="text-align:left;">
+      <div class="flex justify-between mb-3" style="font-size:var(--text-sm);">
+        <span style="color:var(--gray-500);">Order ID:</span>
+        <strong id="conf-order-id" style="color:var(--gray-900);">SM123456789</strong>
+      </div>
+      <div class="flex justify-between mb-3" style="font-size:var(--text-sm);">
+        <span style="color:var(--gray-500);">Total Paid:</span>
+        <strong id="conf-total" style="color:var(--primary-dark);">₹0</strong>
+      </div>
+      <div class="flex justify-between mb-3" style="font-size:var(--text-sm);">
+        <span style="color:var(--gray-500);">Payment Method:</span>
+        <strong id="conf-pay-method" style="color:var(--gray-800);">UPI</strong>
+      </div>
+      <div class="flex justify-between" style="font-size:var(--text-sm);">
+        <span style="color:var(--gray-500);">Est. Delivery:</span>
+        <strong style="color:var(--secondary-dark);">Within 60 Minutes (Today)</strong>
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-3">
+      <a href="/customer/order-tracking.html" class="btn btn-primary btn-lg">
+        🚚 Live Order Tracking
+      </a>
+      <a href="/customer/dashboard.html" class="btn btn-outline btn-lg">
+        📊 View My Dashboard
+      </a>
+      <a href="../index.html" class="btn btn-ghost">
+        🏪 Back to Home
+      </a>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const lastOrder = localStorage.getItem('mathuraquickmart_last_order');
+    if (lastOrder) {
+      const order = JSON.parse(lastOrder);
+      const delivery = 0;
+      const totalAmt = order.subtotal + delivery - order.discount;
+
+      document.getElementById('conf-order-id').textContent = order.id;
+      document.getElementById('conf-total').textContent = `₹${Math.round(totalAmt)}`;
+      document.getElementById('conf-pay-method').textContent = order.paymentMethod;
+    }
+  });
+</script>
+</body>
+</html>
