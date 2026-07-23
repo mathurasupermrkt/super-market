@@ -47,4 +47,5 @@
 ## UI/UX Updates
 - [x] Customer login redirects to shop store (/index.html)
 - [x] Update shared app logic in js/app.js with Category and Coupon Firestore sync functions
-- [/] Remove the automatic client-side database seeding from index.html
+- [x] Add Google Login functionality to customer login and registration
+- [x] Automate client-side database seeding on index.html and remove manual seed button from settings

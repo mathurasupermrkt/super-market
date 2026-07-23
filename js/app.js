@@ -13,6 +13,7 @@ const MathuraQuickMart = {
     cart: [],
     wishlist: [],
     orders: [],
+    returns: [],
     notifications: [],
     recentlyViewed: [],
     searchHistory: [],
@@ -28,12 +29,29 @@ const MathuraQuickMart = {
     this.initMobileMenu();
     this.initAnimations();
 
+    const setupAuthListener = () => {
+      const auth = window.FirebaseAuth;
+      const authFns = window.FirebaseAuthFns;
+      if (auth && authFns) {
+        authFns.onAuthStateChanged(auth, (user) => {
+          if (user) {
+            console.log("🔒 Firebase Auth State: Logged in as", user.email);
+            API.syncFromFirestore();
+          } else {
+            console.log("🔓 Firebase Auth State: Logged out");
+          }
+        });
+      }
+    };
+
     // Check if Firebase is already loaded, otherwise listen for firebase-ready
     if (window.FirebaseDB) {
       API.syncFromFirestore();
+      setupAuthListener();
     } else {
       window.addEventListener('firebase-ready', () => {
         API.syncFromFirestore();
+        setupAuthListener();
       });
     }
   },
@@ -459,6 +477,16 @@ const MathuraQuickMart = {
     } catch (e) { console.warn('Firestore wishlist delete error:', e); }
   },
 
+  /** Write/update a return item to Firestore users/{uid}/returns/{returnId} */
+  async _syncReturnToFirestore(returnObj) {
+    const refs = this._getFirestoreRefs();
+    if (!refs) return;
+    const { uid, db, fs } = refs;
+    try {
+      await fs.setDoc(fs.doc(db, 'users', uid, 'returns', returnObj.id.toString()), returnObj);
+    } catch (e) { console.warn('Firestore returns write error:', e); }
+  },
+
   /**
    * Load user's cart, wishlist, and orders from Firestore into state.
    * Called on login and on page load when Firebase becomes ready.
@@ -506,6 +534,21 @@ const MathuraQuickMart = {
             this.saveState();
           }
         } catch (e) { console.warn('Orders query failed (index may be needed):', e); }
+
+        // 4. Load returns from users/{uid}/returns
+        try {
+          const returnsSnap = await fs.getDocs(fs.collection(db, 'users', uid, 'returns'));
+          if (!returnsSnap.empty) {
+            const returns = [];
+            returnsSnap.forEach(d => returns.push(d.data()));
+            returns.sort((a, b) => new Date(b.date) - new Date(a.date));
+            this.state.returns = returns;
+            this.saveState();
+          } else {
+            this.state.returns = [];
+            this.saveState();
+          }
+        } catch (e) { console.warn('Returns query failed:', e); }
 
         console.log('✅ User Firestore data loaded for uid:', uid);
         window.dispatchEvent(new CustomEvent('user-data-ready'));
@@ -716,8 +759,11 @@ const API = {
     }
     const db = window.FirebaseDB;
     const { collection, getDocs } = window.Firestore;
+
+    console.log("🔄 Starting Firestore sync...");
+
+    // 1. Sync Products
     try {
-      // 1. Sync Products
       const productsSnap = await getDocs(collection(db, 'products'));
       if (!productsSnap.empty) {
         const prods = [];
@@ -727,9 +773,14 @@ const API = {
           prods.push(p);
         });
         this.products = prods;
+        console.log(`Synced ${prods.length} products.`);
       }
+    } catch (e) {
+      console.warn("Error syncing products:", e);
+    }
 
-      // 2. Sync Categories
+    // 2. Sync Categories
+    try {
       const categoriesSnap = await getDocs(collection(db, 'categories'));
       if (!categoriesSnap.empty) {
         const cats = [];
@@ -737,9 +788,14 @@ const API = {
           cats.push(doc.data());
         });
         this.categories = cats;
+        console.log(`Synced ${cats.length} categories.`);
       }
+    } catch (e) {
+      console.warn("Error syncing categories:", e);
+    }
 
-      // 3. Sync Coupons
+    // 3. Sync Coupons
+    try {
       const couponsSnap = await getDocs(collection(db, 'coupons'));
       if (!couponsSnap.empty) {
         const coups = [];
@@ -747,9 +803,14 @@ const API = {
           coups.push(doc.data());
         });
         this.coupons = coups;
+        console.log(`Synced ${coups.length} coupons.`);
       }
+    } catch (e) {
+      console.warn("Error syncing coupons:", e);
+    }
 
-      // 4. Sync Orders
+    // 4. Sync Orders
+    try {
       const ordersSnap = await getDocs(collection(db, 'orders'));
       if (!ordersSnap.empty) {
         const ords = [];
@@ -760,9 +821,14 @@ const API = {
         this.orders = ords;
         MathuraQuickMart.state.orders = ords;
         MathuraQuickMart.saveState();
+        console.log(`Synced ${ords.length} orders.`);
       }
+    } catch (e) {
+      console.warn("Error syncing orders (likely guest/unauthenticated):", e);
+    }
 
-      // 5. Sync Reviews
+    // 5. Sync Reviews
+    try {
       const reviewsSnap = await getDocs(collection(db, 'reviews'));
       if (!reviewsSnap.empty) {
         const revs = [];
@@ -770,14 +836,15 @@ const API = {
           revs.push(doc.data());
         });
         this.reviews = revs;
+        console.log(`Synced ${revs.length} reviews.`);
       }
-
-      window.dbReady = true;
-      console.log("✅ Successfully synced data from Firestore database!");
-      window.dispatchEvent(new CustomEvent('db-ready'));
-    } catch (error) {
-      console.error("Error syncing from Firestore:", error);
+    } catch (e) {
+      console.warn("Error syncing reviews:", e);
     }
+
+    console.log("🔄 Data sync cycle complete!");
+    window.dbReady = true;
+    window.dispatchEvent(new CustomEvent('db-ready'));
   },
 
   async addReview(review) {
@@ -880,6 +947,7 @@ const API = {
         console.log(`Coupon ${coupon.code} saved to Firestore.`);
       } catch (error) {
         console.error("Error saving coupon to Firestore:", error);
+        throw error;
       }
     }
   },

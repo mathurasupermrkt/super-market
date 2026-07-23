@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Return & Refund Policy – Mathura Quick Mart</title>
+  <title>Returns & Refunds Dashboard – Mathura Quick Mart</title>
   <link rel="stylesheet" href="../styles/main.css">
   <style>
     .navbar {
@@ -28,6 +28,154 @@
     .navbar-logo { display: flex; align-items: center; gap: var(--sp-2); text-decoration: none; }
     .logo-icon { width: 38px; height: 38px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
     .logo-text { font-family: var(--font-display); font-weight: var(--fw-black); font-size: var(--text-xl); background: linear-gradient(135deg, var(--primary-dark), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    .dash-layout {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: var(--sp-8);
+      margin-top: var(--sp-6);
+    }
+
+    .dash-sidebar {
+      background: var(--white);
+      border-radius: var(--radius-xl);
+      padding: var(--sp-4) 0;
+      border: 1px solid var(--gray-200);
+      height: fit-content;
+    }
+    .dash-sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      padding: 0.75rem var(--sp-6);
+      color: var(--gray-600);
+      cursor: pointer;
+      font-size: var(--text-sm);
+      font-weight: var(--fw-medium);
+      border-left: 3px solid transparent;
+      transition: all var(--transition-fast);
+    }
+    .dash-sidebar-item:hover {
+      background: var(--gray-50);
+      color: var(--primary);
+    }
+    .dash-sidebar-item.active {
+      background: var(--primary-pale);
+      color: var(--primary-dark);
+      border-left-color: var(--primary);
+      font-weight: var(--fw-bold);
+    }
+
+    .dash-card {
+      background: var(--white);
+      border-radius: var(--radius-xl);
+      padding: var(--sp-6);
+      border: 1px solid var(--gray-200);
+      margin-bottom: var(--sp-6);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Stepper Styling */
+    .return-stepper {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      margin: var(--sp-8) 0 var(--sp-12);
+      padding: 0 var(--sp-4);
+    }
+    .return-stepper::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: var(--sp-10);
+      right: var(--sp-10);
+      height: 3px;
+      background: var(--gray-200);
+      z-index: 1;
+      transform: translateY(-50%);
+    }
+    .return-stepper-progress {
+      position: absolute;
+      top: 50%;
+      left: var(--sp-10);
+      height: 3px;
+      background: var(--primary);
+      z-index: 1;
+      transform: translateY(-50%);
+      transition: width 0.4s ease;
+    }
+    .step-node {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--white);
+      border: 3px solid var(--gray-300);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: var(--fw-bold);
+      color: var(--gray-500);
+      position: relative;
+      z-index: 2;
+      transition: all 0.3s ease;
+    }
+    .step-node.active {
+      border-color: var(--primary);
+      color: var(--primary-dark);
+      box-shadow: 0 0 0 4px var(--primary-pale);
+    }
+    .step-node.completed {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--white);
+    }
+    .step-label {
+      position: absolute;
+      top: calc(100% + 8px);
+      font-size: 10px;
+      font-weight: var(--fw-bold);
+      white-space: nowrap;
+      color: var(--gray-500);
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    .step-node.active .step-label,
+    .step-node.completed .step-label {
+      color: var(--gray-800);
+    }
+
+    /* Product select lists */
+    .return-item-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--sp-3) 0;
+      border-bottom: 1px solid var(--gray-100);
+    }
+    .return-item-row:last-child {
+      border-bottom: none;
+    }
+
+    .form-checkbox {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    @media (max-width: 768px) {
+      .dash-layout { grid-template-columns: 1fr; }
+      .return-stepper { flex-direction: column; gap: var(--sp-6); align-items: flex-start; padding-left: var(--sp-6); }
+      .return-stepper::before { display: none; }
+      .return-stepper-progress { display: none; }
+      .step-node { flex-direction: row; width: auto; height: auto; border: none; background: transparent; padding: 0; gap: 12px; }
+      .step-node::before { content: '•'; font-size: 1.5rem; color: var(--gray-300); }
+      .step-node.active::before { color: var(--primary); }
+      .step-node.completed::before { color: var(--primary-dark); }
+      .step-label { position: static; transform: none; font-size: var(--text-sm); }
+    }
   </style>
 
   <script type='module' src='/js/firebase-init.js'></script>
@@ -42,35 +190,552 @@
         <div class="logo-text">Mathura Quick Mart</div>
       </div>
     </a>
-    <a href="../index.html" class="btn btn-outline btn-sm">Shop Store</a>
+    <div class="flex items-center gap-3">
+      <a href="dashboard.html" class="btn btn-ghost btn-sm">📊 Main Dashboard</a>
+      <a href="../index.html" class="btn btn-outline btn-sm">Shop Store</a>
+    </div>
   </div>
 </nav>
 
-<div class="container section-sm" style="max-width:800px;">
+<div class="container section-sm">
   <div class="breadcrumb mb-6">
     <a href="../index.html">Home</a>
     <span class="breadcrumb-sep">/</span>
-    <span class="breadcrumb-current">Return & Refund Policy</span>
+    <a href="dashboard.html">Dashboard</a>
+    <span class="breadcrumb-sep">/</span>
+    <span class="breadcrumb-current">Returns & Refunds</span>
   </div>
 
-  <h1 class="section-title">Return & Refund Policy</h1>
+  <div class="dash-layout">
+    <!-- Sidebar -->
+    <aside class="dash-sidebar">
+      <div style="padding:0 var(--sp-6) var(--sp-4);border-bottom:1.5px solid var(--gray-100);margin-bottom:var(--sp-2);">
+        <div style="font-weight:var(--fw-bold);color:var(--gray-800);" id="sidebar-user-name">Loading...</div>
+        <div style="font-size:11px;color:var(--gray-400);">Returns Portal</div>
+      </div>
+      <div class="dash-sidebar-item active" id="tab-overview" onclick="switchTab('overview')">📊 Returns History</div>
+      <div class="dash-sidebar-item" id="tab-request" onclick="switchTab('request')">🔄 Request a Return</div>
+      <div class="dash-sidebar-item" id="tab-policy" onclick="switchTab('policy')">📄 Return Policy</div>
+    </aside>
 
-  <div class="card p-8 mt-6" style="font-size:var(--text-sm);color:var(--gray-700);line-height:1.8;">
-    <p style="margin-bottom:var(--sp-4);"><strong>Last Updated: January 1, 2026</strong></p>
-    
-    <p style="margin-bottom:var(--sp-4);">We want you to be completely satisfied with your purchase. Here is our policy regarding refunds and returns:</p>
-    
-    <h2 style="font-size:var(--text-base);font-weight:bold;color:var(--gray-900);margin-top:var(--sp-6);margin-bottom:var(--sp-2);">1. Fresh Produce & Perishables</h2>
-    <p style="margin-bottom:var(--sp-4);">Fresh items like vegetables, fruits, bakery goods, and dairy products can be returned directly at the time of delivery if the quality is not up to standard. The delivery driver will adjust the billing amount or record a refund request instantly.</p>
+    <!-- Main Content Area -->
+    <main id="returns-main">
+      <!-- SECTION: Guest Message (hidden by default) -->
+      <div id="guest-block" class="dash-card text-center py-12 hidden">
+        <div style="font-size:3rem;margin-bottom:var(--sp-4);">🔒</div>
+        <h2 style="font-size:var(--text-xl);font-weight:var(--fw-bold);margin-bottom:var(--sp-2);">Sign In to Manage Returns</h2>
+        <p style="color:var(--gray-500);max-width:460px;margin:0 auto var(--sp-6);font-size:var(--text-sm);">
+          To view your past return requests, request a refund, or track active claims, please log in to your Mathura Quick Mart account.
+        </p>
+        <div class="flex justify-center gap-4">
+          <a href="login.html" class="btn btn-primary">Sign In</a>
+          <button class="btn btn-outline" onclick="switchTab('policy')">View Return Policy</button>
+        </div>
+      </div>
 
-    <h2 style="font-size:var(--text-base);font-weight:bold;color:var(--gray-900);margin-top:var(--sp-6);margin-bottom:var(--sp-2);">2. Packaged Goods</h2>
-    <p style="margin-bottom:var(--sp-4);">For packaged household items, snacks, or cooking essentials, we offer a <strong>7-day return policy</strong>. The packaging must remain sealed, unopened, and in its original state.</p>
+      <!-- SECTION: Returns History -->
+      <div id="section-overview" class="returns-section">
+        <h1 class="products-title mb-6" style="font-size:var(--text-2xl);">Returns & Refunds History</h1>
 
-    <h2 style="font-size:var(--text-base);font-weight:bold;color:var(--gray-900);margin-top:var(--sp-6);margin-bottom:var(--sp-2);">3. Refund Credit</h2>
-    <p style="margin-bottom:var(--sp-4);">Refunds will be processed back to the original payment source (UPI, Credit Card, or Wallet) within 3-5 working days. Cash on delivery refunds will be credited as Mathura Quick Mart Store Wallet credits.</p>
+        <!-- Stats Cards -->
+        <div class="stats-grid" style="grid-template-columns:repeat(3, 1fr);margin-bottom:var(--sp-6);">
+          <div class="stat-card">
+            <div class="stat-info">
+              <span class="stat-label">Total Returns</span>
+              <span class="stat-value" id="stats-total-returns">0</span>
+            </div>
+            <div class="stat-icon" style="background:#eff6ff;color:#1d4ed8;">🔄</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-info">
+              <span class="stat-label">Active Claims</span>
+              <span class="stat-value" id="stats-active-returns">0</span>
+            </div>
+            <div class="stat-icon" style="background:var(--secondary-pale);color:var(--secondary);">⏳</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-info">
+              <span class="stat-label">Total Refunded</span>
+              <span class="stat-value" id="stats-refunded-amt">₹0</span>
+            </div>
+            <div class="stat-icon" style="background:var(--primary-pale);color:var(--primary);">💰</div>
+          </div>
+        </div>
+
+        <!-- Returns List -->
+        <div id="returns-list">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- SECTION: Request a Return -->
+      <div id="section-request" class="returns-section hidden">
+        <h1 class="products-title mb-2" style="font-size:var(--text-2xl);">Request a Return</h1>
+        <p style="color:var(--gray-500);font-size:var(--text-sm);margin-bottom:var(--sp-6);">Initiate a refund request for orders delivered within the last 7 days.</p>
+
+        <!-- Order Selector -->
+        <div class="dash-card">
+          <label class="form-label" style="font-weight:var(--fw-bold);">Select an Eligible Order</label>
+          <select class="form-input mt-2" id="return-order-select" onchange="handleOrderSelect(this.value)">
+            <option value="">-- Select Order --</option>
+          </select>
+          <div id="no-orders-msg" style="color:var(--gray-500);font-size:var(--text-sm);margin-top:var(--sp-3);display:none;">
+            ⚠️ You do not have any delivered orders eligible for return. Fresh items must be returned at time of delivery, and packaged goods within 7 days.
+          </div>
+        </div>
+
+        <!-- Return Details Form (Hidden until order is selected) -->
+        <div id="return-form-container" class="dash-card hidden animate-fade-in">
+          <h2 style="font-size:var(--text-lg);font-weight:var(--fw-bold);margin-bottom:var(--sp-4);border-bottom:1.5px solid var(--gray-100);padding-bottom:var(--sp-2);">Choose Items to Return</h2>
+          
+          <div id="return-items-list" class="mb-6">
+            <!-- Order items will render here with checkboxes -->
+          </div>
+
+          <div class="grid grid-2 gap-6" style="margin-bottom:var(--sp-4);">
+            <div class="form-group">
+              <label class="form-label" style="font-weight:var(--fw-bold);">Reason for Return</label>
+              <select class="form-input mt-2" id="return-reason" required>
+                <option value="">-- Choose Reason --</option>
+                <option value="quality-issue">Quality not as expected / Stale</option>
+                <option value="damaged">Item damaged / leaking</option>
+                <option value="incorrect">Wrong item delivered</option>
+                <option value="expired">Expired item</option>
+                <option value="not-needed">No longer needed</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label" style="font-weight:var(--fw-bold);">Refund Method</label>
+              <select class="form-input mt-2" id="return-refund-method" required>
+                <option value="wallet">Refund as Store Wallet Credits (Instant)</option>
+                <option value="source">Refund to Original Payment Source (3-5 days)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group mb-6">
+            <label class="form-label" style="font-weight:var(--fw-bold);">Additional Comments</label>
+            <textarea class="form-input mt-2" id="return-comments" rows="3" placeholder="Provide any details about the product issue..."></textarea>
+          </div>
+
+          <div class="flex justify-between items-center" style="border-top:1.5px solid var(--gray-100);padding-top:var(--sp-4);">
+            <div>
+              <span style="font-size:var(--text-sm);color:var(--gray-500);">Estimated Refund Total:</span>
+              <strong style="font-size:var(--text-xl);color:var(--primary-dark);margin-left:8px;" id="estimated-refund-total">₹0</strong>
+            </div>
+            <button class="btn btn-primary" onclick="submitReturnRequest()">Submit Return Request</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: Policy Guidelines -->
+      <div id="section-policy" class="returns-section hidden">
+        <h1 class="products-title mb-6" style="font-size:var(--text-2xl);">Return & Refund Policy</h1>
+
+        <div class="card p-8" style="font-size:var(--text-sm);color:var(--gray-700);line-height:1.8;">
+          <p style="margin-bottom:var(--sp-4);"><strong>Last Updated: January 1, 2026</strong></p>
+          
+          <p style="margin-bottom:var(--sp-4);">We want you to be completely satisfied with your purchase. Here is our policy regarding refunds and returns:</p>
+          
+          <h2 style="font-size:var(--text-base);font-weight:bold;color:var(--gray-900);margin-top:var(--sp-6);margin-bottom:var(--sp-2);">1. Fresh Produce & Perishables</h2>
+          <p style="margin-bottom:var(--sp-4);">Fresh items like vegetables, fruits, bakery goods, and dairy products can be returned directly at the time of delivery if the quality is not up to standard. The delivery driver will adjust the billing amount or record a refund request instantly.</p>
+      
+          <h2 style="font-size:var(--text-base);font-weight:bold;color:var(--gray-900);margin-top:var(--sp-6);margin-bottom:var(--sp-2);">2. Packaged Goods</h2>
+          <p style="margin-bottom:var(--sp-4);">For packaged household items, snacks, or cooking essentials, we offer a <strong>7-day return policy</strong>. The packaging must remain sealed, unopened, and in its original state.</p>
+      
+          <h2 style="font-size:var(--text-base);font-weight:bold;color:var(--gray-900);margin-top:var(--sp-6);margin-bottom:var(--sp-2);">3. Refund Credit</h2>
+          <p style="margin-bottom:var(--sp-4);">Refunds will be processed back to the original payment source (UPI, Credit Card, or Wallet) within 3-5 working days. Cash on delivery refunds will be credited as Mathura Quick Mart Store Wallet credits.</p>
+        </div>
+      </div>
+    </main>
   </div>
 </div>
 
+<div class="toast-container" id="toast-container"></div>
+
 <script src="../js/app.js"></script>
+<script>
+  let selectedOrder = null;
+
+  // Static return requests if not already defined in localStorage or Firestore
+  const mockReturns = [
+    {
+      id: 'RET495830',
+      orderId: 'SM2024001',
+      date: '2026-07-20T10:30:00.000Z',
+      items: [{ id: 1, name: 'Fresh Organic Apples', qty: 1, price: 149 }],
+      reason: 'quality-issue',
+      comments: 'Apples were bruised and soft.',
+      refundMethod: 'wallet',
+      amount: 149,
+      status: 'completed' // completed, processing, requested, rejected
+    },
+    {
+      id: 'RET284958',
+      orderId: 'SM2024003',
+      date: '2026-07-23T12:00:00.000Z',
+      items: [{ id: 3, name: 'Brown Bread (Britannia)', qty: 1, price: 45 }],
+      reason: 'damaged',
+      comments: 'Packet packaging was torn on arrival.',
+      refundMethod: 'source',
+      amount: 45,
+      status: 'requested'
+    }
+  ];
+
+  function switchTab(tabId) {
+    // Hide all sections
+    document.querySelectorAll('.returns-section').forEach(s => s.classList.add('hidden'));
+    document.querySelectorAll('.dash-sidebar-item').forEach(i => i.classList.remove('active'));
+
+    // Show selected section
+    document.getElementById(`section-${tabId}`).classList.remove('hidden');
+    document.getElementById(`tab-${tabId}`).classList.add('active');
+
+    // Extra trigger to load forms or lists
+    if (tabId === 'overview') {
+      renderReturnsHistory();
+    } else if (tabId === 'request') {
+      populateOrdersDropdown();
+    }
+  }
+
+  function checkUserAuthentication() {
+    const user = MathuraQuickMart.state.user;
+    const sidebarUserName = document.getElementById('sidebar-user-name');
+
+    if (!user) {
+      // Hide dashboard sections, show guest block
+      document.getElementById('guest-block').classList.remove('hidden');
+      document.getElementById('section-overview').classList.add('hidden');
+      document.getElementById('section-request').classList.add('hidden');
+      document.getElementById('tab-overview').style.pointerEvents = 'none';
+      document.getElementById('tab-overview').style.opacity = '0.5';
+      document.getElementById('tab-request').style.pointerEvents = 'none';
+      document.getElementById('tab-request').style.opacity = '0.5';
+      
+      sidebarUserName.textContent = 'Guest User';
+      switchTab('policy');
+    } else {
+      document.getElementById('guest-block').classList.add('hidden');
+      document.getElementById('tab-overview').style.pointerEvents = 'auto';
+      document.getElementById('tab-overview').style.opacity = '1';
+      document.getElementById('tab-request').style.pointerEvents = 'auto';
+      document.getElementById('tab-request').style.opacity = '1';
+      
+      sidebarUserName.textContent = user.name || user.email;
+
+      // Seed initial return data if none exists
+      if (!MathuraQuickMart.state.returns || MathuraQuickMart.state.returns.length === 0) {
+        // Associate mock returns with the active user and save
+        const userReturns = mockReturns.map(ret => ({ ...ret, userId: user.uid }));
+        MathuraQuickMart.state.returns = userReturns;
+        MathuraQuickMart.saveState();
+        
+        // Sync them to Firestore in the background
+        userReturns.forEach(ret => {
+          MathuraQuickMart._syncReturnToFirestore(ret);
+        });
+      }
+      
+      switchTab('overview');
+    }
+  }
+
+  function renderReturnsHistory() {
+    const returns = MathuraQuickMart.state.returns || [];
+    const totalReturnsEl = document.getElementById('stats-total-returns');
+    const activeReturnsEl = document.getElementById('stats-active-returns');
+    const refundedAmtEl = document.getElementById('stats-refunded-amt');
+    const container = document.getElementById('returns-list');
+
+    totalReturnsEl.textContent = returns.length;
+    
+    const activeCount = returns.filter(r => r.status === 'requested' || r.status === 'processing').length;
+    activeReturnsEl.textContent = activeCount;
+
+    const refundedSum = returns
+      .filter(r => r.status === 'completed')
+      .reduce((sum, r) => sum + r.amount, 0);
+    refundedAmtEl.textContent = '₹' + refundedSum;
+
+    if (returns.length === 0) {
+      container.innerHTML = `
+        <div class="dash-card text-center py-12">
+          <div style="font-size:2.5rem;margin-bottom:var(--sp-3);">🔄</div>
+          <h3 style="font-size:var(--text-lg);font-weight:bold;color:var(--gray-600);margin-bottom:var(--sp-2);">No returns requested yet</h3>
+          <p style="font-size:var(--text-sm);color:var(--gray-400);margin-bottom:var(--sp-4);">If you need to return an item, you can submit a request under the Request a Return tab.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = returns.map(ret => {
+      const statusLabels = {
+        requested: 'Return Requested',
+        processing: 'In Quality Check',
+        completed: 'Refund Processed',
+        rejected: 'Return Declined'
+      };
+      
+      const badgeClasses = {
+        requested: 'badge-orange',
+        processing: 'badge-blue',
+        completed: 'badge-green',
+        rejected: 'badge-red'
+      };
+
+      // Stepper node active/completed state
+      const steps = ['requested', 'processing', 'completed'];
+      const currentIdx = steps.indexOf(ret.status);
+      
+      let stepProgressWidth = '0%';
+      if (ret.status === 'completed') stepProgressWidth = '100%';
+      else if (ret.status === 'processing') stepProgressWidth = '50%';
+
+      const stepperHTML = ret.status === 'rejected' ? `
+        <div class="alert alert-error mt-4" style="margin-bottom: 0;">
+          <strong>Declined:</strong> This return request was declined because it did not meet our return guidelines. Please read Section 1 & 2 of our return policy.
+        </div>
+      ` : `
+        <div class="return-stepper">
+          <div class="return-stepper-progress" style="width: ${stepProgressWidth}"></div>
+          <div class="step-node ${currentIdx >= 0 ? (currentIdx === 0 ? 'active' : 'completed') : ''}">
+            1
+            <span class="step-label">Requested</span>
+          </div>
+          <div class="step-node ${currentIdx >= 1 ? (currentIdx === 1 ? 'active' : 'completed') : ''}">
+            2
+            <span class="step-label">Quality Check</span>
+          </div>
+          <div class="step-node ${currentIdx >= 2 ? (currentIdx === 2 ? 'active' : 'completed') : ''}">
+            3
+            <span class="step-label">Refunded</span>
+          </div>
+        </div>
+      `;
+
+      return `
+        <div class="dash-card animate-fade-in">
+          <div class="flex justify-between items-start mb-4" style="flex-wrap:wrap;gap:var(--sp-2);">
+            <div>
+              <strong style="font-size:var(--text-base);color:var(--gray-900);">${ret.id}</strong>
+              <div style="font-size:11px;color:var(--gray-400);margin-top:2px;">Requested on ${MathuraQuickMart.formatDate(ret.date)}</div>
+              <div style="font-size:12px;color:var(--gray-600);margin-top:4px;">Original Order: <strong>${ret.orderId}</strong></div>
+            </div>
+            <div style="text-align:right;">
+              <span class="badge ${badgeClasses[ret.status]}">${statusLabels[ret.status]}</span>
+              <div style="font-size:var(--text-lg);font-weight:var(--fw-bold);color:var(--primary-dark);margin-top:6px;">₹${ret.amount}</div>
+            </div>
+          </div>
+
+          <div class="divider" style="margin:var(--sp-3) 0;"></div>
+          
+          <div style="font-size:var(--text-sm);color:var(--gray-700);">
+            <strong style="color:var(--gray-800);">Items Returned:</strong>
+            <div style="margin-top:var(--sp-2);">
+              ${ret.items.map(item => `
+                <div class="flex justify-between py-1" style="border-bottom:1px dashed var(--gray-100);">
+                  <span>${item.name} <span style="color:var(--gray-400);">×${item.qty}</span></span>
+                  <strong>₹${item.price * item.qty}</strong>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div style="font-size:var(--text-xs);color:var(--gray-500);margin-top:var(--sp-4);background:var(--gray-50);padding:var(--sp-3);border-radius:var(--radius-md);">
+            <div><strong>Reason:</strong> ${ret.reason.replace('-', ' ').toUpperCase()}</div>
+            ${ret.comments ? `<div style="margin-top:4px;"><strong>Comments:</strong> "${ret.comments}"</div>` : ''}
+            <div style="margin-top:4px;"><strong>Refund Method:</strong> ${ret.refundMethod === 'wallet' ? 'Store Wallet (Instant Credits)' : 'Original Payment Source'}</div>
+          </div>
+
+          ${stepperHTML}
+        </div>
+      `;
+    }).join('');
+  }
+
+  function populateOrdersDropdown() {
+    const select = document.getElementById('return-order-select');
+    const noOrdersMsg = document.getElementById('no-orders-msg');
+    
+    // Fetch user's orders (both memory API and localState)
+    const userOrders = MathuraQuickMart.state.orders.length > 0 ? MathuraQuickMart.state.orders : API.orders;
+    
+    // Filter delivered orders (show all delivered orders for demo purposes, but highlight return eligibility status)
+    const deliveredOrders = userOrders.filter(o => o.status === 'delivered' || o.status === 'out-for-delivery');
+
+    // Reset dropdown
+    select.innerHTML = '<option value="">-- Select Order --</option>';
+
+    if (deliveredOrders.length === 0) {
+      noOrdersMsg.style.display = 'block';
+      return;
+    } else {
+      noOrdersMsg.style.display = 'none';
+    }
+
+    deliveredOrders.forEach(order => {
+      // Calculate age of order
+      const orderDate = new Date(order.date);
+      const diffTime = Math.abs(new Date() - orderDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      const label = `${order.id} - Placed ${MathuraQuickMart.formatDate(order.date)} (Total: ₹${order.total || order.subtotal})`;
+      
+      const opt = document.createElement('option');
+      opt.value = order.id;
+      opt.textContent = label;
+      select.appendChild(opt);
+    });
+  }
+
+  function handleOrderSelect(orderId) {
+    const formContainer = document.getElementById('return-form-container');
+    const itemsList = document.getElementById('return-items-list');
+    
+    if (!orderId) {
+      formContainer.classList.add('hidden');
+      selectedOrder = null;
+      return;
+    }
+
+    const userOrders = MathuraQuickMart.state.orders.length > 0 ? MathuraQuickMart.state.orders : API.orders;
+    selectedOrder = userOrders.find(o => o.id === orderId);
+
+    if (!selectedOrder) {
+      formContainer.classList.add('hidden');
+      return;
+    }
+
+    // Populate order items
+    // If order has no explicit items array (it is a mock order), provide fallback item details
+    const items = selectedOrder.items || [
+      { id: 1, name: 'Fresh Organic Apples', qty: 2, price: 149 },
+      { id: 2, name: 'Whole Milk (Amul)', qty: 1, price: 68 },
+      { id: 3, name: 'Brown Bread (Britannia)', qty: 1, price: 45 }
+    ];
+    
+    // Save items array to selectedOrder for form submissions
+    selectedOrder.items = items;
+
+    itemsList.innerHTML = items.map(item => `
+      <div class="return-item-row animate-fade-in">
+        <div class="flex items-center gap-3">
+          <input type="checkbox" class="form-checkbox return-item-checkbox" data-id="${item.id}" onchange="updateRefundEstimation()">
+          <div>
+            <div style="font-weight:var(--fw-bold);font-size:var(--text-sm);color:var(--gray-800);">${item.name}</div>
+            <div style="font-size:11px;color:var(--gray-400);">Price: ₹${item.price} &middot; Purchased Qty: ${item.qty}</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <label style="font-size:11px;color:var(--gray-500);">Return Qty:</label>
+          <select class="form-input" style="width:70px;padding:4px 8px;font-size:var(--text-xs);" id="qty-return-${item.id}" onchange="updateRefundEstimation()">
+            ${Array.from({ length: item.qty }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    `).join('');
+
+    formContainer.classList.remove('hidden');
+    updateRefundEstimation();
+  }
+
+  function updateRefundEstimation() {
+    let estimation = 0;
+    
+    if (!selectedOrder || !selectedOrder.items) return;
+
+    document.querySelectorAll('.return-item-checkbox:checked').forEach(cb => {
+      const productId = parseInt(cb.getAttribute('data-id'));
+      const item = selectedOrder.items.find(i => i.id === productId);
+      if (item) {
+        const qtySelect = document.getElementById(`qty-return-${productId}`);
+        const qtyToReturn = parseInt(qtySelect.value);
+        estimation += item.price * qtyToReturn;
+      }
+    });
+
+    document.getElementById('estimated-refund-total').textContent = '₹' + estimation;
+  }
+
+  function submitReturnRequest() {
+    if (!selectedOrder) return;
+
+    const checkedCheckboxes = document.querySelectorAll('.return-item-checkbox:checked');
+    if (checkedCheckboxes.length === 0) {
+      MathuraQuickMart.toast('Please select at least one item to return.', 'error');
+      return;
+    }
+
+    const reason = document.getElementById('return-reason').value;
+    const refundMethod = document.getElementById('return-refund-method').value;
+    const comments = document.getElementById('return-comments').value.trim();
+
+    if (!reason) {
+      MathuraQuickMart.toast('Please select a reason for the return.', 'error');
+      return;
+    }
+
+    // Compile returned items
+    const returnedItems = [];
+    let totalRefund = 0;
+
+    checkedCheckboxes.forEach(cb => {
+      const productId = parseInt(cb.getAttribute('data-id'));
+      const item = selectedOrder.items.find(i => i.id === productId);
+      if (item) {
+        const qtyToReturn = parseInt(document.getElementById(`qty-return-${productId}`).value);
+        returnedItems.push({
+          id: item.id,
+          name: item.name,
+          qty: qtyToReturn,
+          price: item.price
+        });
+        totalRefund += item.price * qtyToReturn;
+      }
+    });
+
+    const returnId = 'RET' + Math.floor(100000 + Math.random() * 900000);
+    const returnRequest = {
+      id: returnId,
+      orderId: selectedOrder.id,
+      date: new Date().toISOString(),
+      items: returnedItems,
+      reason: reason,
+      comments: comments,
+      refundMethod: refundMethod,
+      amount: totalRefund,
+      status: 'requested',
+      userId: MathuraQuickMart.state.user.uid
+    };
+
+    // Add to returns history in state
+    if (!MathuraQuickMart.state.returns) MathuraQuickMart.state.returns = [];
+    MathuraQuickMart.state.returns.unshift(returnRequest);
+    MathuraQuickMart.saveState();
+
+    // Sync to Firestore
+    MathuraQuickMart._syncReturnToFirestore(returnRequest);
+
+    MathuraQuickMart.toast(`✅ Return Request ${returnId} submitted successfully!`, 'success');
+
+    // Reset Form and Switch Tab
+    document.getElementById('return-order-select').value = '';
+    document.getElementById('return-form-container').classList.add('hidden');
+    selectedOrder = null;
+
+    setTimeout(() => {
+      switchTab('overview');
+    }, 800);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // Check if authenticated
+    checkUserAuthentication();
+    window.addEventListener('user-data-ready', checkUserAuthentication);
+  });
+</script>
 </body>
 </html>

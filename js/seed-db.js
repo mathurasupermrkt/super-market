@@ -13,14 +13,6 @@ async function seedDatabase() {
   const db = window.FirebaseDB;
 
   try {
-    console.log("Checking if products collection is empty...");
-    const productsSnapshot = await getDocs(collection(db, 'products'));
-    
-    if (!productsSnapshot.empty) {
-      console.log(`Database already has ${productsSnapshot.size} products. Skipping seed.`);
-      return;
-    }
-
     console.log("Seeding products...");
     for (const product of API.products) {
       // Use the product ID as the document ID for consistency
@@ -41,6 +33,19 @@ async function seedDatabase() {
     }
     
     console.log("✅ Database seeded successfully!");
+
+    // Also seed the admin profile
+    console.log("Seeding admin profile...");
+    const adminUid = '1m89AFB1hzOwAkK8VBFqfy1qRW83';
+    await setDoc(doc(db, 'users', adminUid), {
+      uid: adminUid,
+      name: "Admin Manager",
+      email: "vikramsenthilkumar164@gmail.com",
+      role: "admin",
+      createdAt: new Date().toISOString()
+    }, { merge: true });
+    console.log("✅ Admin profile seeded!");
+
     if (window.API && typeof window.API.syncFromFirestore === 'function') {
       await window.API.syncFromFirestore();
     }
@@ -51,10 +56,8 @@ async function seedDatabase() {
 
 // Seed admin profile
 async function seedAdminProfile(uid) {
-  if (!uid) {
-    console.error("Please provide a user ID (UID).");
-    return;
-  }
+  // Default to the primary admin UID if not provided
+  uid = uid || '1m89AFB1hzOwAkK8VBFqfy1qRW83';
   if (!window.FirebaseDB || !window.Firestore) {
     console.error("Firebase is not initialized yet.");
     return;

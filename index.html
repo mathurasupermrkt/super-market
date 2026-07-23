@@ -1338,7 +1338,7 @@
 
   <!-- Announcement Bar -->
   <div class="announcement-bar">
-    🚚 Free delivery on orders above ₹499 &nbsp;|&nbsp; 🔥 Use code <strong>FRESH10</strong> for 10% off &nbsp;|&nbsp; ⚡
+    🚚 Free delivery on all orders &nbsp;|&nbsp; 🔥 Use code <strong>FRESH10</strong> for 10% off &nbsp;|&nbsp; ⚡
     Express delivery in 60 minutes
   </div>
 
@@ -1487,11 +1487,11 @@
         <!-- Stats -->
         <div class="hero-stats">
           <div class="hero-stat-item">
-            <div class="hero-stat-num">10K+</div>
+            <div class="hero-stat-num">100+</div>
             <div class="hero-stat-label">Products</div>
           </div>
           <div class="hero-stat-item" style="border-left:1px solid rgba(255,255,255,0.15);padding-left:var(--sp-8);">
-            <div class="hero-stat-num">50K+</div>
+            <div class="hero-stat-num">5000+</div>
             <div class="hero-stat-label">Happy Customers</div>
           </div>
           <div class="hero-stat-item" style="border-left:1px solid rgba(255,255,255,0.15);padding-left:var(--sp-8);">
@@ -1518,7 +1518,7 @@
           <div class="float-icon">⭐</div>
           <div class="float-text">
             <strong>4.9 / 5 Rating</strong>
-            <span>50,000+ Reviews</span>
+            <span>5000+ Reviews</span>
           </div>
         </div>
       </div>
@@ -1683,7 +1683,7 @@
     <div class="container">
       <div class="section-header" style="flex-direction:column;align-items:center;text-align:center;gap:var(--sp-2);">
         <h2 class="section-title" style="margin:0;">What Our Customers Say</h2>
-        <p style="color:var(--gray-500);max-width:500px;">Join 50,000+ happy customers who trust Mathura Quick Mart for
+        <p style="color:var(--gray-500);max-width:500px;">Join 5000+ happy customers who trust Mathura Quick Mart for
           their daily groceries</p>
       </div>
       <div class="testimonials-grid" style="margin-top:var(--sp-8);">
@@ -1696,7 +1696,7 @@
             <div class="testimonial-avatar">P</div>
             <div>
               <div class="testimonial-name">Priya Sharma</div>
-              <div class="testimonial-location">📍 Delhi</div>
+              <div class="testimonial-location">📍 ramanathapuram</div>
             </div>
             <div class="stars" style="margin-left:auto;">★★★★★</div>
           </div>
@@ -1708,8 +1708,8 @@
           <div class="testimonial-user">
             <div class="testimonial-avatar">R</div>
             <div>
-              <div class="testimonial-name">Rahul Mehta</div>
-              <div class="testimonial-location">📍 Mumbai</div>
+              <div class="testimonial-name">Rahul Mech</div>
+              <div class="testimonial-location">📍 ecr</div>
             </div>
             <div class="stars" style="margin-left:auto;">★★★★★</div>
           </div>
@@ -1722,7 +1722,7 @@
             <div class="testimonial-avatar">A</div>
             <div>
               <div class="testimonial-name">Anita Kumar</div>
-              <div class="testimonial-location">📍 Bangalore</div>
+              <div class="testimonial-location">📍 ramnad</div>
             </div>
             <div class="stars" style="margin-left:auto;">★★★★★</div>
           </div>
@@ -1849,15 +1849,15 @@
           <h4>Contact Us</h4>
           <div class="footer-contact-item">
             <span class="footer-contact-icon">📍</span>
-            <span>123 Market Street, Green Park, New Delhi - 110016</span>
+            <span>1,Madakottan, Ramanathapuram - 623504</span>
           </div>
           <div class="footer-contact-item">
             <span class="footer-contact-icon">📞</span>
-            <span>+91 1800-XXX-XXXX (Toll Free)</span>
+            <span>+91 9677227998</span>
           </div>
           <div class="footer-contact-item">
             <span class="footer-contact-icon">📧</span>
-            <span>support@mathuraquickmart.in</span>
+            <span>mathurasupermrkt@gmail.com</span>
           </div>
           <div class="footer-contact-item">
             <span class="footer-contact-icon">🕐</span>
@@ -1913,6 +1913,13 @@
   <!-- Scripts -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/js/app.js"></script>
+  <script src="/js/seed-db.js"></script>
+  <script>
+    // Auto-seed Firestore on first visit (only if collections are empty)
+    window.addEventListener('firebase-ready', () => {
+      setTimeout(() => window.seedDatabase(), 2000);
+    });
+  </script>
   <script>
     // ---- Cart Total in Nav ----
     function updateNavCart() {
@@ -1955,7 +1962,7 @@
 
     // ---- Show Location Modal ----
     function showLocationModal() {
-      MathuraQuickMart.toast('📍 Location set to New Delhi', 'info');
+      MathuraQuickMart.toast('📍 Location set to ur current location', 'info');
     }
 
     // ---- Newsletter ----

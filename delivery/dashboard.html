@@ -59,6 +59,62 @@
   </style>
 
   <script type='module' src='/js/firebase-init.js'></script>
+  <script type='module'>
+    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+    import { getApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+
+    // Start live GPS tracking and write to Firestore
+    window.startLiveTracking = function(uid) {
+      if (!navigator.geolocation) {
+        console.warn("Geolocation not supported by this browser.");
+        return;
+      }
+
+      const db = window.FirebaseDB;
+      if (!db) {
+        console.warn("Firestore not ready yet, retrying tracking...");
+        window.addEventListener('firebase-ready', () => window.startLiveTracking(uid), { once: true });
+        return;
+      }
+
+      const { doc: fsDoc, setDoc: fsSetDoc } = window.Firestore;
+
+      const watchId = navigator.geolocation.watchPosition(
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const accuracy = position.coords.accuracy;
+
+          try {
+            await fsSetDoc(fsDoc(db, 'deliveryLocations', uid), {
+              uid,
+              latitude: lat,
+              longitude: lng,
+              accuracy,
+              updatedAt: new Date().toISOString(),
+              online: true
+            }, { merge: true });
+            console.log(`📍 Location updated: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+            // Update the UI indicator
+            const badge = document.getElementById('gps-badge');
+            if (badge) badge.textContent = `📍 Live: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+          } catch (e) {
+            console.error("Error writing location to Firestore:", e);
+          }
+        },
+        (err) => {
+          console.error("GPS error:", err.message);
+          const badge = document.getElementById('gps-badge');
+          if (badge) badge.textContent = '⚠️ GPS unavailable';
+        },
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+      );
+
+      // Store watchId so we can stop tracking on logout
+      window._gpsWatchId = watchId;
+      console.log("✅ GPS tracking started, watchId:", watchId);
+    };
+  </script>
 </head>
 <body>
 
@@ -69,6 +125,7 @@
     <div>
       <div style="font-weight:bold;font-size:15px;" id="rider-profile-name">Ramesh Kumar</div>
       <div style="font-size:10px;opacity:0.8;">Mathura Quick Mart Delivery Agent</div>
+      <div id="gps-badge" style="font-size:9px;opacity:0.7;margin-top:2px;">📡 Acquiring GPS...</div>
     </div>
   </div>
   <a onclick="MathuraQuickMart.logout()" style="color:#fca5a5;cursor:pointer;font-size:12px;font-weight:bold;">Logout</a>
@@ -277,8 +334,13 @@
   document.addEventListener('DOMContentLoaded', () => {
     MathuraQuickMart.requireAuth();
     loadDeliveryTasks();
-    if (MathuraQuickMart.state.user) {
-      document.getElementById('rider-profile-name').textContent = MathuraQuickMart.state.user.name;
+    const user = MathuraQuickMart.state.user;
+    if (user) {
+      document.getElementById('rider-profile-name').textContent = user.name;
+      // Start live GPS tracking – pass the rider's uid so each rider
+      // gets their own document in deliveryLocations/{uid}
+      const uid = user.uid || 'delivery1';
+      window.startLiveTracking(uid);
     }
   });
 </script>

@@ -17,8 +17,9 @@ service cloud.firestore {
     
     function isAdmin() {
       return isAuthenticated() && 
-        (getUserData().role == 'admin' || 
-         request.auth.token.email == 'vikramsenthilkumar164@gmail.com');
+        (request.auth.token.email == 'vikramsenthilkumar164@gmail.com' ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
     }
 
     // Products, Categories, Coupons: Anyone can read, only admin can write
@@ -46,6 +47,10 @@ service cloud.firestore {
       }
       
       match /wishlist/{productId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      
+      match /returns/{returnId} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
     }

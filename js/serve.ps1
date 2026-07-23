@@ -1,4 +1,4 @@
-$port = 8000
+$port = 8001
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://localhost:$port/")
 $listener.Start()
@@ -13,6 +13,9 @@ while ($listener.IsListening) {
         $response = $context.Response
         
         $urlPath = $request.Url.LocalPath
+        if ($urlPath -eq "/customer/returns.html") {
+            $urlPath = "/index.html"
+        }
         if ($urlPath -eq "/" -or $urlPath -eq "") {
             $urlPath = "/index.html"
         }

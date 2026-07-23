@@ -16,16 +16,18 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
   updatePassword,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCC-ukj-BTSbyDRg925wsJRT87yXe8Vp90",
-  authDomain: "mathura-quickmart.firebaseapp.com",
-  projectId: "mathura-quickmart",
-  storageBucket: "mathura-quickmart.firebasestorage.app",
-  messagingSenderId: "425559621596",
-  appId: "1:425559621596:web:24c23825b929030c055919",
-  measurementId: "G-GK8KQQKL9H"
+  apiKey: "AIzaSyCy-euC1CaVTejDj_cCQNgzyJ6uIZHJ0jM",
+  authDomain: "mathura-quickmart-v2.firebaseapp.com",
+  projectId: "mathura-quickmart-v2",
+  storageBucket: "mathura-quickmart-v2.firebasestorage.app",
+  messagingSenderId: "365937178136",
+  appId: "1:365937178136:web:c3096783b0e1a47d0cb56d",
+  measurementId: "G-B616KNRK78"
 };
 
 try {
@@ -54,6 +56,8 @@ try {
     reauthenticateWithCredential,
     EmailAuthProvider,
     updatePassword,
+    GoogleAuthProvider,
+    signInWithPopup,
   };
 
   console.log("🔥 Firebase, Firestore & Auth Initialized Successfully!");
