@@ -74,6 +74,12 @@ const MathuraQuickMart = {
     } catch(e) { console.warn('State save error:', e); }
   },
 
+    setUserLocation(lat, lng) {
+      this.state.userLocation = { lat, lng };
+      this.saveState();
+      this.toast('Location set to (' + lat.toFixed(4) + ', ' + lng.toFixed(4) + ')', 'success');
+    },
+
   // ============ AUTH ============
   checkAuth() {
     const user = this.state.user;

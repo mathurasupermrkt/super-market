@@ -1840,7 +1840,7 @@
             <a href="/customer/about.html">About Us</a>
             <a href="/customer/privacy.html">Privacy Policy</a>
             <a href="/customer/terms.html">Terms & Conditions</a>
-            <a href="/customer/returns.html">Return Policy</a>
+            <a href="/index.html">Home</a>
           </div>
         </div>
 
@@ -1922,6 +1922,36 @@
   </script>
   <script>
     // ---- Cart Total in Nav ----
+
+document.addEventListener("DOMContentLoaded", () => {
+    const locationBtn = document.getElementById("locationBtn");
+    const locationText = document.getElementById("locationText");
+    if (!locationBtn) return;
+    locationBtn.addEventListener("click", () => {
+        if (!navigator.geolocation) {
+            MathuraQuickMart.toast("Geolocation is not supported.", "warning");
+            return;
+        }
+        locationText.textContent = "Getting location...";
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                MathuraQuickMart.setUserLocation(lat, lng);
+                locationText.textContent = "Current Location";
+            },
+            () => {
+                locationText.textContent = "Deliver to";
+                MathuraQuickMart.toast("Location permission denied.", "warning");
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    });
+});
     function updateNavCart() {
       const total = MathuraQuickMart.getCartTotal();
       const el = document.getElementById('nav-cart-total');
