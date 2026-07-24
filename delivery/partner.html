@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang= en>
+<head>
+    <meta charset=UTF-8>
+    <meta name=viewport content=width=device-width initial-scale=1.0>
+    <title>Mathura QuickMart Delivery Partner</title>
+    <!-- Leaflet CSS -->
+    <link rel=stylesheet href=https://unpkg.com/leaflet@1.9.4/dist/leaflet.css integrity=sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY= crossorigin= />
+ <!-- Partner CSS -->
+ <link rel=stylesheet href=../styles/partner.css>
+</head>
+<body>
+ <!-- Top Fixed Header -->
+ <header class=partner-header>
+ <div class=header-top>
+ <h1 class=app-title>Mathura QuickMart Delivery</h1>
+ <div class=partner-details>
+ <span id=partner-name>Partner Name</span>
+ <span class=divider>•</span>
+ <span id=partner-email>partner@example.com</span>
+ </div>
+ </div>
+
+ <div class=header-controls>
+ <div class=status-wrapper>
+ <label for=status-select>Status:</label>
+ <select id=status-select class=status-dropdown>
+ <option value=offline>Offline</option>
+ <option value=available>Available</option>
+ <option value=on_delivery>On Delivery</option>
+ </select>
+ </div>
+
+ <div class=button-group>
+ <button id=start-btn class=btn btn-start>Start Tracking</button>
+ <button id=stop-btn class=btn btn-stop disabled>Stop Tracking</button>
+ <button id=logout-btn class=btn btn-logout>Logout</button>
+ </div>
+ </div>
+ </header>
+
+ <!-- Main Map View -->
+ <main class=map-wrapper>
+ <div class=delivery-map-section>
+ <h3>📍 Live Location</h3>
+ <div id=delivery-map></div>
+ </div>
+ </main>
+
+ <!-- Bottom Tracking Status Panel -->
+ <footer class=bottom-panel>
+ <div class=status-indicator>
+ <span class=status-dot id=status-dot></span>
+ <span id=tracking-status>GPS Tracking Stopped</span>
+ </div>
+ </footer>
+
+ <!-- Leaflet JS -->
+ <script src=https://unpkg.com/leaflet@1.9.4/dist/leaflet.js integrity=sha256-20nXC0jkQFDVheydAsHNV1B4b1lsZf63U8AcD6VG0D9= crossorigin=></script>
+    <!-- Firebase Initialization Module -->
+    <script type=module src=../js/firebase-init.js></script>
+    <!-- Partner JS Module -->
+    <script type=module src=../js/partner.js></script>
+</body>
+</html>

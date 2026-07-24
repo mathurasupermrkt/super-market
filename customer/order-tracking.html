@@ -227,9 +227,9 @@
   const DEFAULT_LNG = 77.6737;
 
   // ---- Rider-id to listen to ----
-  // For now we listen to a single rider doc. You can make this dynamic
-  // based on the order's assigned rider uid.
-  const RIDER_DOC_ID = 'delivery1';
+  // Replace with the actual delivery partner's UID (from order assignment)
+  // or read it dynamically from the order document.
+  const RIDER_DOC_ID = localStorage.getItem('assignedPartnerUid') || 'delivery1';
 
   // ---- Leaflet map setup (matches your code) ----
   const map = L.map('map').setView([DEFAULT_LAT, DEFAULT_LNG], 13);
@@ -248,7 +248,8 @@
       return;
     }
 
-    const locationRef = doc(db, 'deliveryLocations', RIDER_DOC_ID);
+    // Updated to match the deliveryPartners collection written by partner.js
+    const locationRef = doc(db, 'deliveryPartners', RIDER_DOC_ID);
 
     onSnapshot(locationRef, (docSnap) => {
       if (!docSnap.exists()) {
@@ -257,19 +258,36 @@
       }
 
       const data = docSnap.data();
-      const newLatLng = [data.latitude, data.longitude];
 
-      // Move marker and pan the map
-      marker.setLatLng(newLatLng);
-      map.panTo(newLatLng);
+      // Update partner info in sidebar
+      const driverName = document.getElementById('driver-name');
+      if (driverName && data.name) driverName.textContent = data.name;
 
-      // Update popup with last-seen time
-      const time = data.updatedAt
-        ? new Date(data.updatedAt).toLocaleTimeString('en-IN')
-        : 'unknown';
-      marker.getPopup().setContent(`🛵 Rider — Live Location<br><small>Updated: ${time}</small>`);
+      const driverPhone = document.getElementById('driver-phone');
+      if (driverPhone && data.email) driverPhone.textContent = data.email;
 
-      console.log(`📍 Rider location update: ${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}`);
+      // Only move map if coordinates are available and partner is tracking
+      if (data.latitude && data.longitude) {
+        const newLatLng = [data.latitude, data.longitude];
+
+        marker.setLatLng(newLatLng);
+        map.panTo(newLatLng);
+
+        const time = data.timestamp
+          ? new Date(data.timestamp).toLocaleTimeString('en-IN')
+          : 'unknown';
+
+        const trackingBadge = data.isTracking ? '🟢 Live' : '🔴 Offline';
+        const statusLabel = data.status || 'unknown';
+
+        marker.bindPopup(
+          `🛵 ${data.name || 'Delivery Partner'}<br>` +
+          `<small>Status: ${statusLabel} | ${trackingBadge}</small><br>` +
+          `<small>Updated: ${time}</small>`
+        );
+
+        console.log(`📍 Rider location update: ${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}`);
+      }
     }, (err) => {
       console.error('onSnapshot error:', err);
     });

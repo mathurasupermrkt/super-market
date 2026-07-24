@@ -72,5 +72,13 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAuthenticated() || isAdmin();
     }
+
+    // Delivery Partners:
+    // - Partner can only write their own location doc (uid must match doc id)
+    // - Authenticated customers and admins can read (to track their delivery)
+    match /deliveryPartners/{partnerId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(partnerId) || isAdmin();
+    }
   }
 }
