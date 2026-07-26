@@ -1439,3 +1439,489 @@ ul { list-style: none; }
   .stats-grid { grid-template-columns: 1fr; }
   .admin-content { padding: var(--sp-4); }
 }
+
+/* ============================================
+   BLINKIT & ZEPTO MODERN DESIGN SYSTEM EXTENSIONS
+   ============================================ */
+
+/* ---- Dark Mode Custom Properties ---- */
+[data-theme="dark"] {
+  --white: #1e293b;
+  --gray-50: #0f172a;
+  --gray-100: #1e293b;
+  --gray-200: #334155;
+  --gray-300: #475569;
+  --gray-400: #64748b;
+  --gray-500: #94a3b8;
+  --gray-600: #cbd5e1;
+  --gray-700: #e2e8f0;
+  --gray-800: #f1f5f9;
+  --gray-900: #f8fafc;
+
+  --primary-pale: rgba(34, 197, 94, 0.15);
+  --secondary-pale: rgba(249, 115, 22, 0.15);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.7);
+}
+
+[data-theme="dark"] body {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .navbar,
+[data-theme="dark"] .mobile-bottom-nav,
+[data-theme="dark"] .product-card,
+[data-theme="dark"] .category-card,
+[data-theme="dark"] .checkout-section,
+[data-theme="dark"] .summary-card,
+[data-theme="dark"] .modal,
+[data-theme="dark"] .loc-modal,
+[data-theme="dark"] .summary-card {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: #0f172a;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+/* ---- Theme Switcher Button ---- */
+.theme-toggle-btn {
+  background: var(--gray-100);
+  border: 1px solid var(--gray-200);
+  color: var(--gray-700);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+.theme-toggle-btn:hover {
+  background: var(--gray-200);
+}
+[data-theme="dark"] .theme-toggle-btn {
+  background: #334155;
+  border-color: #475569;
+  color: #f8fafc;
+}
+
+/* ---- Delivery Time ETA Badge ---- */
+.eta-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+[data-theme="dark"] .eta-tag {
+  background: #312e81;
+  color: #a5b4fc;
+}
+
+/* ---- Discount Pill Badge ---- */
+.discount-pill {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 4px 10px 10px 4px;
+  box-shadow: 0 2px 4px rgba(37,99,235,0.3);
+  z-index: 2;
+}
+
+/* ---- Quantity Counter Button ---- */
+.qty-counter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--primary);
+  color: #fff;
+  border-radius: var(--radius-full);
+  padding: 2px 8px;
+  width: 100%;
+  font-weight: 700;
+  font-size: var(--text-xs);
+}
+.qty-counter button {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 2px 8px;
+  line-height: 1;
+}
+
+/* ---- Horizontal Category Slider ---- */
+.category-slider {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 8px 4px 16px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+.category-slider::-webkit-scrollbar { display: none; }
+.category-pill {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 76px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.category-pill-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--primary-pale);
+  border: 2px solid var(--gray-200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  transition: all 0.2s ease;
+}
+.category-pill:hover .category-pill-icon,
+.category-pill.active .category-pill-icon {
+  border-color: var(--primary);
+  transform: scale(1.08);
+  box-shadow: var(--shadow-green);
+}
+.category-pill-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray-700);
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* ---- Mobile Bottom Navigation Bar ---- */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 62px;
+  background: #ffffff;
+  border-top: 1px solid var(--gray-200);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+  z-index: 1000;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 4px;
+}
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--gray-500);
+  font-size: 10px;
+  font-weight: 600;
+  text-decoration: none;
+  flex: 1;
+  padding: 4px 0;
+  position: relative;
+  transition: color 0.2s ease;
+}
+.mobile-nav-item .nav-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+.mobile-nav-item.active,
+.mobile-nav-item:hover {
+  color: var(--primary);
+}
+.mobile-nav-badge {
+  position: absolute;
+  top: 2px;
+  right: 22%;
+  background: var(--secondary);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 99px;
+}
+
+/* Responsive Product Grid & Mobile Overrides */
+@media (max-width: 767px) {
+  .mobile-bottom-nav { display: flex; }
+  body { padding-bottom: 68px; }
+
+  /* 2 products per row on mobile screens */
+  .products-grid,
+  #products-grid,
+  .featured-products-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .product-card {
+    border-radius: var(--radius-lg);
+  }
+  .product-card-body {
+    padding: 10px;
+  }
+  .product-card-name {
+    font-size: 13px;
+    height: 36px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+}
+
+/* ============================================
+   DARK MODE OVERRIDES & CONTRAST FIXES
+   ============================================ */
+[data-theme="dark"] {
+  /* Brand Adjustments */
+  --primary-dark:   #4ade80;
+  --primary-light:  #166534;
+  --primary-pale:   #064e3b;
+  --secondary-dark: #fb923c;
+  --secondary-light:#7c2d12;
+  --secondary-pale: #451a03;
+
+  /* Inverted Neutral Scale for Dark Mode */
+  --white:          #1e293b;
+  --gray-50:        #0f172a;
+  --gray-100:       #1e293b;
+  --gray-200:       #334155;
+  --gray-300:       #475569;
+  --gray-400:       #94a3b8;
+  --gray-500:       #cbd5e1;
+  --gray-600:       #e2e8f0;
+  --gray-700:       #f1f5f9;
+  --gray-800:       #f8fafc;
+  --gray-900:       #ffffff;
+
+  /* Shadows for Dark Surfaces */
+  --shadow-sm:    0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md:    0 4px 6px -1px rgba(0, 0, 0, 0.5);
+  --shadow-lg:    0 10px 15px -3px rgba(0, 0, 0, 0.6);
+  --shadow-xl:    0 20px 25px -5px rgba(0, 0, 0, 0.7);
+}
+
+/* Base Body & Surfaces */
+[data-theme="dark"] body {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+/* Headings & Text Elements */
+[data-theme="dark"] h1, 
+[data-theme="dark"] h2, 
+[data-theme="dark"] h3, 
+[data-theme="dark"] h4, 
+[data-theme="dark"] h5, 
+[data-theme="dark"] h6,
+[data-theme="dark"] .section-title,
+[data-theme="dark"] .products-title {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] p,
+[data-theme="dark"] span:not(.badge):not(.eta-tag):not(.discount-pill),
+[data-theme="dark"] label,
+[data-theme="dark"] div {
+  color: inherit;
+}
+
+/* Navigation & Header Overrides */
+[data-theme="dark"] .navbar {
+  background: rgba(15, 23, 42, 0.96) !important;
+  border-bottom-color: #334155 !important;
+}
+[data-theme="dark"] .cat-nav {
+  background: #0f172a !important;
+  border-bottom-color: #334155 !important;
+}
+[data-theme="dark"] .cat-nav-item {
+  color: #cbd5e1 !important;
+}
+[data-theme="dark"] .cat-nav-item:hover,
+[data-theme="dark"] .cat-nav-item.active {
+  color: #4ade80 !important;
+  background: #1e293b !important;
+}
+[data-theme="dark"] .nav-action-btn {
+  color: #e2e8f0 !important;
+}
+[data-theme="dark"] .nav-action-btn:hover {
+  background: #1e293b !important;
+  color: #4ade80 !important;
+}
+[data-theme="dark"] .dropdown-menu {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6) !important;
+}
+[data-theme="dark"] .dropdown-item {
+  color: #f8fafc !important;
+}
+[data-theme="dark"] .dropdown-item:hover {
+  background: #334155 !important;
+  color: #4ade80 !important;
+}
+
+/* Search Controls */
+[data-theme="dark"] .search-input-wrap {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+[data-theme="dark"] .search-input-wrap input {
+  color: #f8fafc !important;
+}
+[data-theme="dark"] .search-dropdown {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+[data-theme="dark"] .search-result-name {
+  color: #f8fafc !important;
+}
+[data-theme="dark"] .search-result-item:hover {
+  background: #334155 !important;
+}
+
+/* Cards & Grid Containers */
+[data-theme="dark"] .product-card,
+[data-theme="dark"] .card,
+[data-theme="dark"] .card-flat,
+[data-theme="dark"] .dash-card,
+[data-theme="dark"] .order-card,
+[data-theme="dark"] .tracking-card,
+[data-theme="dark"] .summary-card,
+[data-theme="dark"] .filters-panel,
+[data-theme="dark"] .dash-sidebar,
+[data-theme="dark"] .cart-item,
+[data-theme="dark"] .notif-item {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .product-card-name {
+  color: #f8fafc !important;
+}
+[data-theme="dark"] .product-card-weight {
+  color: #94a3b8 !important;
+}
+[data-theme="dark"] .price-current {
+  color: #4ade80 !important;
+}
+[data-theme="dark"] .price-original {
+  color: #94a3b8 !important;
+}
+
+/* Forms & Inputs */
+[data-theme="dark"] .form-label,
+[data-theme="dark"] label {
+  color: #f1f5f9 !important;
+}
+[data-theme="dark"] .form-input,
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .form-textarea,
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="email"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] input[type="tel"],
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Sidebar & Navigation Items */
+[data-theme="dark"] .dash-sidebar-item {
+  color: #cbd5e1 !important;
+}
+[data-theme="dark"] .dash-sidebar-item:hover {
+  background: #334155 !important;
+  color: #4ade80 !important;
+}
+[data-theme="dark"] .dash-sidebar-item.active {
+  background: #064e3b !important;
+  color: #4ade80 !important;
+}
+
+/* Testimonials & Value Props */
+[data-theme="dark"] .value-item {
+  background: #1e293b !important;
+}
+[data-theme="dark"] .value-title {
+  color: #f8fafc !important;
+}
+[data-theme="dark"] .value-sub {
+  color: #cbd5e1 !important;
+}
+[data-theme="dark"] .testimonial-card {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+[data-theme="dark"] .testimonial-text {
+  color: #e2e8f0 !important;
+}
+[data-theme="dark"] .testimonial-name {
+  color: #f8fafc !important;
+}
+
+/* Order Tracking & Timeline */
+[data-theme="dark"] .tracking-step-title {
+  color: #f8fafc !important;
+}
+[data-theme="dark"] .tracking-step-desc {
+  color: #cbd5e1 !important;
+}
+
+/* Mobile Bottom Navigation */
+[data-theme="dark"] .mobile-bottom-nav {
+  background: #0f172a !important;
+  border-top-color: #334155 !important;
+}
+[data-theme="dark"] .mobile-nav-item {
+  color: #94a3b8 !important;
+}
+[data-theme="dark"] .mobile-nav-item.active {
+  color: #4ade80 !important;
+}
+
+
