@@ -1405,6 +1405,11 @@
           </div>
         </div>
 
+        <!-- Dark Mode Toggle -->
+        <button class="theme-toggle-btn" onclick="MathuraQuickMart.toggleTheme()" title="Toggle Light/Dark Theme">
+          🌙 Dark
+        </button>
+
         <!-- Staff Portal Icon -->
         <a href="/admin/login.html" class="nav-action-btn" title="Staff Portal (Admin & Delivery)">
           <span>💼</span>
@@ -1727,47 +1732,52 @@
             <div class="stars" style="margin-left:auto;">★★★★★</div>
           </div>
         </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== CUSTOMER FEEDBACK ===== -->
+  <!-- ===== CUSTOMER FEEDBACK & REVIEWS ===== -->
   <section class="customer-feedback">
     <div class="container">
       <div class="feedback-inner">
         <div>
-          <div
-            style="display:inline-flex;align-items:center;gap:8px;background:rgba(34,197,94,0.2);border:1px solid rgba(34,197,94,0.3);border-radius:20px;padding:4px 12px;font-size:12px;color:var(--primary-light);margin-bottom:16px;">
-            💬 We Value Your Opinion
+          <h2 class="feedback-title">We Value Your Feedback 💬</h2>
+          <p class="feedback-sub">
+            Your opinion helps us improve our fresh grocery delivery service. Let us know about your shopping experience, product quality, or delivery speed!
+          </p>
+          <div style="display:flex;gap:var(--sp-6);margin-top:var(--sp-6);flex-wrap:wrap;">
+            <div style="background:rgba(255,255,255,0.1);padding:var(--sp-4) var(--sp-6);border-radius:var(--radius-xl);text-align:center;border:1px solid rgba(255,255,255,0.15);flex:1;min-width:140px;">
+              <div style="font-size:var(--text-3xl);font-weight:var(--fw-black);color:var(--white);">4.9 ★</div>
+              <div style="font-size:var(--text-xs);color:rgba(255,255,255,0.7);margin-top:4px;">Average Rating</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.1);padding:var(--sp-4) var(--sp-6);border-radius:var(--radius-xl);text-align:center;border:1px solid rgba(255,255,255,0.15);flex:1;min-width:140px;">
+              <div style="font-size:var(--text-3xl);font-weight:var(--fw-black);color:var(--white);">99.4%</div>
+              <div style="font-size:var(--text-xs);color:rgba(255,255,255,0.7);margin-top:4px;">Satisfied Customers</div>
+            </div>
           </div>
-          <h2 class="feedback-title">Share Your<br>Feedback</h2>
-          <p class="feedback-sub">Your feedback helps us improve! Tell us about your shopping experience at Mathura
-            Quick Mart — what you loved, and what we can do better.</p>
         </div>
-        <div class="feedback-form" id="feedback-form">
+
+        <div class="feedback-form">
+          <h3 style="color:var(--white);font-size:var(--text-xl);font-weight:var(--fw-bold);margin-bottom:var(--sp-4);">Send Us Feedback</h3>
           <div class="form-group">
-            <label for="feedback-name">Your Name</label>
-            <input type="text" id="feedback-name" placeholder="Enter your name">
+            <label for="fb-name">Your Name</label>
+            <input type="text" id="fb-name" placeholder="e.g. Ramesh Kumar" required>
           </div>
           <div class="form-group">
-            <label for="feedback-email">Email Address</label>
-            <input type="email" id="feedback-email" placeholder="Enter your email">
+            <label for="fb-email">Email Address</label>
+            <input type="email" id="fb-email" placeholder="e.g. ramesh@example.com" required>
           </div>
           <div class="form-group">
             <label>Rating</label>
-            <div class="feedback-stars" id="feedback-stars">
-              <span class="star" data-value="1">⭐</span>
-              <span class="star" data-value="2">⭐</span>
-              <span class="star" data-value="3">⭐</span>
-              <span class="star" data-value="4">⭐</span>
-              <span class="star" data-value="5">⭐</span>
+            <div class="feedback-stars" id="fb-stars">
+              <span class="star active" data-rating="1">★</span>
+              <span class="star active" data-rating="2">★</span>
+              <span class="star active" data-rating="3">★</span>
+              <span class="star active" data-rating="4">★</span>
+              <span class="star active" data-rating="5">★</span>
             </div>
           </div>
           <div class="form-group">
-            <label for="feedback-message">Your Message</label>
-            <textarea id="feedback-message" placeholder="Share your experience with us..."></textarea>
+            <label for="fb-message">Your Feedback / Comments</label>
+            <textarea id="fb-message" placeholder="Tell us about your experience..." required></textarea>
           </div>
-          <button class="feedback-submit" onclick="submitFeedback()">Submit Feedback</button>
+          <button class="feedback-submit" onclick="submitCustomerFeedback()">Submit Feedback 🚀</button>
         </div>
       </div>
     </div>
@@ -2007,49 +2017,56 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ---- Feedback Form ----
-    let feedbackRating = 0;
-    (function initFeedbackStars() {
-      document.addEventListener('click', function (e) {
-        if (e.target.classList.contains('star') && e.target.closest('#feedback-stars')) {
-          feedbackRating = parseInt(e.target.getAttribute('data-value'));
-          const stars = document.querySelectorAll('#feedback-stars .star');
-          stars.forEach(s => {
-            s.classList.toggle('active', parseInt(s.getAttribute('data-value')) <= feedbackRating);
+    let selectedRating = 5;
+    document.addEventListener('DOMContentLoaded', () => {
+      const stars = document.querySelectorAll('#fb-stars .star');
+      stars.forEach(star => {
+        star.addEventListener('click', () => {
+          selectedRating = parseInt(star.getAttribute('data-rating'));
+          stars.forEach((s, idx) => {
+            if (idx < selectedRating) s.classList.add('active');
+            else s.classList.remove('active');
           });
-        }
+        });
       });
-    })();
+    });
 
-    function submitFeedback() {
-      const name = document.getElementById('feedback-name').value.trim();
-      const email = document.getElementById('feedback-email').value.trim();
-      const message = document.getElementById('feedback-message').value.trim();
+    async function submitCustomerFeedback() {
+      const nameEl = document.getElementById('fb-name');
+      const emailEl = document.getElementById('fb-email');
+      const msgEl = document.getElementById('fb-message');
 
-      if (!name) {
-        MathuraQuickMart.toast('Please enter your name', 'error');
-        return;
-      }
-      if (!email || !email.includes('@')) {
-        MathuraQuickMart.toast('Please enter a valid email address', 'error');
-        return;
-      }
-      if (feedbackRating === 0) {
-        MathuraQuickMart.toast('Please select a rating', 'error');
-        return;
-      }
-      if (!message) {
-        MathuraQuickMart.toast('Please share your feedback message', 'error');
+      const name = nameEl ? nameEl.value.trim() : '';
+      const email = emailEl ? emailEl.value.trim() : '';
+      const message = msgEl ? msgEl.value.trim() : '';
+
+      if (!name || !email || !message) {
+        MathuraQuickMart.toast('Please fill in all feedback fields', 'warning');
         return;
       }
 
-      MathuraQuickMart.toast('🙏 Thank you for your feedback, ' + name + '!', 'success');
+      const feedbackData = {
+        id: 'FB' + Date.now(),
+        name,
+        email,
+        rating: selectedRating,
+        message,
+        date: new Date().toISOString()
+      };
 
-      // Reset form
-      document.getElementById('feedback-name').value = '';
-      document.getElementById('feedback-email').value = '';
-      document.getElementById('feedback-message').value = '';
-      feedbackRating = 0;
-      document.querySelectorAll('#feedback-stars .star').forEach(s => s.classList.remove('active'));
+      if (window.FirebaseDB && window.Firestore) {
+        const { doc, setDoc } = window.Firestore;
+        try {
+          await setDoc(doc(window.FirebaseDB, 'feedback', feedbackData.id), feedbackData);
+        } catch (e) {
+          console.warn('Firestore feedback save error:', e);
+        }
+      }
+
+      MathuraQuickMart.toast('🎉 Thank you for your feedback!', 'success');
+      if (nameEl) nameEl.value = '';
+      if (emailEl) emailEl.value = '';
+      if (msgEl) msgEl.value = '';
     }
 
     // ---- Render Page ----
@@ -2062,17 +2079,22 @@ document.addEventListener("DOMContentLoaded", () => {
       const bestsellerEl = document.getElementById('bestseller-products');
       const newEl = document.getElementById('new-products');
 
+      const allProducts = API.getProducts();
+
       if (featuredEl) {
         const featured = API.getProducts({ featured: true });
-        featuredEl.innerHTML = featured.slice(0, 5).map(p => renderProductCard(p)).join('');
+        const listToRender = (featured && featured.length > 0) ? featured : allProducts.slice(0, 5);
+        featuredEl.innerHTML = listToRender.slice(0, 5).map(p => renderProductCard(p)).join('');
       }
       if (bestsellerEl) {
         const bs = API.getProducts({ bestSeller: true });
-        bestsellerEl.innerHTML = bs.slice(0, 5).map(p => renderProductCard(p)).join('');
+        const listToRender = (bs && bs.length > 0) ? bs : allProducts.slice(2, 7);
+        bestsellerEl.innerHTML = listToRender.slice(0, 5).map(p => renderProductCard(p)).join('');
       }
       if (newEl) {
         const newArr = API.getProducts({ isNew: true });
-        newEl.innerHTML = newArr.slice(0, 5).map(p => renderProductCard(p)).join('');
+        const listToRender = (newArr && newArr.length > 0) ? newArr : allProducts.slice(4, 9);
+        newEl.innerHTML = listToRender.slice(0, 5).map(p => renderProductCard(p)).join('');
       }
     }
 
@@ -2105,5 +2127,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
     });
-</body >
-</html >
+</script>
+
+</body>
+</html>
