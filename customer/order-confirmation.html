@@ -114,8 +114,8 @@
     const lastOrder = localStorage.getItem('mathuraquickmart_last_order');
     if (lastOrder) {
       const order = JSON.parse(lastOrder);
-      const delivery = 0;
-      const totalAmt = order.subtotal + delivery - order.discount;
+      const deliveryFee = order.deliveryFee || 0;
+      const totalAmt = order.subtotal + deliveryFee - (order.discount || 0);
 
       document.getElementById('conf-order-id').textContent = order.id;
       document.getElementById('conf-total').textContent = `₹${Math.round(totalAmt)}`;
