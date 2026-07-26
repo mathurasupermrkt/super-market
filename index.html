@@ -498,6 +498,7 @@
       align-items: center;
       gap: var(--sp-3);
       animation: float 3s ease-in-out infinite;
+      border: 1px solid rgba(255, 255, 255, 0.8);
     }
 
     .hero-float-left {
@@ -536,11 +537,25 @@
       display: block;
       font-size: var(--text-sm);
       font-weight: var(--fw-bold);
-      color: var(--gray-900);
+      color: #111827 !important;
     }
 
     .float-text span {
-      color: var(--gray-500);
+      color: #4b5563 !important;
+    }
+
+    [data-theme="dark"] .hero-float-card {
+      background: rgba(15, 23, 42, 0.92) !important;
+      border-color: rgba(255, 255, 255, 0.18) !important;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5) !important;
+    }
+
+    [data-theme="dark"] .float-text strong {
+      color: #ffffff !important;
+    }
+
+    [data-theme="dark"] .float-text span {
+      color: #cbd5e1 !important;
     }
 
     /* ---- Value Props ---- */
