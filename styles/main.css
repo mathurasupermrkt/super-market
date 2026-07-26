@@ -1924,4 +1924,50 @@ ul { list-style: none; }
   color: #4ade80 !important;
 }
 
+/* Footer Surface & Contrast Fixes (Consistent Dark Theme across all pages) */
+.footer {
+  background: #0b0f19 !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.footer-col h4 {
+  color: #ffffff !important;
+}
+
+.footer-brand p {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.footer-links a {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.footer-links a:hover {
+  color: #4ade80 !important;
+}
+
+.footer-contact-item {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.footer-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.social-btn {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+.social-btn:hover {
+  background: #22c55e !important;
+}
+
+.payment-icon {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+
 
