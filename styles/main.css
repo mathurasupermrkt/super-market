@@ -1970,4 +1970,123 @@ ul { list-style: none; }
 }
 
 
+/* =========================================
+   MOBILE RESPONSIVE FIX
+   ========================================= */
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+body {
+    min-width: 0;
+}
+
+/* Main application */
+#app,
+.app,
+.main-container,
+.page-container,
+.container {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+/* Header */
+header,
+.navbar,
+.site-header {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Hero */
+.hero,
+.hero-section {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Images */
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Cards / sections */
+section,
+.category-section,
+.products-section {
+    max-width: 100%;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+
+    body {
+        width: 100vw;
+        overflow-x: hidden;
+    }
+
+    .container,
+    .main-container,
+    .page-container {
+        width: 100%;
+        max-width: 100%;
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .hero,
+    .hero-section {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .hero-content {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* Prevent desktop fixed widths */
+    [style*="width"] {
+        max-width: 100%;
+    }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+
+    .container,
+    .main-container,
+    .page-container {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    h1 {
+        font-size: 34px;
+        line-height: 1.1;
+    }
+
+    h2 {
+        font-size: 24px;
+    }
+
+    p {
+        font-size: 14px;
+    }
+}
 

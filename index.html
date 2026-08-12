@@ -1940,14 +1940,16 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
   <script src="/js/app.js"></script>
-  <script src="/js/seed-db.js"></script>
+  <script src="/js/seed-db.js" defer></script>
   <script>
-    // Auto-seed Firestore on first visit (only if collections are empty)
-    window.addEventListener('firebase-ready', () => {
-      setTimeout(() => window.seedDatabase(), 2000);
-    });
+    // Auto-seed Firestore only on first visit if not yet seeded
+    if (!localStorage.getItem('mathura_db_seeded')) {
+      window.addEventListener('firebase-ready', () => {
+        if (typeof window.seedDatabase === 'function') window.seedDatabase();
+      }, { once: true });
+    }
   </script>
   <script>
     // ---- Cart Total in Nav ----

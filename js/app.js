@@ -887,7 +887,7 @@ const API = {
     ];
   },
 
-  // Database Synchronization Methods
+  // Database Synchronization Methods — PARALLEL fetch for speed
   async syncFromFirestore() {
     if (!window.FirebaseDB || !window.Firestore) {
       console.warn("Firestore not available yet.");
@@ -896,92 +896,67 @@ const API = {
     const db = window.FirebaseDB;
     const { collection, getDocs } = window.Firestore;
 
-    console.log("🔄 Starting Firestore sync...");
+    console.log("🔄 Starting Firestore sync (parallel)...");
+    const t0 = performance.now();
 
-    // 1. Sync Products
-    try {
-      const productsSnap = await getDocs(collection(db, 'products'));
-      if (!productsSnap.empty) {
-        const prods = [];
-        productsSnap.forEach(doc => {
-          const p = doc.data();
-          p.id = parseInt(p.id) || p.id;
-          prods.push(p);
-        });
-        this.products = prods;
-        console.log(`Synced ${prods.length} products.`);
-      }
-    } catch (e) {
-      console.warn("Error syncing products:", e);
+    // Fire ALL reads in parallel — single network round-trip
+    const [productsSnap, categoriesSnap, couponsSnap, ordersSnap, reviewsSnap] =
+      await Promise.all([
+        getDocs(collection(db, 'products')).catch(e => { console.warn("products sync:", e.message); return null; }),
+        getDocs(collection(db, 'categories')).catch(e => { console.warn("categories sync:", e.message); return null; }),
+        getDocs(collection(db, 'coupons')).catch(e => { console.warn("coupons sync:", e.message); return null; }),
+        getDocs(collection(db, 'orders')).catch(e => { console.warn("orders sync:", e.message); return null; }),
+        getDocs(collection(db, 'reviews')).catch(e => { console.warn("reviews sync:", e.message); return null; }),
+      ]);
+
+    // Process results
+    if (productsSnap && !productsSnap.empty) {
+      const prods = [];
+      productsSnap.forEach(doc => {
+        const p = doc.data();
+        p.id = parseInt(p.id) || p.id;
+        prods.push(p);
+      });
+      this.products = prods;
+      console.log(`Synced ${prods.length} products.`);
     }
 
-    // 2. Sync Categories
-    try {
-      const categoriesSnap = await getDocs(collection(db, 'categories'));
-      if (!categoriesSnap.empty) {
-        const cats = [];
-        categoriesSnap.forEach(doc => {
-          cats.push(doc.data());
-        });
-        this.categories = cats;
-        console.log(`Synced ${cats.length} categories.`);
-      }
-    } catch (e) {
-      console.warn("Error syncing categories:", e);
+    if (categoriesSnap && !categoriesSnap.empty) {
+      const cats = [];
+      categoriesSnap.forEach(doc => cats.push(doc.data()));
+      this.categories = cats;
+      console.log(`Synced ${cats.length} categories.`);
     }
 
-    // 3. Sync Coupons
-    try {
-      const couponsSnap = await getDocs(collection(db, 'coupons'));
-      if (!couponsSnap.empty) {
-        const coups = [];
-        couponsSnap.forEach(doc => {
-          coups.push(doc.data());
-        });
-        this.coupons = coups;
-        console.log(`Synced ${coups.length} coupons.`);
-      }
-    } catch (e) {
-      console.warn("Error syncing coupons:", e);
+    if (couponsSnap && !couponsSnap.empty) {
+      const coups = [];
+      couponsSnap.forEach(doc => coups.push(doc.data()));
+      this.coupons = coups;
+      console.log(`Synced ${coups.length} coupons.`);
     }
 
-    // 4. Sync Orders
-    try {
-      const ordersSnap = await getDocs(collection(db, 'orders'));
-      if (!ordersSnap.empty) {
-        const ords = [];
-        ordersSnap.forEach(doc => {
-          ords.push(doc.data());
-        });
-        ords.sort((a, b) => new Date(b.date) - new Date(a.date));
-        this.orders = ords;
-        MathuraQuickMart.state.orders = ords;
-        MathuraQuickMart.saveState();
-        console.log(`Synced ${ords.length} orders.`);
-      }
-    } catch (e) {
-      console.warn("Error syncing orders (likely guest/unauthenticated):", e);
+    if (ordersSnap && !ordersSnap.empty) {
+      const ords = [];
+      ordersSnap.forEach(doc => ords.push(doc.data()));
+      ords.sort((a, b) => new Date(b.date) - new Date(a.date));
+      this.orders = ords;
+      MathuraQuickMart.state.orders = ords;
+      MathuraQuickMart.saveState();
+      console.log(`Synced ${ords.length} orders.`);
     }
 
-    // 5. Sync Reviews
-    try {
-      const reviewsSnap = await getDocs(collection(db, 'reviews'));
-      if (!reviewsSnap.empty) {
-        const revs = [];
-        reviewsSnap.forEach(doc => {
-          revs.push(doc.data());
-        });
-        this.reviews = revs;
-        console.log(`Synced ${revs.length} reviews.`);
-      }
-    } catch (e) {
-      console.warn("Error syncing reviews:", e);
+    if (reviewsSnap && !reviewsSnap.empty) {
+      const revs = [];
+      reviewsSnap.forEach(doc => revs.push(doc.data()));
+      this.reviews = revs;
+      console.log(`Synced ${revs.length} reviews.`);
     }
 
-    console.log("🔄 Data sync cycle complete!");
+    console.log(`🔄 Data sync complete in ${Math.round(performance.now() - t0)}ms`);
     window.dbReady = true;
     window.dispatchEvent(new CustomEvent('db-ready'));
   },
+
 
   async addReview(review) {
     this.reviews.unshift(review);

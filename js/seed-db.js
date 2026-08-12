@@ -1,11 +1,17 @@
 /**
  * One-time script to seed the Firestore database with the mock data from app.js.
- * This runs automatically if included in an HTML file, or you can call seedDatabase() manually.
+ * Skips automatically if the database has already been seeded.
  */
 
-async function seedDatabase() {
+async function seedDatabase(force = false) {
   if (!window.FirebaseDB || !window.Firestore) {
     console.error("Firebase is not initialized yet. Cannot seed database.");
+    return;
+  }
+
+  // Fast check: Skip if already seeded in this browser session
+  if (!force && localStorage.getItem('mathura_db_seeded') === 'true') {
+    console.log("⚡ Database already seeded (cached). Skipping automatic re-seed.");
     return;
   }
 
@@ -13,38 +19,48 @@ async function seedDatabase() {
   const db = window.FirebaseDB;
 
   try {
-    console.log("Seeding products...");
+    // Check if Firestore already has products — avoid overwriting existing data
+    if (!force) {
+      const snap = await getDocs(collection(db, 'products'));
+      if (!snap.empty) {
+        console.log("⚡ Firestore already contains product data. Skipping auto-seed.");
+        localStorage.setItem('mathura_db_seeded', 'true');
+        return;
+      }
+    }
+
+    console.log("🌱 Seeding database in parallel...");
+    const t0 = performance.now();
+    const writeOps = [];
+
+    // Seed products in parallel
     for (const product of API.products) {
-      // Use the product ID as the document ID for consistency
-      await setDoc(doc(db, 'products', product.id.toString()), product);
-      console.log(`Added product: ${product.name}`);
+      writeOps.push(setDoc(doc(db, 'products', product.id.toString()), product));
     }
 
-    console.log("Seeding categories...");
+    // Seed categories in parallel
     for (const category of API.categories) {
-      await setDoc(doc(db, 'categories', category.name), category);
-      console.log(`Added category: ${category.name}`);
+      writeOps.push(setDoc(doc(db, 'categories', category.name), category));
     }
 
-    console.log("Seeding coupons...");
+    // Seed coupons in parallel
     for (const coupon of API.coupons) {
-      await setDoc(doc(db, 'coupons', coupon.code), coupon);
-      console.log(`Added coupon: ${coupon.code}`);
+      writeOps.push(setDoc(doc(db, 'coupons', coupon.code), coupon));
     }
-    
-    console.log("✅ Database seeded successfully!");
 
-    // Also seed the admin profile
-    console.log("Seeding admin profile...");
-    const adminUid = '1m89AFB1hzOwAkK8VBFqfy1qRW83';
-    await setDoc(doc(db, 'users', adminUid), {
+    // Seed primary admin profile
+    const adminUid = 'KVai9GaRYDfxRHdzledvvwIK7La2';
+    writeOps.push(setDoc(doc(db, 'users', adminUid), {
       uid: adminUid,
       name: "Admin Manager",
       email: "vikramsenthilkumar164@gmail.com",
       role: "admin",
       createdAt: new Date().toISOString()
-    }, { merge: true });
-    console.log("✅ Admin profile seeded!");
+    }, { merge: true }));
+
+    await Promise.all(writeOps);
+    localStorage.setItem('mathura_db_seeded', 'true');
+    console.log(`✅ Database seeded successfully in ${Math.round(performance.now() - t0)}ms!`);
 
     if (window.API && typeof window.API.syncFromFirestore === 'function') {
       await window.API.syncFromFirestore();
@@ -56,8 +72,7 @@ async function seedDatabase() {
 
 // Seed admin profile
 async function seedAdminProfile(uid) {
-  // Default to the primary admin UID if not provided
-  uid = uid || '1m89AFB1hzOwAkK8VBFqfy1qRW83';
+  uid = uid || 'KVai9GaRYDfxRHdzledvvwIK7La2';
   if (!window.FirebaseDB || !window.Firestore) {
     console.error("Firebase is not initialized yet.");
     return;
