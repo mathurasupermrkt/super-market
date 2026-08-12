@@ -990,10 +990,30 @@ async function selectSearchSuggestion(address, lat, lon) {
  */
 async function placeOrder() {
   // ── Validation: delivery location ──
+  // If user filled the address form manually (skipping the map modal),
+  // build confirmedLocation from form values so they aren't blocked.
   if (!confirmedLocation) {
-    MathuraQuickMart.toast('📍 Please select your delivery location.', 'error');
-    document.getElementById('loc-trigger-btn').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    return;
+    const flat    = document.getElementById('flat-no')?.value.trim();
+    const street  = document.getElementById('street-address')?.value.trim();
+    const city    = document.getElementById('city')?.value.trim();
+    const state   = document.getElementById('state')?.value.trim();
+    const pin     = document.getElementById('pincode')?.value.trim();
+    const search  = document.getElementById('address-search')?.value.trim();
+
+    if (flat && street && city && pin) {
+      // Build address from form fields
+      const builtAddress = search || [flat, street, city, state, pin].filter(Boolean).join(', ');
+      confirmedLocation = {
+        latitude:         SHOP_LAT,  // fallback to shop coords if GPS wasn't used
+        longitude:        SHOP_LNG,
+        formattedAddress: builtAddress,
+        isManualEntry:    true
+      };
+    } else {
+      MathuraQuickMart.toast('📍 Please select your delivery location on the map.', 'error');
+      document.getElementById('loc-trigger-btn').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
   }
 
   // ── Validation: address fields ──
