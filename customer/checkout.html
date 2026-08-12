@@ -970,15 +970,40 @@ function simulateAutocomplete(val) {
   }, 500);
 }
 
-/** selectSearchSuggestion — user picked an autocomplete result (no modal) */
+/** selectSearchSuggestion — user picked an autocomplete result */
 async function selectSearchSuggestion(address, lat, lon) {
   document.getElementById('address-search').value = address;
   document.getElementById('autocomplete-suggestions').style.display = 'none';
 
-  // Open modal and place marker at searched location
-  openLocationModal();
-  await new Promise(r => setTimeout(r, 200));  // let modal open
-  await updateMarker(parseFloat(lat), parseFloat(lon));
+  const parsedLat = parseFloat(lat);
+  const parsedLon = parseFloat(lon);
+
+  // Auto-populate form fields via reverse geocode
+  const fillRes = await reverseGeocode(parsedLat, parsedLon);
+  if (fillRes) fillAddressFields(fillRes, parsedLat, parsedLon);
+
+  // Auto-confirm location without requiring the user to open the map modal
+  confirmedLocation = {
+    latitude:         parsedLat,
+    longitude:        parsedLon,
+    formattedAddress: address,
+    isManualEntry:    false
+  };
+
+  // Update the status bar so the user sees the confirmed address
+  const bar  = document.getElementById('loc-status-bar');
+  const addr = document.getElementById('loc-status-addr');
+  if (addr) addr.textContent = address;
+  if (bar)  bar.classList.add('visible');
+
+  // Update trigger button to show location is confirmed
+  const trigBtn = document.getElementById('loc-trigger-btn');
+  if (trigBtn) {
+    trigBtn.innerHTML = '<span class="btn-icon">📍</span> Change Delivery Location';
+    trigBtn.style.background = 'linear-gradient(135deg,#065f46,#16a34a)';
+  }
+
+  MathuraQuickMart.toast('✓ Delivery location confirmed', 'success');
 }
 
 /* ─────────────────────────────────────────────────
