@@ -5,74 +5,129 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Delivery Portal – Mathura Quick Mart</title>
   <link rel="stylesheet" href="../styles/main.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
   <style>
+    /* ── Body / layout ── */
     body {
       background: var(--gray-50);
-      max-width: 480px;
-      margin: 0 auto;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
+      max-width: 480px; margin: 0 auto; min-height: 100vh;
+      display: flex; flex-direction: column;
       border-left: 1px solid var(--gray-200);
       border-right: 1px solid var(--gray-200);
       box-shadow: var(--shadow-xl);
     }
+
+    /* ── Header ── */
     .delivery-header {
-      background: #064e3b;
-      color: var(--white);
+      background: #064e3b; color: var(--white);
       padding: var(--sp-4) var(--sp-6);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      position: sticky; top: 0; z-index: 200;
+      display: flex; justify-content: space-between; align-items: center;
     }
+
+    /* ── Order card in list ── */
     .order-card {
-      background: var(--white);
-      border-radius: var(--radius-xl);
-      border: 1px solid var(--gray-200);
-      padding: var(--sp-4);
+      background: var(--white); border-radius: var(--radius-xl);
+      border: 1px solid var(--gray-200); padding: var(--sp-4);
       margin-bottom: var(--sp-4);
     }
-    .map-nav-sim {
+
+    /* ── Location card inside order card ── */
+    .loc-mini-card {
+      margin-top: 8px; background: #f0fdf4;
+      border: 1px solid #86efac; border-radius: var(--radius-md);
+      padding: 8px 12px; font-size: 12px; color: #15803d;
+      display: flex; align-items: flex-start; gap: 6px;
+    }
+    .loc-mini-card span { line-height: 1.4; }
+
+    /* ── Proof of delivery box ── */
+    .proof-box {
+      border: 2px dashed var(--gray-300); border-radius: var(--radius-lg);
+      padding: var(--sp-4); text-align: center; cursor: pointer;
+      background: var(--gray-50); margin-top: var(--sp-3);
+      transition: border-color 0.2s;
+    }
+    .proof-box:hover { border-color: var(--primary); }
+
+    /* ── Task modal — bottom sheet style ── */
+    #task-modal.modal-overlay {
+      align-items: flex-end;
+    }
+    #task-modal .modal {
+      margin-top: auto;
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+      max-height: 92vh;
+      overflow-y: auto;
       width: 100%;
-      height: 200px;
-      background: #e2e8f0;
+    }
+
+    /* ── Customer location section inside modal ── */
+    .cust-loc-section {
+      background: #f8fafc;
+      border: 1px solid var(--gray-200);
       border-radius: var(--radius-lg);
-      margin: var(--sp-3) 0;
-      position: relative;
+      margin: 12px 0;
       overflow: hidden;
     }
-    .proof-box {
-      border: 2px dashed var(--gray-300);
-      border-radius: var(--radius-lg);
-      padding: var(--sp-4);
+    .cust-loc-header {
+      background: linear-gradient(135deg, #1e3a5f, #1d4ed8);
+      color: #fff; padding: 10px 14px;
+      font-size: 13px; font-weight: 700;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .cust-loc-no-data {
+      padding: 14px; font-size: 12px; color: var(--gray-500);
       text-align: center;
-      cursor: pointer;
-      background: var(--gray-50);
-      margin-top: var(--sp-3);
     }
-    .proof-box:hover {
-      border-color: var(--primary);
+
+    /* ── Leaflet task map ── */
+    #task-map {
+      width: 100%; height: 220px;
+      border-bottom: 1px solid var(--gray-200);
     }
+
+    /* ── Address block under map ── */
+    .cust-loc-addr-block {
+      padding: 10px 14px; font-size: 12px;
+      color: var(--gray-700); line-height: 1.5;
+    }
+    .cust-loc-addr-block strong { color: var(--gray-900); }
+    .cust-loc-coords {
+      font-size: 10px; color: var(--gray-400);
+      font-family: 'Courier New', monospace; margin-top: 4px;
+    }
+
+    /* ── Google Maps navigation button ── */
+    .gmaps-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      margin: 0 14px 12px; padding: 11px;
+      background: linear-gradient(135deg, #1e40af, #2563eb);
+      color: #fff; font-size: 13px; font-weight: 700;
+      border: none; border-radius: var(--radius-md); cursor: pointer;
+      text-decoration: none; transition: opacity 0.2s;
+    }
+    .gmaps-btn:hover { opacity: 0.9; }
   </style>
 
+  <!-- Firebase init (module) -->
   <script type='module' src='/js/firebase-init.js'></script>
-  <script type='module'>
-    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
-    import { getApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 
-    // Start live GPS tracking and write to Firestore
+  <!-- Live GPS tracking module -->
+  <script type='module'>
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+
     window.startLiveTracking = function(uid) {
       if (!navigator.geolocation) {
-        console.warn("Geolocation not supported by this browser.");
+        console.warn("Geolocation not supported.");
         return;
       }
 
       const db = window.FirebaseDB;
       if (!db) {
-        console.warn("Firestore not ready yet, retrying tracking...");
+        console.warn("Firestore not ready yet, retrying...");
         window.addEventListener('firebase-ready', () => window.startLiveTracking(uid), { once: true });
         return;
       }
@@ -81,44 +136,35 @@
 
       const watchId = navigator.geolocation.watchPosition(
         async (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
+          const lat      = position.coords.latitude;
+          const lng      = position.coords.longitude;
           const accuracy = position.coords.accuracy;
-
           try {
             await fsSetDoc(fsDoc(db, 'deliveryLocations', uid), {
-              uid,
-              latitude: lat,
-              longitude: lng,
-              accuracy,
-              updatedAt: new Date().toISOString(),
-              online: true
+              uid, latitude: lat, longitude: lng, accuracy,
+              updatedAt: new Date().toISOString(), online: true
             }, { merge: true });
-            console.log(`📍 Location updated: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-            // Update the UI indicator
+
             const badge = document.getElementById('gps-badge');
             if (badge) badge.textContent = `📍 Live: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
           } catch (e) {
-            console.error("Error writing location to Firestore:", e);
+            console.error("Location write error:", e);
           }
         },
         (err) => {
-          console.error("GPS error:", err.message);
           const badge = document.getElementById('gps-badge');
           if (badge) badge.textContent = '⚠️ GPS unavailable';
         },
         { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
       );
 
-      // Store watchId so we can stop tracking on logout
       window._gpsWatchId = watchId;
-      console.log("✅ GPS tracking started, watchId:", watchId);
     };
   </script>
 </head>
 <body>
 
-<!-- Header -->
+<!-- ══ Header ══ -->
 <header class="delivery-header">
   <div class="flex items-center gap-3">
     <div style="font-size:1.5rem;">🛵</div>
@@ -131,22 +177,20 @@
   <a onclick="MathuraQuickMart.logout()" style="color:#fca5a5;cursor:pointer;font-size:12px;font-weight:bold;">Logout</a>
 </header>
 
-<!-- Main panel content -->
+<!-- ══ Main panel ══ -->
 <div class="p-4" style="flex:1;">
   <div class="tabs mb-4">
     <div class="tab active" onclick="switchDeliveryTab('assigned')">Active Tasks</div>
-    <div class="tab" onclick="switchDeliveryTab('history')">History</div>
+    <div class="tab"        onclick="switchDeliveryTab('history')">History</div>
   </div>
 
-  <!-- Active Tasks Pane -->
+  <!-- Active tasks pane -->
   <div id="pane-assigned">
     <h2 style="font-size:16px;font-weight:bold;margin-bottom:12px;">Assigned Orders</h2>
-    <div id="assigned-orders-list">
-      <!-- Dynamic list -->
-    </div>
+    <div id="assigned-orders-list"><!-- filled by JS --></div>
   </div>
 
-  <!-- History Pane -->
+  <!-- History pane -->
   <div id="pane-history" class="hidden">
     <h2 style="font-size:16px;font-weight:bold;margin-bottom:12px;">Completed deliveries</h2>
     <div class="order-card">
@@ -168,43 +212,55 @@
   </div>
 </div>
 
-<!-- Task Details Modal -->
+<!-- ══ Task Details Modal ══ -->
 <div class="modal-overlay hidden" id="task-modal">
-  <div class="modal" style="margin-top:auto;border-bottom-left-radius:0;border-bottom-right-radius:0;">
+  <div class="modal">
     <div class="modal-header">
-      <h3 style="margin:0;">Task Navigation & Update</h3>
+      <h3 style="margin:0;">Task Navigation &amp; Update</h3>
       <button class="btn btn-ghost btn-icon-sm" onclick="closeTaskModal()">✕</button>
     </div>
     <div class="modal-body" style="padding:16px;">
+
+      <!-- Order ID + customer info -->
       <h4 id="task-order-id" style="font-size:16px;font-weight:bold;">SM123456</h4>
       <div class="divider" style="margin:10px 0;"></div>
 
       <div style="font-size:13px;color:var(--gray-700);">
-        <div><strong>Customer:</strong> <span id="task-cust-name">John Doe</span></div>
-        <div style="margin-top:4px;"><strong>Contact:</strong> <span id="task-cust-phone">+91 98765 43210</span></div>
-        <div style="margin-top:4px;"><strong>Address:</strong> <span id="task-cust-addr">B-204, Green Park, New Delhi</span></div>
+        <div><strong>Customer:</strong> <span id="task-cust-name">—</span></div>
+        <div style="margin-top:4px;"><strong>Contact:</strong> <span id="task-cust-phone">—</span></div>
+        <div style="margin-top:4px;"><strong>Address:</strong> <span id="task-cust-addr">—</span></div>
       </div>
 
-      <!-- Map simulation -->
-      <div class="map-nav-sim">
-        <div style="position:absolute;inset:0;background:#cbd5e1;display:flex;align-items:center;justify-content:center;">
-          <!-- Custom SVG grid -->
-          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-            <line x1="0" y1="50" x2="500" y2="50" stroke="#fff" stroke-width="12" />
-            <line x1="0" y1="120" x2="500" y2="120" stroke="#fff" stroke-width="12" />
-            <line x1="120" y1="0" x2="120" y2="300" stroke="#fff" stroke-width="12" />
-            <line x1="320" y1="0" x2="320" y2="300" stroke="#fff" stroke-width="12" />
-            <!-- Path highlight -->
-            <path d="M 120 120 L 320 120 L 320 50" fill="none" stroke="var(--primary)" stroke-width="4" stroke-dasharray="5" />
-          </svg>
-          <div style="position:absolute;left:105px;top:105px;font-size:1.5rem;">🛵</div>
-          <div style="position:absolute;left:305px;top:35px;font-size:1.5rem;">🏠</div>
+      <!-- ── Customer Location Section ── -->
+      <div class="cust-loc-section" id="cust-loc-section">
+        <div class="cust-loc-header">
+          📍 Customer GPS Location
         </div>
-        <div style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,0.7);color:#fff;font-size:10px;padding:2px 8px;border-radius:4px;">
-          🛰️ Google Maps Active Turn-by-Turn Nav
+
+        <!-- No location fallback -->
+        <div class="cust-loc-no-data" id="cust-loc-no-data" style="display:none;">
+          Customer has not shared GPS location for this order.
+        </div>
+
+        <!-- Leaflet map (shown when location exists) -->
+        <div id="task-map-wrap" style="display:none;">
+          <div id="task-map"></div>
+
+          <!-- Address block -->
+          <div class="cust-loc-addr-block">
+            <strong>📦 Delivery Address:</strong><br>
+            <span id="task-loc-addr">—</span>
+            <div class="cust-loc-coords" id="task-loc-coords"></div>
+          </div>
+
+          <!-- Google Maps navigation deep link -->
+          <a id="gmaps-nav-link" href="#" target="_blank" rel="noopener" class="gmaps-btn">
+            🗺️ Navigate with Google Maps
+          </a>
         </div>
       </div>
 
+      <!-- Status update -->
       <div class="form-group mb-4">
         <label class="form-label">Update Task Status</label>
         <select class="form-select" id="task-status" onchange="toggleProofField(this.value)">
@@ -214,49 +270,113 @@
         </select>
       </div>
 
-      <!-- Proof of Delivery -->
+      <!-- Proof of delivery -->
       <div id="proof-container" class="hidden">
         <label class="form-label">Proof of Delivery (Photo)</label>
         <div class="proof-box" onclick="simulateProofUpload()">
           <span style="font-size:2rem;display:block;margin-bottom:8px;">📸</span>
-          <span style="font-size:12px;color:var(--gray-500);" id="proof-label">Click to snap photo of package or door</span>
+          <span style="font-size:12px;color:var(--gray-500);" id="proof-label">
+            Click to snap photo of package or door
+          </span>
         </div>
       </div>
 
-      <button class="btn btn-primary btn-lg w-full mt-6" onclick="submitStatusUpdate()">Update Status</button>
+      <button class="btn btn-primary btn-lg w-full mt-6" onclick="submitStatusUpdate()">
+        Update Status
+      </button>
     </div>
   </div>
 </div>
 
 <div class="toast-container" id="toast-container"></div>
 
+<!-- ══ Scripts ══ -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="../js/app.js"></script>
 <script>
-  let activeTasks = [];
-  let currentSelectedOrder = null;
-  let hasProofUploaded = false;
+'use strict';
 
-  function switchDeliveryTab(tab) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.getElementById('pane-assigned').classList.add('hidden');
-    document.getElementById('pane-history').classList.add('hidden');
+/* ─────────────────────────────────────────────────
+   CONSTANTS
+───────────────────────────────────────────────── */
+const SHOP_LAT  = 13.0843;
+const SHOP_LNG  = 80.0182;
+const SHOP_NAME = 'Mathura Quick Mart';
 
-    const item = Array.from(document.querySelectorAll('.tab')).find(t => t.textContent.toLowerCase().includes(tab));
-    if (item) item.classList.add('active');
+/* ─────────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────────── */
+let activeTasks          = [];
+let currentSelectedOrder = null;
+let hasProofUploaded     = false;
 
-    document.getElementById(`pane-${tab}`).classList.remove('hidden');
+// Task-map Leaflet instances (created once per modal open, reused)
+let taskMap          = null;
+let taskCustMarker   = null;
+let taskShopMarker   = null;
+let taskPolyline     = null;
+
+/* ─────────────────────────────────────────────────
+   CUSTOM PIN ICONS (coloured SVG, no external images)
+───────────────────────────────────────────────── */
+function makePinIcon(color, label) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 28 38">
+    <path d="M14 0C6.27 0 0 6.27 0 14c0 9.14 14 24 14 24S28 23.14 28 14C28 6.27 21.73 0 14 0z"
+          fill="${color}" stroke="#fff" stroke-width="2"/>
+    <circle cx="14" cy="14" r="5" fill="#fff" opacity="0.9"/>
+  </svg>`;
+  return L.divIcon({
+    html: svg, className: '',
+    iconSize: [28, 38], iconAnchor: [14, 38], popupAnchor: [0, -38]
+  });
+}
+
+const ICON_RED  = makePinIcon('#dc2626');  // customer delivery point
+const ICON_BLUE = makePinIcon('#2563eb');  // shop
+
+/* ─────────────────────────────────────────────────
+   TAB SWITCHING
+───────────────────────────────────────────────── */
+function switchDeliveryTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('pane-assigned').classList.add('hidden');
+  document.getElementById('pane-history').classList.add('hidden');
+
+  const btn = Array.from(document.querySelectorAll('.tab')).find(t =>
+    t.textContent.toLowerCase().includes(tab)
+  );
+  if (btn) btn.classList.add('active');
+  document.getElementById(`pane-${tab}`).classList.remove('hidden');
+}
+
+/* ─────────────────────────────────────────────────
+   LOAD DELIVERY TASKS
+───────────────────────────────────────────────── */
+function loadDeliveryTasks() {
+  activeTasks = API.getDeliveryOrders('rider01');
+  const container = document.getElementById('assigned-orders-list');
+
+  if (activeTasks.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:32px 20px;color:var(--gray-400);">
+        <div style="font-size:2.5rem;margin-bottom:8px;">📭</div>
+        <div style="font-weight:600;">No pending delivery tasks</div>
+        <div style="font-size:12px;margin-top:4px;">New orders will appear here automatically</div>
+      </div>`;
+    return;
   }
 
-  function loadDeliveryTasks() {
-    activeTasks = API.getDeliveryOrders('rider01');
-    const container = document.getElementById('assigned-orders-list');
+  container.innerHTML = activeTasks.map(o => {
+    // Show a location badge if this order has GPS coordinates
+    const hasLoc = o.customerLocation && o.customerLocation.latitude;
+    const locBadge = hasLoc
+      ? `<div class="loc-mini-card">
+           <span>📍</span>
+           <span>${o.customerLocation.formattedAddress || 'GPS location saved'}</span>
+         </div>`
+      : '';
 
-    if (activeTasks.length === 0) {
-      container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--gray-400)">No pending delivery tasks.</div>`;
-      return;
-    }
-
-    container.innerHTML = activeTasks.map(o => `
+    return `
       <div class="order-card">
         <div class="flex justify-between items-center mb-3">
           <strong style="color:var(--gray-900);">${o.id}</strong>
@@ -264,85 +384,222 @@
         </div>
         <div style="font-size:13px;color:var(--gray-700);">
           <div>👤 <strong>Client:</strong> ${o.customer}</div>
-          <div style="margin-top:2px;">📍 <strong>Address:</strong> ${o.address}</div>
+          <div style="margin-top:2px;">🏠 <strong>Address:</strong> ${o.address}</div>
         </div>
-        <button class="btn btn-outline btn-sm w-full mt-4" onclick="openTaskModal('${o.id}')">Start / Update Task</button>
-      </div>
-    `).join('');
+        ${locBadge}
+        <button class="btn btn-outline btn-sm w-full mt-4"
+                onclick="openTaskModal('${o.id}')">Start / Update Task</button>
+      </div>`;
+  }).join('');
+}
+
+/* ─────────────────────────────────────────────────
+   OPEN TASK MODAL
+───────────────────────────────────────────────── */
+/**
+ * openTaskModal — fills modal fields and renders the customer
+ * location map (if customerLocation data is present on the order).
+ */
+function openTaskModal(orderId) {
+  const o = activeTasks.find(task => task.id === orderId);
+  if (!o) return;
+
+  currentSelectedOrder = o;
+  hasProofUploaded     = false;
+
+  // Basic info
+  document.getElementById('task-order-id').textContent   = o.id;
+  document.getElementById('task-cust-name').textContent  = o.customer;
+  document.getElementById('task-cust-phone').textContent = o.phone;
+  document.getElementById('task-cust-addr').textContent  = o.address;
+  document.getElementById('task-status').value           = o.status;
+  toggleProofField(o.status);
+
+  // ── Customer Location ──
+  renderCustomerLocationMap(o.customerLocation || null);
+
+  document.getElementById('task-modal').classList.remove('hidden');
+}
+
+/* ─────────────────────────────────────────────────
+   RENDER CUSTOMER LOCATION MAP
+───────────────────────────────────────────────── */
+/**
+ * renderCustomerLocationMap — shows or hides the location section
+ * and initialises / updates the Leaflet task map.
+ * @param {object|null} loc  — { latitude, longitude, formattedAddress }
+ */
+function renderCustomerLocationMap(loc) {
+  const mapWrap  = document.getElementById('task-map-wrap');
+  const noData   = document.getElementById('cust-loc-no-data');
+  const addrEl   = document.getElementById('task-loc-addr');
+  const coordsEl = document.getElementById('task-loc-coords');
+  const navLink  = document.getElementById('gmaps-nav-link');
+
+  if (!loc || !loc.latitude || !loc.longitude) {
+    // No GPS data — show fallback message
+    mapWrap.style.display = 'none';
+    noData.style.display  = 'block';
+    return;
   }
 
-  function openTaskModal(orderId) {
-    const o = activeTasks.find(task => task.id === orderId);
-    if (!o) return;
+  noData.style.display  = 'none';
+  mapWrap.style.display = 'block';
 
-    currentSelectedOrder = o;
-    hasProofUploaded = false;
+  const lat = parseFloat(loc.latitude);
+  const lng = parseFloat(loc.longitude);
 
-    document.getElementById('task-order-id').textContent = o.id;
-    document.getElementById('task-cust-name').textContent = o.customer;
-    document.getElementById('task-cust-phone').textContent = o.phone;
-    document.getElementById('task-cust-addr').textContent = o.address;
-    document.getElementById('task-status').value = o.status;
+  // Address text
+  addrEl.textContent   = loc.formattedAddress || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  coordsEl.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 
-    toggleProofField(o.status);
+  // Google Maps deep link for navigation
+  navLink.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 
-    document.getElementById('task-modal').classList.remove('hidden');
+  // ── Initialise Leaflet map (create once, reuse) ──
+  if (!taskMap) {
+    taskMap = L.map('task-map', { zoomControl: true }).setView([lat, lng], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap', maxZoom: 19
+    }).addTo(taskMap);
+
+    // Fixed blue shop marker
+    taskShopMarker = L.marker([SHOP_LAT, SHOP_LNG], { icon: ICON_BLUE })
+      .addTo(taskMap)
+      .bindPopup(`<b>${SHOP_NAME}</b><br>Madakottan, Ramanathapuram`);
   }
 
-  function toggleProofField(val) {
-    const container = document.getElementById('proof-container');
-    if (val === 'delivered') {
-      container.classList.remove('hidden');
-    } else {
-      container.classList.add('hidden');
+  // Move / create red customer marker
+  if (taskCustMarker) {
+    taskCustMarker.setLatLng([lat, lng]);
+  } else {
+    taskCustMarker = L.marker([lat, lng], { icon: ICON_RED })
+      .addTo(taskMap)
+      .bindPopup(`<b>📦 Customer Delivery Point</b><br>${loc.formattedAddress || ''}`, { maxWidth: 200 });
+  }
+
+  // Redraw route polyline
+  if (taskPolyline) taskMap.removeLayer(taskPolyline);
+  taskPolyline = L.polyline(
+    [[SHOP_LAT, SHOP_LNG], [lat, lng]],
+    { color: '#dc2626', weight: 3, dashArray: '8, 5', opacity: 0.75 }
+  ).addTo(taskMap);
+
+  // Fit map to show both shop and customer
+  taskMap.fitBounds(
+    L.latLngBounds([[SHOP_LAT, SHOP_LNG], [lat, lng]]),
+    { padding: [30, 30] }
+  );
+
+  // Fix Leaflet tile rendering inside a hidden element
+  setTimeout(() => taskMap.invalidateSize(), 150);
+}
+
+/* ─────────────────────────────────────────────────
+   MODAL HELPERS
+───────────────────────────────────────────────── */
+function closeTaskModal() {
+  document.getElementById('task-modal').classList.add('hidden');
+}
+
+function toggleProofField(val) {
+  const container = document.getElementById('proof-container');
+  val === 'delivered'
+    ? container.classList.remove('hidden')
+    : container.classList.add('hidden');
+}
+
+function simulateProofUpload() {
+  hasProofUploaded = true;
+  document.getElementById('proof-label').innerHTML =
+    `✅ <strong>Proof_Capture_01.jpg</strong> uploaded!`;
+  MathuraQuickMart.toast('📸 Photo uploaded as Proof of Delivery', 'success');
+}
+
+/* ─────────────────────────────────────────────────
+   STATUS UPDATE
+───────────────────────────────────────────────── */
+function submitStatusUpdate() {
+  const status = document.getElementById('task-status').value;
+
+  if (status === 'delivered' && !hasProofUploaded) {
+    MathuraQuickMart.toast('Please upload proof of delivery photo first!', 'error');
+    return;
+  }
+
+  if (currentSelectedOrder) {
+    currentSelectedOrder.status = status;
+    MathuraQuickMart.toast(
+      `Order ${currentSelectedOrder.id} updated to ${status.toUpperCase()}!`, 'success'
+    );
+
+    // Also persist status to Firestore
+    if (window.FirebaseDB && window.Firestore) {
+      const { doc, setDoc } = window.Firestore;
+      setDoc(doc(window.FirebaseDB, 'orders', currentSelectedOrder.id),
+        { status, updatedAt: new Date().toISOString() }, { merge: true }
+      ).catch(e => console.warn('Status sync error:', e));
+    }
+
+    if (status === 'delivered' || status === 'cancelled') {
+      activeTasks = activeTasks.filter(t => t.id !== currentSelectedOrder.id);
     }
   }
 
-  function simulateProofUpload() {
-    hasProofUploaded = true;
-    document.getElementById('proof-label').innerHTML = `✅ <strong>Proof_Capture_01.jpg</strong> uploaded!`;
-    MathuraQuickMart.toast('📸 Photo uploaded as Proof of Delivery', 'success');
-  }
+  closeTaskModal();
+  loadDeliveryTasks();
+}
 
-  function closeTaskModal() {
-    document.getElementById('task-modal').classList.add('hidden');
-  }
+/* ─────────────────────────────────────────────────
+   PAGE INIT
+───────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  if (!MathuraQuickMart.requireAuth()) return;
 
-  function submitStatusUpdate() {
-    const status = document.getElementById('task-status').value;
+  const user = MathuraQuickMart.state.user;
+  if (user) {
+    document.getElementById('rider-profile-name').textContent = user.name || user.email;
+    const uid = user.uid || 'delivery1';
+    window.startLiveTracking(uid);
 
-    if (status === 'delivered' && !hasProofUploaded) {
-      MathuraQuickMart.toast('Please upload proof of delivery photo first!', 'error');
-      return;
-    }
-
-    // Update in local array
-    if (currentSelectedOrder) {
-      currentSelectedOrder.status = status;
-      MathuraQuickMart.toast(`Order ${currentSelectedOrder.id} status updated to ${status.toUpperCase()}!`, 'success');
-
-      // If finished, remove from active tasks list
-      if (status === 'delivered' || status === 'cancelled') {
-        activeTasks = activeTasks.filter(t => t.id !== currentSelectedOrder.id);
+    // Verify approval status with Firestore
+    const verifyApproval = async () => {
+      if (!window.FirebaseDB || !window.Firestore) return;
+      const fs = window.Firestore;
+      const db = window.FirebaseDB;
+      try {
+        const snap = await fs.getDoc(fs.doc(db, 'users', uid));
+        if (snap.exists()) {
+          const profile = snap.data();
+          if (profile.role === 'delivery' && profile.approvalStatus === 'pending') {
+            alert('⚠️ Your delivery partner account registration is currently pending Admin approval.');
+            window.location.href = '/delivery/login.html';
+          }
+        }
+      } catch (e) {
+        console.warn('Approval check error:', e);
       }
-    }
+    };
 
-    closeTaskModal();
-    loadDeliveryTasks();
+    if (window.FirebaseDB && window.Firestore) {
+      verifyApproval();
+    } else {
+      window.addEventListener('firebase-ready', verifyApproval, { once: true });
+    }
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    MathuraQuickMart.requireAuth();
-    loadDeliveryTasks();
-    const user = MathuraQuickMart.state.user;
-    if (user) {
-      document.getElementById('rider-profile-name').textContent = user.name;
-      // Start live GPS tracking – pass the rider's uid so each rider
-      // gets their own document in deliveryLocations/{uid}
-      const uid = user.uid || 'delivery1';
-      window.startLiveTracking(uid);
-    }
+  loadDeliveryTasks();
+
+  // Close task modal on Escape
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeTaskModal();
   });
+});
+
+// Reload task list once Firestore sync completes (picks up live orders)
+window.addEventListener('db-ready', () => {
+  loadDeliveryTasks();
+});
 </script>
 </body>
 </html>

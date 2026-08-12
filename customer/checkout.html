@@ -1044,9 +1044,8 @@ async function placeOrder() {
 
   try {
     const order = await API.placeOrder(orderData);
-    // Also ensure it's saved to Firestore (saveOrder in API handles it, but
-    // call saveCustomerLocation for belt-and-suspenders merge)
-    await saveCustomerLocation(order.id);
+    // Non-blocking location merge in background
+    saveCustomerLocation(order.id).catch(e => console.warn(e));
 
     MathuraQuickMart.clearCart();
     MathuraQuickMart.toast('🎉 Order placed successfully!', 'success');
@@ -1054,7 +1053,7 @@ async function placeOrder() {
 
     setTimeout(() => {
       window.location.href = '/customer/order-confirmation.html';
-    }, 1500);
+    }, 500);
 
   } catch (err) {
     console.error('placeOrder error:', err);

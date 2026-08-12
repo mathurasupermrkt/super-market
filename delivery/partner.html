@@ -56,6 +56,32 @@
         </div>
     </footer>
 
+    <!-- Incoming Order Modal -->
+    <div id="incoming-order-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔔 New Delivery Request!</h2>
+            </div>
+            <div class="modal-body">
+                <div class="order-info-grid">
+                    <p><strong>Order ID:</strong> <span id="incoming-order-id" style="font-size:0.85rem;color:#64748b;"></span></p>
+                    <p><strong>Customer:</strong> <span id="incoming-customer-name"></span></p>
+                    <p><strong>Total:</strong> <span style="color:#16a34a;font-weight:700;">₹<span id="incoming-total-amount"></span></span></p>
+                    <p><strong>Address:</strong> <span id="incoming-address" style="font-size:0.85rem;"></span></p>
+                </div>
+                <div id="incoming-items-preview" style="background:#f8fafc;border-radius:8px;padding:10px;margin:12px 0;font-size:0.85rem;max-height:100px;overflow-y:auto;"></div>
+                <div style="text-align:center;padding:8px;background:#fef2f2;border-radius:8px;">
+                    <strong>Time Remaining: </strong>
+                    <span id="incoming-timer" style="color:#dc2626;font-weight:bold;font-size:1.2rem;">30</span><span style="color:#dc2626;">s</span>
+                </div>
+            </div>
+            <div class="modal-footer button-group">
+                <button id="accept-order-btn" class="btn btn-start">✅ Accept</button>
+                <button id="decline-order-btn" class="btn btn-stop">🚫 Decline</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nXC0jkQFDVheydAsHNV1B4b1lsZf63U8AcD6VG0D9=" crossorigin=""></script>
     <!-- Firebase Initialization Module -->

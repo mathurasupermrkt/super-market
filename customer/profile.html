@@ -517,6 +517,30 @@
       document.getElementById('summary-orders').textContent = MathuraQuickMart.state.orders.length;
     });
   });
-</script>
+  <!-- Mobile Bottom Navigation Bar -->
+  <nav class="mobile-bottom-nav">
+    <a href="/index.html" class="mobile-nav-item">
+      <span class="nav-icon">🏠</span>
+      <span>Home</span>
+    </a>
+    <a href="/customer/products.html" class="mobile-nav-item">
+      <span class="nav-icon">📂</span>
+      <span>Categories</span>
+    </a>
+    <a href="/customer/cart.html" class="mobile-nav-item">
+      <span class="nav-icon">🛒</span>
+      <span>Cart</span>
+      <span class="mobile-nav-badge" data-cart-count style="display:none">0</span>
+    </a>
+    <a href="/customer/my-orders.html" class="mobile-nav-item">
+      <span class="nav-icon">📦</span>
+      <span>Orders</span>
+    </a>
+    <a href="/customer/profile.html" class="mobile-nav-item active">
+      <span class="nav-icon">👤</span>
+      <span>Profile</span>
+    </a>
+  </nav>
+
 </body>
 </html>

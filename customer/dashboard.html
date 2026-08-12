@@ -107,6 +107,7 @@
       <div class="dash-sidebar-item" onclick="switchSection('orders')">📦 My Orders</div>
       <div class="dash-sidebar-item" onclick="switchSection('addresses')">📍 Saved Addresses</div>
       <div class="dash-sidebar-item" onclick="switchSection('payments')">💳 Payment Methods</div>
+      <div class="dash-sidebar-item" onclick="switchSection('feedback')">💬 Feedback</div>
       <a class="dash-sidebar-item" href="profile.html" style="text-decoration:none;">👤 My Profile</a>
       <a class="dash-sidebar-item" href="notifications.html" style="text-decoration:none;">🔔 Notifications</a>
       <a class="dash-sidebar-item" href="/index.html" style="text-decoration:none;">🔄 Returns & Refunds</a>
@@ -188,6 +189,23 @@
               <div style="font-size:11px;color:var(--gray-500);">Ends in **** 4958</div>
             </div>
           </div>
+        </div>
+      </div>
+      <!-- SECTION: Customer Feedback -->
+      <div id="section-feedback" class="dash-section">
+        <h1 class="products-title mb-6">Customer Feedback</h1>
+        <div class="dash-card" style="max-width:600px;">
+          <p>Please rate your experience and leave a comment.</p>
+          <div class="rating-stars" style="font-size:2rem; margin-bottom:1rem;">
+            <span class="star" data-value="1">☆</span>
+            <span class="star" data-value="2">☆</span>
+            <span class="star" data-value="3">☆</span>
+            <span class="star" data-value="4">☆</span>
+            <span class="star" data-value="5">☆</span>
+          </div>
+          <textarea id="feedback-comment" rows="4" placeholder="Your comments..."
+            style="width:100%; padding:0.5rem; border:1px solid var(--gray-200); border-radius:var(--radius-md);"></textarea>
+          <button class="btn btn-primary btn-sm mt-4" onclick="submitFeedback()">Submit Feedback</button>
         </div>
       </div>
     </main>
@@ -317,6 +335,38 @@
       }, 1000);
     }
   }
+
+  // -----------------------------------------------------
+  // Feedback handling for dashboard
+  // -----------------------------------------------------
+  let feedbackRating = 0;
+  document.querySelectorAll('.rating-stars .star').forEach(star => {
+    star.addEventListener('click', () => {
+      feedbackRating = Number(star.getAttribute('data-value'));
+      document.querySelectorAll('.rating-stars .star').forEach(s => {
+        s.textContent = Number(s.getAttribute('data-value')) <= feedbackRating ? '★' : '☆';
+      });
+    });
+  });
+
+  async function submitFeedback() {
+    // Your existing code...
+    const comment = document.getElementById('feedback-comment').value.trim();
+    if (feedbackRating === 0) {
+      MathuraQuickMart.toast('⭐ Please select a rating.', 'error');
+      return;
+    }
+    const feedback = { rating: feedbackRating, comment, date: new Date().toISOString() };
+    MathuraQuickMart.state.feedback = MathuraQuickMart.state.feedback || [];
+    MathuraQuickMart.state.feedback.push(feedback);
+    MathuraQuickMart.toast('🙌 Thank you for your feedback!', 'success');
+    // Reset UI
+    feedbackRating = 0;
+    document.querySelectorAll('.rating-stars .star').forEach(s => s.textContent = '☆');
+    document.getElementById('feedback-comment').value = '';
+  }
+  window.submitFeedback = submitFeedback;
+
 
   document.addEventListener('DOMContentLoaded', () => {
     MathuraQuickMart.requireAuth();

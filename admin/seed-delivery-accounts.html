@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seed Delivery Accounts – Mathura Quick Mart Admin</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 36px;
+      max-width: 680px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .logo { font-size: 2rem; margin-bottom: 8px; }
+    h1 { font-size: 1.4rem; font-weight: 700; color: #f8fafc; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #94a3b8; margin-bottom: 28px; }
+    .accounts-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 13px; }
+    .accounts-table th {
+      text-align: left; padding: 8px 10px; background: #0f172a;
+      color: #64748b; border-bottom: 1px solid #334155; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.05em; font-size: 11px;
+    }
+    .accounts-table td { padding: 10px 10px; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
+    .accounts-table tr:hover td { background: #0f172a55; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .badge-pending  { background: #1e3a5f; color: #60a5fa; }
+    .badge-success  { background: #14532d; color: #4ade80; }
+    .badge-error    { background: #450a0a; color: #f87171; }
+    .badge-skipped  { background: #312e81; color: #a5b4fc; }
+    .btn {
+      display: block; width: 100%; padding: 14px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff; font-size: 15px; font-weight: 700;
+      border: none; border-radius: 10px; cursor: pointer; transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #log {
+      margin-top: 20px; background: #0f172a; border-radius: 10px;
+      padding: 16px; font-size: 12px; font-family: 'Courier New', monospace;
+      color: #94a3b8; min-height: 80px; max-height: 220px; overflow-y: auto; line-height: 1.7;
+    }
+    #log .ok   { color: #4ade80; }
+    #log .err  { color: #f87171; }
+    #log .info { color: #60a5fa; }
+    #log .skip { color: #a5b4fc; }
+    .warning-box {
+      background: #431407; border: 1px solid #9a3412; border-radius: 8px;
+      padding: 12px 16px; font-size: 12px; color: #fdba74; margin-bottom: 24px;
+    }
+  </style>
+  <script type="module" src="../js/firebase-init.js"></script>
+</head>
+<body>
+<div class="card">
+  <div class="logo">🛵</div>
+  <h1>Create Delivery Partner Accounts</h1>
+  <p class="subtitle">One-time setup — creates 5 Firebase Auth accounts + Firestore profiles</p>
+
+  <div class="warning-box">
+    ⚠️ <strong>Admin use only.</strong> Run this once. Accounts already created will be skipped automatically.
+  </div>
+
+  <table class="accounts-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Password</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="accounts-body"></tbody>
+  </table>
+
+  <button class="btn" id="seed-btn" onclick="seedAccounts()">🚀 Create All 5 Accounts</button>
+  <div id="log">Waiting to start...</div>
+</div>
+
+<script>
+  const DELIVERY_ACCOUNTS = [
+    { name: 'Ramesh Kumar',   email: 'ramesh.delivery@mathuraqm.com',  password: 'Delivery@001', phone: '+91 98765 10001', zone: 'North Zone'   },
+    { name: 'Suresh Patel',   email: 'suresh.delivery@mathuraqm.com',  password: 'Delivery@002', phone: '+91 98765 10002', zone: 'South Zone'   },
+    { name: 'Anand Sharma',   email: 'anand.delivery@mathuraqm.com',   password: 'Delivery@003', phone: '+91 98765 10003', zone: 'East Zone'    },
+    { name: 'Pradeep Singh',  email: 'pradeep.delivery@mathuraqm.com', password: 'Delivery@004', phone: '+91 98765 10004', zone: 'West Zone'    },
+    { name: 'Karthik Rajan',  email: 'karthik.delivery@mathuraqm.com', password: 'Delivery@005', phone: '+91 98765 10005', zone: 'Central Zone' },
+  ];
+
+  const logEl = document.getElementById('log');
+  const tbody  = document.getElementById('accounts-body');
+
+  function log(msg, type = 'info') {
+    const line = document.createElement('div');
+    line.className = type;
+    line.textContent = msg;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function setBadge(i, text, cls) {
+    const cell = document.getElementById('status-' + i);
+    if (cell) cell.innerHTML = '<span class="badge badge-' + cls + '">' + text + '</span>';
+  }
+
+  // Build table rows
+  DELIVERY_ACCOUNTS.forEach((a, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + (i+1) + '</td>' +
+      '<td><strong>' + a.name + '</strong><br><span style="color:#64748b;font-size:11px;">' + a.zone + '</span></td>' +
+      '<td>' + a.email + '</td>' +
+      '<td style="font-family:monospace;">' + a.password + '</td>' +
+      '<td id="status-' + i + '"><span class="badge badge-pending">Pending</span></td>';
+    tbody.appendChild(tr);
+  });
+
+  async function seedAccounts() {
+    const btn = document.getElementById('seed-btn');
+    btn.disabled = true;
+    logEl.innerHTML = '';
+    log('Waiting for Firebase...', 'info');
+
+    await new Promise(resolve => {
+      if (window.FirebaseAuth && window.FirebaseAuthFns && window.FirebaseDB && window.Firestore) {
+        resolve();
+      } else {
+        window.addEventListener('firebase-ready', resolve, { once: true });
+      }
+    });
+
+    log('Firebase ready. Starting account creation...', 'ok');
+
+    const auth    = window.FirebaseAuth;
+    const authFns = window.FirebaseAuthFns;
+    const db      = window.FirebaseDB;
+    const { doc, setDoc } = window.Firestore;
+
+    let created = 0, skipped = 0, errors = 0;
+
+    for (let i = 0; i < DELIVERY_ACCOUNTS.length; i++) {
+      const a = DELIVERY_ACCOUNTS[i];
+      log('[' + (i+1) + '/5] Creating ' + a.name + ' (' + a.email + ')...', 'info');
+
+      try {
+        const cred = await authFns.createUserWithEmailAndPassword(auth, a.email, a.password);
+        const uid  = cred.user.uid;
+
+        await authFns.updateProfile(cred.user, { displayName: a.name });
+
+        // Save to users collection
+        await setDoc(doc(db, 'users', uid), {
+          uid, name: a.name, email: a.email, phone: a.phone,
+          role: 'delivery', zone: a.zone,
+          status: 'offline', isTracking: false,
+          createdAt: new Date().toISOString(),
+        });
+
+        // Save to deliveryPartners collection
+        await setDoc(doc(db, 'deliveryPartners', uid), {
+          uid, name: a.name, email: a.email, phone: a.phone,
+          zone: a.zone, status: 'offline', isTracking: false,
+          createdAt: new Date().toISOString(),
+        });
+
+        log('   Created: ' + a.name + ' (UID: ' + uid + ')', 'ok');
+        setBadge(i, 'Created ✓', 'success');
+        created++;
+
+        await authFns.signOut(auth);
+        await new Promise(r => setTimeout(r, 700));
+
+      } catch (err) {
+        if (err.code === 'auth/email-already-in-use') {
+          log('   Skipped: ' + a.email + ' already exists', 'skip');
+          setBadge(i, 'Already Exists', 'skipped');
+          skipped++;
+        } else {
+          log('   Error for ' + a.email + ': ' + err.message, 'err');
+          setBadge(i, 'Error', 'error');
+          errors++;
+        }
+        try { await authFns.signOut(auth); } catch(_) {}
+        await new Promise(r => setTimeout(r, 400));
+      }
+    }
+
+    log('', 'info');
+    log('Done: ' + created + ' created, ' + skipped + ' skipped, ' + errors + ' errors.', 'ok');
+    btn.disabled = false;
+    btn.textContent = 'Done — Click to run again';
+  }
+</script>
+</body>
+</html>

@@ -49,3 +49,8 @@
 - [x] Update shared app logic in js/app.js with Category and Coupon Firestore sync functions
 - [x] Add Google Login functionality to customer login and registration
 - [x] Automate client-side database seeding on index.html and remove manual seed button from settings
+- [x] 2. Inventory & Supplier Management (js/admin-inventory.js)
+- [x] 3. Purchase Entry & Bills (js/admin-purchase.js)
+- [x] 4. Reports Dashboard (js/admin-reports.js)
+- [x] 5. Customer Integration & Core Logic
+- [x] 6. Security Rules & Deployment

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Delivery Partner Portal Login and Registration for Mathura Quick Mart.">
+  <title>Delivery Partner Login & Register – Mathura Quick Mart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <style>
+    body {
+      background: #022c22;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--sp-4);
+    }
+    .auth-card {
+      background: var(--white);
+      border-radius: var(--radius-2xl);
+      padding: var(--sp-8);
+      width: 100%;
+      max-width: 480px;
+      box-shadow: var(--shadow-2xl);
+    }
+    .auth-header {
+      text-align: center;
+      margin-bottom: var(--sp-6);
+    }
+    .auth-tabs {
+      display: flex;
+      border-bottom: 2px solid var(--gray-200);
+      margin-bottom: var(--sp-6);
+    }
+    .auth-tab {
+      flex: 1;
+      text-align: center;
+      padding: var(--sp-3);
+      font-weight: var(--fw-bold);
+      cursor: pointer;
+      color: var(--gray-500);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+    }
+    .auth-tab.active {
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+  </style>
+
+  <script type="module" src="/js/firebase-init.js"></script>
+</head>
+<body>
+
+<div class="auth-card">
+  <div class="auth-header">
+    <div style="font-size: 2.5rem; margin-bottom: 8px;">🛵</div>
+    <h1 style="font-size: var(--text-2xl); font-weight: var(--fw-black); color: #022c22; margin: 0;">Mathura Quick Mart</h1>
+    <p style="font-size: var(--text-sm); color: var(--gray-500); margin-top: 4px;">Delivery Partner Portal</p>
+  </div>
+
+  <div class="auth-tabs">
+    <div class="auth-tab active" id="tab-login-btn" onclick="switchAuthTab('login')">Login</div>
+    <div class="auth-tab" id="tab-register-btn" onclick="switchAuthTab('register')">Partner Register</div>
+  </div>
+
+  <!-- LOGIN FORM -->
+  <form id="login-form" onsubmit="handleDriverLogin(event)">
+    <div class="form-group mb-4">
+      <label class="form-label">Email Address</label>
+      <input type="email" class="form-input" id="login-email" placeholder="driver@mathura.com" required>
+    </div>
+    <div class="form-group mb-6">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-input" id="login-password" placeholder="••••••••" required>
+    </div>
+    <button type="submit" class="btn btn-primary btn-lg w-full mb-4" id="login-submit-btn">
+      Log In to Portal
+    </button>
+  </form>
+
+  <!-- REGISTRATION FORM -->
+  <form id="register-form" class="hidden" onsubmit="handleDriverRegister(event)">
+    <div class="form-group mb-4">
+      <label class="form-label">Full Name *</label>
+      <input type="text" class="form-input" id="reg-name" placeholder="e.g. Ramesh Kumar" required>
+    </div>
+    <div class="grid grid-2 gap-4 mb-4">
+      <div class="form-group">
+        <label class="form-label">Email Address *</label>
+        <input type="email" class="form-input" id="reg-email" placeholder="driver@email.com" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mobile Number *</label>
+        <input type="tel" class="form-input" id="reg-mobile" placeholder="+91 98765 43210" required>
+      </div>
+    </div>
+    <div class="grid grid-2 gap-4 mb-4">
+      <div class="form-group">
+        <label class="form-label">Vehicle Info *</label>
+        <input type="text" class="form-input" id="reg-vehicle" placeholder="e.g. Honda Activa (UP 85 AB 1234)" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Driving License No. *</label>
+        <input type="text" class="form-input" id="reg-license" placeholder="e.g. UP852021000123" required>
+      </div>
+    </div>
+    <div class="form-group mb-6">
+      <label class="form-label">Password *</label>
+      <input type="password" class="form-input" id="reg-password" placeholder="Minimum 6 characters" minlength="6" required>
+    </div>
+    <button type="submit" class="btn btn-primary btn-lg w-full mb-4" id="reg-submit-btn">
+      Submit Registration Request
+    </button>
+  </form>
+
+  <div style="text-align: center; margin-top: 16px;">
+    <a href="../index.html" style="font-size: var(--text-xs); color: var(--gray-500); text-decoration: none;">← Back to Customer Storefront</a>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="../js/app.js"></script>
+<script>
+  function switchAuthTab(type) {
+    if (type === 'login') {
+      document.getElementById('tab-login-btn').classList.add('active');
+      document.getElementById('tab-register-btn').classList.remove('active');
+      document.getElementById('login-form').classList.remove('hidden');
+      document.getElementById('register-form').classList.add('hidden');
+    } else {
+      document.getElementById('tab-register-btn').classList.add('active');
+      document.getElementById('tab-login-btn').classList.remove('active');
+      document.getElementById('register-form').classList.remove('hidden');
+      document.getElementById('login-form').classList.add('hidden');
+    }
+  }
+
+  async function handleDriverLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const btn = document.getElementById('login-submit-btn');
+
+    btn.disabled = true;
+    btn.textContent = 'Authenticating…';
+
+    try {
+      if (!window.FirebaseAuth || !window.FirebaseAuthFns) {
+        throw new Error("Firebase Auth not loaded");
+      }
+
+      const { signInWithEmailAndPassword } = window.FirebaseAuthFns;
+      const auth = window.FirebaseAuth;
+      const userCred = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCred.user;
+
+      // Check Firestore user profile
+      const fs = window.Firestore;
+      const db = window.FirebaseDB;
+      const docSnap = await fs.getDoc(fs.doc(db, 'users', user.uid));
+
+      if (!docSnap.exists()) {
+        throw new Error("User record not found in database.");
+      }
+
+      const profile = docSnap.data();
+
+      if (profile.role !== 'delivery' && profile.role !== 'admin') {
+        throw new Error("Access denied. Not a delivery partner account.");
+      }
+
+      if (profile.role === 'delivery' && profile.approvalStatus === 'pending') {
+        MathuraQuickMart.toast('⚠️ Account pending approval by Admin. Please wait for activation.', 'warning', 5000);
+        btn.disabled = false;
+        btn.textContent = 'Log In to Portal';
+        return;
+      }
+
+      if (profile.role === 'delivery' && profile.approvalStatus === 'rejected') {
+        MathuraQuickMart.toast('❌ Your registration request was rejected by Admin.', 'error', 5000);
+        btn.disabled = false;
+        btn.textContent = 'Log In to Portal';
+        return;
+      }
+
+      // Successful login
+      MathuraQuickMart.state.user = {
+        uid: user.uid,
+        name: profile.name || user.email,
+        email: user.email,
+        role: profile.role
+      };
+      MathuraQuickMart.saveState();
+
+      MathuraQuickMart.toast('Welcome back, ' + (profile.name || user.email) + '! 🛵', 'success');
+      setTimeout(() => {
+        window.location.href = '/delivery/dashboard.html';
+      }, 1000);
+
+    } catch (err) {
+      console.error(err);
+      MathuraQuickMart.toast(err.message || 'Login failed', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Log In to Portal';
+    }
+  }
+
+  async function handleDriverRegister(e) {
+    e.preventDefault();
+    const name = document.getElementById('reg-name').value.trim();
+    const email = document.getElementById('reg-email').value.trim();
+    const mobile = document.getElementById('reg-mobile').value.trim();
+    const vehicle = document.getElementById('reg-vehicle').value.trim();
+    const license = document.getElementById('reg-license').value.trim();
+    const password = document.getElementById('reg-password').value;
+    const btn = document.getElementById('reg-submit-btn');
+
+    btn.disabled = true;
+    btn.textContent = 'Submitting Request…';
+
+    try {
+      if (!window.FirebaseAuth || !window.FirebaseAuthFns || !window.Firestore) {
+        throw new Error("Firebase services not ready.");
+      }
+
+      const { createUserWithEmailAndPassword } = window.FirebaseAuthFns;
+      const auth = window.FirebaseAuth;
+      const fs = window.Firestore;
+      const db = window.FirebaseDB;
+
+      // 1. Create Auth User
+      const userCred = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCred.user;
+
+      // 2. Save Driver Document in Firestore users collection with pending status
+      await fs.setDoc(fs.doc(db, 'users', user.uid), {
+        uid: user.uid,
+        name,
+        email,
+        mobile,
+        vehicle,
+        license,
+        role: 'delivery',
+        approvalStatus: 'pending',
+        assignedOrders: [],
+        createdAt: fs.serverTimestamp()
+      });
+
+      MathuraQuickMart.toast('🎉 Registration submitted! Pending Admin Approval.', 'success', 6000);
+      
+      // Switch back to login form
+      switchAuthTab('login');
+      document.getElementById('login-email').value = email;
+      btn.disabled = false;
+      btn.textContent = 'Submit Registration Request';
+
+    } catch (err) {
+      console.error(err);
+      MathuraQuickMart.toast(err.message || 'Registration failed', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Submit Registration Request';
+    }
+  }
+</script>
+</body>
+</html>

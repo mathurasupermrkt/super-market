@@ -21,6 +21,7 @@ const MathuraQuickMart = {
 
   // Initialize from localStorage
   init() {
+    this.initTheme();
     this.loadState();
     this.renderCartBadge();
     this.renderWishlistBadge();
@@ -54,6 +55,28 @@ const MathuraQuickMart = {
         setupAuthListener();
       });
     }
+  },
+
+  // Theme Management
+  initTheme() {
+    const savedTheme = localStorage.getItem('mathuraquickmart_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    this.updateThemeToggleUI(savedTheme);
+  },
+
+  toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('mathuraquickmart_theme', next);
+    this.updateThemeToggleUI(next);
+    this.toast(`Switched to ${next === 'dark' ? 'Dark 🌙' : 'Light ☀️'} mode`, 'info');
+  },
+
+  updateThemeToggleUI(theme) {
+    document.querySelectorAll('.theme-toggle-btn').forEach(btn => {
+      btn.innerHTML = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    });
   },
 
   // Load persisted state
@@ -107,6 +130,7 @@ const MathuraQuickMart = {
   },
 
   logout() {
+    const userRole = this.state.user ? this.state.user.role : 'customer';
     this.state.user = null;
     this.saveState();
     this.toast('Logged out successfully', 'success');
@@ -120,13 +144,44 @@ const MathuraQuickMart = {
       }, { once: true });
     }
 
-    setTimeout(() => { window.location.href = '/customer/login.html'; }, 800);
+    // Redirect to the correct portal login page based on role
+    const redirectTo = (userRole === 'admin' || userRole === 'delivery')
+      ? '/admin/login.html'
+      : '/customer/login.html';
+    setTimeout(() => { window.location.href = redirectTo; }, 800);
+  },
+
+  goToDashboard(e) {
+    if (e) e.preventDefault();
+    if (!this.state.user) {
+      window.location.href = '/customer/login.html';
+      return;
+    }
+    const role = this.state.user.role;
+    if (role === 'admin') {
+      window.location.href = '/admin/dashboard.html';
+    } else if (role === 'delivery') {
+      window.location.href = '/delivery/dashboard.html';
+    } else {
+      window.location.href = '/customer/dashboard.html';
+    }
   },
 
   requireAuth(role) {
     if (!this.state.user) {
       this.toast('Please log in to continue', 'warning');
-      setTimeout(() => { window.location.href = '/customer/login.html'; }, 800);
+      // Redirect to correct login page based on required role
+      const loginPage = (role === 'admin') ? '/admin/login.html'
+        : (role === 'delivery') ? '/admin/login.html'
+        : '/customer/login.html';
+      setTimeout(() => { window.location.href = loginPage; }, 800);
+      return false;
+    }
+    // If a specific role is required, verify it
+    if (role && this.state.user.role !== role) {
+      this.toast('Access denied. Insufficient permissions.', 'error');
+      const loginPage = (role === 'admin') ? '/admin/login.html' : '/customer/login.html';
+      setTimeout(() => { window.location.href = loginPage; }, 1200);
       return false;
     }
     return true;
@@ -636,6 +691,12 @@ const API = {
   // Get products by filter
   getProducts(filter = {}) {
     let products = [...this.products];
+
+    // Hide out-of-stock products for customers (unless explicitly included)
+    if (!filter.includeOutOfStock) {
+      products = products.filter(p => p.stock === undefined || p.stock === null || p.stock > 0);
+    }
+
     if (filter.category) products = products.filter(p => p.category === filter.category);
     if (filter.featured) products = products.filter(p => p.featured);
     if (filter.bestSeller) products = products.filter(p => p.bestSeller);
@@ -670,14 +731,63 @@ const API = {
 
   // Place order
   async placeOrder(orderData) {
+    const nowMs = Date.now();
+    const nowISO = new Date(nowMs).toISOString();
+    const expiresISO = new Date(nowMs + 30 * 1000).toISOString(); // 30s timeout
+
     const order = {
-      id: 'SM' + Date.now(),
+      id: 'SM' + nowMs,
       ...orderData,
+      total: (orderData.subtotal || 0) + (orderData.deliveryFee || 0) - (orderData.discount || 0),
       status: 'confirmed',
-      date: new Date().toISOString(),
-      estimatedDelivery: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+      driverId: null,
+      driverName: null,
+      deliveryRequestStatus: 'pending',
+      deliveryRequestCreatedAt: nowISO,
+      deliveryRequestExpiresAt: expiresISO,
+      declinedDrivers: [],
+      assignmentType: 'automatic',
+      date: nowISO,
+      createdAt: nowISO,
+      estimatedDelivery: new Date(nowMs + 2 * 24 * 60 * 60 * 1000).toISOString(),
     };
+
+    // Save order (local state + Firestore)
     await this.saveOrder(order);
+
+    // ── Automatic Stock Decrement (Parallel & Non-Blocking) ──
+    if (window.FirebaseDB && window.Firestore && order.items && order.items.length > 0) {
+      const fs = window.Firestore;
+      const db = window.FirebaseDB;
+      
+      Promise.all((order.items || []).map(async (item) => {
+        try {
+          const productId = String(item.id);
+          const docRef = fs.doc(db, 'products', productId);
+          const docSnap = await fs.getDoc(docRef);
+
+          if (docSnap.exists()) {
+            const currentStock = docSnap.data().stock || 0;
+            const newStock = Math.max(0, currentStock - (item.qty || 1));
+            await fs.updateDoc(docRef, { stock: newStock });
+            console.log(`📦 Stock updated: ${item.name} → ${newStock} units remaining`);
+          } else {
+            const q = fs.query(fs.collection(db, 'products'), fs.where('name', '==', item.name));
+            const snap = await fs.getDocs(q);
+            if (!snap.empty) {
+              const matchDoc = snap.docs[0];
+              const currentStock = matchDoc.data().stock || 0;
+              const newStock = Math.max(0, currentStock - (item.qty || 1));
+              await fs.updateDoc(matchDoc.ref, { stock: newStock });
+              console.log(`📦 Stock updated (by name): ${item.name} → ${newStock} units remaining`);
+            }
+          }
+        } catch (e) {
+          console.error(`Error updating stock for ${item.name}:`, e);
+        }
+      })).catch(err => console.error('Background stock decrement error:', err));
+    }
+
     return order;
   },
 
@@ -748,8 +858,28 @@ const API = {
     };
   },
 
-  // Delivery orders
+  // Delivery orders — reads live orders from API.orders (synced from Firestore)
   getDeliveryOrders(staffId) {
+    const activeStatuses = ['confirmed', 'processing', 'packed', 'out-delivery'];
+    const liveOrders = (this.orders || []).filter(o => activeStatuses.includes(o.status));
+
+    // Map live orders to the shape the delivery dashboard expects
+    if (liveOrders.length > 0) {
+      return liveOrders.map(o => ({
+        id: o.id,
+        customer: o.customerName || o.customer || 'Customer',
+        phone: o.customerPhone || o.phone || 'N/A',
+        address: o.address || 'N/A',
+        items: Array.isArray(o.items) ? o.items.length : (o.items || 0),
+        total: o.subtotal || o.total || 0,
+        status: o.status,
+        lat: o.lat || 13.0850,
+        lng: o.lng || 80.0178,
+        assignedAt: o.date || new Date().toISOString(),
+      }));
+    }
+
+    // Fallback to demo data only if no live orders exist yet
     return [
       { id: 'SM240002', customer: 'Rahul Mehta', phone: '+91 98765 43210', address: '42, Green Park, New Delhi - 110016', items: 7, total: 892, status: 'out-delivery', lat: 28.5562, lng: 77.2100, assignedAt: '2024-12-23T09:00:00Z' },
       { id: 'SM240006', customer: 'Sunita Patel', phone: '+91 87654 32109', address: '8, Rose Garden, Sector 15, Noida - 201301', items: 3, total: 345, status: 'packed', lat: 28.5844, lng: 77.3267, assignedAt: '2024-12-23T10:30:00Z' },
@@ -980,37 +1110,51 @@ window.API = API;
 // ============ PRODUCT CARD RENDERER ============
 function renderProductCard(product, options = {}) {
   const inWishlist = MathuraQuickMart.isInWishlist(product.id);
-  const stockClass = product.stock <= 10 ? 'badge-red' : product.stock <= 30 ? 'badge-orange' : 'badge-green';
-  const stockLabel = product.stock <= 0 ? 'Out of Stock' : product.stock <= 10 ? 'Low Stock' : 'In Stock';
+  const cartItem = MathuraQuickMart.getCart().find(i => i.id === product.id);
+  const cartQty = cartItem ? cartItem.qty : 0;
+  const discountPercent = product.discount || (product.originalPrice ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0);
+
+  let cartButtonHtml = '';
+  if (product.stock <= 0) {
+    cartButtonHtml = `<button class="add-to-cart-btn" disabled style="opacity:0.5;font-size:10px;">OUT OF STOCK</button>`;
+  } else if (cartQty > 0) {
+    cartButtonHtml = `
+      <div class="qty-counter" onclick="event.stopPropagation();">
+        <button onclick="updateCartQtyDirect(${product.id}, ${cartQty - 1})">-</button>
+        <span>${cartQty}</span>
+        <button onclick="addToCart(${product.id})">+</button>
+      </div>`;
+  } else {
+    cartButtonHtml = `
+      <button class="add-to-cart-btn" onclick="event.stopPropagation(); addToCart(${product.id})">
+        ADD
+      </button>`;
+  }
 
   return `
     <div class="product-card" onclick="window.location.href='/customer/product-detail.html?id=${product.id}'">
-      <div class="product-card-img">
+      <div class="product-card-img" style="position:relative;overflow:hidden;">
+        ${discountPercent ? `<div class="discount-pill">${discountPercent}% OFF</div>` : ''}
         <img src="${product.image}" alt="${product.name}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=400'">
-        ${product.badge ? `<div class="product-card-badge"><span class="badge badge-green">${product.badge}</span></div>` : ''}
-        ${product.discount ? `<div style="position:absolute;bottom:8px;left:8px;"><span class="badge badge-orange">${product.discount}% OFF</span></div>` : ''}
-        <button class="product-card-wishlist ${inWishlist ? 'active' : ''}" onclick="event.stopPropagation(); toggleWishlist(${product.id})" title="Add to Wishlist">
+        <button class="product-card-wishlist ${inWishlist ? 'active' : ''}" onclick="event.stopPropagation(); toggleWishlist(${product.id})" title="Wishlist">
           ${inWishlist ? '❤️' : '🤍'}
         </button>
       </div>
-      <div class="product-card-body">
-        <div class="product-card-category">${product.category}</div>
-        <div class="product-card-name">${product.name}</div>
-        <div class="product-card-weight">${product.weight}</div>
-        <div style="display:flex;align-items:center;gap:4px;margin-bottom:8px;">
-          <div class="stars">${renderStars(product.rating)}</div>
-          <span style="font-size:11px;color:var(--gray-400)">(${product.reviews})</span>
+      <div class="product-card-body" style="display:flex;flex-direction:column;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:4px;">
+          <span class="eta-tag">⚡ 10 MINS</span>
+          <span style="font-size:11px;font-weight:700;color:var(--primary-dark);">★ ${product.rating || '4.8'}</span>
         </div>
-        <div class="product-card-price">
-          <span class="price-current">₹${product.price}</span>
-          ${product.originalPrice ? `<span class="price-original">₹${product.originalPrice}</span>` : ''}
-          ${product.discount ? `<span class="price-discount">${product.discount}% off</span>` : ''}
-        </div>
-        <div class="product-card-footer">
-          <span class="badge ${stockClass}" style="font-size:10px;">${stockLabel}</span>
-          <button class="add-to-cart-btn" onclick="event.stopPropagation(); addToCart(${product.id})" ${product.stock === 0 ? 'disabled' : ''}>
-            🛒 Add
-          </button>
+        <div class="product-card-name" title="${product.name}">${product.name}</div>
+        <div class="product-card-weight">${product.weight || '500g'}</div>
+        <div class="product-card-footer" style="margin-top:auto;">
+          <div class="product-card-price" style="margin-bottom:0;">
+            <span class="price-current">₹${product.price}</span>
+            ${product.originalPrice ? `<span class="price-original">₹${product.originalPrice}</span>` : ''}
+          </div>
+          <div style="min-width:76px;">
+            ${cartButtonHtml}
+          </div>
         </div>
       </div>
     </div>
@@ -1027,7 +1171,20 @@ function renderStars(rating) {
 
 function addToCart(productId) {
   const product = API.getProduct(productId);
-  if (product) MathuraQuickMart.addToCart(product);
+  if (product) {
+    MathuraQuickMart.addToCart(product);
+    refreshProductCards();
+  }
+}
+
+function updateCartQtyDirect(productId, qty) {
+  MathuraQuickMart.updateCartQty(productId, qty);
+  refreshProductCards();
+}
+
+function refreshProductCards() {
+  if (typeof renderStorefront === 'function') renderStorefront();
+  if (typeof renderProducts === 'function') renderProducts();
 }
 
 function toggleWishlist(productId) {

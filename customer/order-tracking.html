@@ -147,7 +147,7 @@
         <div class="logo-text">Mathura Quick Mart</div>
       </div>
     </a>
-    <a href="/customer/dashboard.html" class="btn btn-ghost">← Dashboard</a>
+    <a href="#" onclick="MathuraQuickMart.goToDashboard(event)" class="btn btn-ghost">← Dashboard</a>
   </div>
 </nav>
 
@@ -161,11 +161,11 @@
         <h2 style="font-size:var(--text-lg);font-weight:var(--fw-bold);margin-bottom:var(--sp-4);">Order Info</h2>
         <div class="flex justify-between mb-2" style="font-size:var(--text-sm);">
           <span style="color:var(--gray-500)">Order ID</span>
-          <strong id="track-id">SM940348574</strong>
+          <strong id="track-id">Loading...</strong>
         </div>
         <div class="flex justify-between mb-4" style="font-size:var(--text-sm);">
           <span style="color:var(--gray-500)">Status</span>
-          <span class="status status-out-delivery">Out for Delivery</span>
+          <span class="status status-processing">Processing</span>
         </div>
         <div class="divider"></div>
         <div style="font-size:var(--text-sm);">
@@ -173,8 +173,8 @@
           <div style="display:flex;align-items:center;gap:12px;margin-top:8px;">
             <div style="width:36px;height:36px;border-radius:50%;background:var(--secondary-pale);display:flex;align-items:center;justify-content:center;font-size:1.2rem;">🛵</div>
             <div>
-              <div style="font-weight:var(--fw-bold);" id="driver-name">Ramesh Kumar</div>
-              <div style="font-size:11px;color:var(--gray-500);" id="driver-phone">Call: +91 99887 76655</div>
+              <div style="font-weight:var(--fw-bold);" id="driver-name">Awaiting Assignment</div>
+              <div style="font-size:11px;color:var(--gray-500);" id="driver-phone">Driver will be assigned by store staff</div>
             </div>
           </div>
         </div>
@@ -293,41 +293,112 @@
     });
   }
 
-  // ---- Tracking timeline (unchanged) ----
-  let step = -1;
-  function simulateTimeline() {
-    const stepPacked   = document.getElementById('step-packed');
-    const stepOut      = document.getElementById('step-out');
-    const stepDelivery = document.getElementById('step-delivered');
-    if (!stepPacked) return;
+  let currentOrderStatus = 'confirmed';
 
-    if (step === -1) {
+  function updateOrderUI(order) {
+    if (!order) return;
+    
+    // Update Order ID
+    const idEl = document.getElementById('track-id');
+    if (idEl) idEl.textContent = order.id;
+
+    const status = order.status || 'confirmed';
+    const statusBadge = document.querySelector('.tracking-card .status');
+    const driverName = document.getElementById('driver-name');
+    const driverPhone = document.getElementById('driver-phone');
+
+    const stepPlaced = document.getElementById('step-placed');
+    const stepPacked = document.getElementById('step-packed');
+    const stepOut = document.getElementById('step-out');
+    const stepDelivered = document.getElementById('step-delivered');
+
+    if (status === 'confirmed' || status === 'processing' || status === 'pending') {
+      if (statusBadge) {
+        statusBadge.className = 'status status-processing';
+        statusBadge.textContent = 'Processing / Packing';
+      }
+      if (driverName) driverName.textContent = 'Awaiting Driver Assignment';
+      if (driverPhone) driverPhone.textContent = 'Driver will be assigned by store staff';
+
+      stepPlaced.className = 'tracking-step done';
+      stepPacked.className = 'tracking-step active';
+      stepOut.className = 'tracking-step';
+      stepOut.querySelector('.tracking-step-desc').textContent = 'Waiting for driver assignment & dispatch...';
+      stepDelivered.className = 'tracking-step';
+      document.getElementById('delivery-time-text').textContent = 'Pending dispatch';
+    } 
+    else if (status === 'out-delivery') {
+      if (statusBadge) {
+        statusBadge.className = 'status status-out-delivery';
+        statusBadge.textContent = 'Out for Delivery';
+      }
+      if (currentOrderStatus !== 'out-delivery') {
+        MathuraQuickMart.toast('📦 Order Dispatched! Your driver is on the way.', 'info');
+      }
+
+      stepPlaced.className = 'tracking-step done';
       stepPacked.className = 'tracking-step done';
-      stepOut.className    = 'tracking-step active';
+      stepOut.className = 'tracking-step active';
       stepOut.querySelector('.tracking-step-desc').textContent = 'Driver is on the way to your location.';
-      document.getElementById('delivery-time-text').textContent = 'Expected within 15 minutes.';
-      MathuraQuickMart.toast('📦 Order Dispatched! Expected time: 15 mins.', 'info');
-      step = 0;
+      stepDelivered.className = 'tracking-step';
+      document.getElementById('delivery-time-text').textContent = 'Expected within 15-30 minutes.';
+    } 
+    else if (status === 'delivered') {
+      if (statusBadge) {
+        statusBadge.className = 'status status-delivered';
+        statusBadge.textContent = 'Delivered';
+      }
+      stepPlaced.className = 'tracking-step done';
+      stepPacked.className = 'tracking-step done';
+      stepOut.className = 'tracking-step done';
+      stepDelivered.className = 'tracking-step done';
+      document.getElementById('delivery-time-text').textContent = 'Order successfully delivered!';
     }
+
+    currentOrderStatus = status;
+  }
+
+  function listenToLiveOrder(orderId) {
+    if (!window.FirebaseDB || !window.Firestore) {
+      window.addEventListener('firebase-ready', () => listenToLiveOrder(orderId), { once: true });
+      return;
+    }
+    const db = window.FirebaseDB;
+    const { doc, onSnapshot } = window.Firestore;
+
+    const orderRef = doc(db, 'orders', orderId);
+    onSnapshot(orderRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const orderData = docSnap.data();
+        updateOrderUI(orderData);
+      }
+    }, (err) => {
+      console.warn('Live order tracking snapshot error:', err);
+    });
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    const lastOrder = localStorage.getItem('mathuraquickmart_last_order');
-    if (lastOrder) {
-      const order = JSON.parse(lastOrder);
-      const el = document.getElementById('track-id');
-      if (el) el.textContent = order.id;
+    const lastOrderStr = localStorage.getItem('mathuraquickmart_last_order');
+    let orderId = null;
+
+    if (lastOrderStr) {
+      try {
+        const order = JSON.parse(lastOrderStr);
+        orderId = order.id;
+        updateOrderUI(order);
+      } catch (e) {}
     }
 
-    // Start the Firestore real-time listener
+    if (orderId) {
+      listenToLiveOrder(orderId);
+    }
+
+    // Start live map listener
     if (window.FirebaseDB) {
       startLiveMap();
     } else {
       window.addEventListener('firebase-ready', startLiveMap, { once: true });
     }
-
-    // Simulate the dispatch status tick (timeline only, not map)
-    setTimeout(simulateTimeline, 2000);
   });
 </script>
 </body>

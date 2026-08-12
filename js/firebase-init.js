@@ -3,7 +3,7 @@ import {
   getFirestore,
   collection, getDocs, getDoc, doc, setDoc,
   query, where, addDoc, deleteDoc, orderBy, updateDoc, serverTimestamp,
-  onSnapshot, limit
+  onSnapshot, limit, runTransaction, arrayUnion
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-analytics.js";
 import {
@@ -60,6 +60,8 @@ try {
     serverTimestamp,
     onSnapshot,
     limit,
+    runTransaction,
+    arrayUnion,
   };
 
   // Expose Auth instance and helper functions to window
@@ -110,7 +112,9 @@ try {
   }
 
   console.log("🔥 Firebase, Firestore & Auth Initialized Successfully!");
+  window.firebaseIsReady = true;
   window.dispatchEvent(new CustomEvent('firebase-ready'));
 } catch (error) {
   console.error("🔥 Firebase Initialization Error:", error);
+  window.firebaseIsReady = false;
 }

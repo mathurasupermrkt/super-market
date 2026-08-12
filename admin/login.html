@@ -85,27 +85,77 @@
       <button class="staff-toggle-btn" id="toggle-delivery" onclick="setRole('delivery')">Delivery Rider</button>
     </div>
 
-    <h1 style="font-size:var(--text-lg);font-weight:var(--fw-bold);margin-bottom:var(--sp-4);text-align:center;" id="login-title">Admin Login</h1>
+    <div id="login-form-box">
+      <h1 style="font-size:var(--text-lg);font-weight:var(--fw-bold);margin-bottom:var(--sp-4);text-align:center;" id="login-title">Admin Login</h1>
 
-    <div class="form-group mb-4">
-      <label class="form-label" id="username-label">Email ID</label>
-      <input type="email" class="form-input" id="login-email" placeholder="admin@mathuraquickmart.in" required>
-    </div>
-
-    <div class="form-group mb-6">
-      <div style="display:flex;justify-content:between;">
-        <label class="form-label">Password</label>
+      <div class="form-group mb-4">
+        <label class="form-label" id="username-label">Email ID</label>
+        <input type="email" class="form-input" id="login-email" placeholder="admin@mathuraquickmart.in" required>
       </div>
-      <input type="password" class="form-input" id="login-password" placeholder="••••••••" required>
+
+      <div class="form-group mb-6">
+        <div style="display:flex;justify-content:between;">
+          <label class="form-label">Password</label>
+        </div>
+        <input type="password" class="form-input" id="login-password" placeholder="••••••••" required>
+      </div>
+
+      <button class="btn btn-primary btn-lg w-full" id="login-btn" onclick="handleLogin()"
+        style="background:linear-gradient(135deg, #0f766e, #115e59);box-shadow: 0 10px 25px -5px rgb(15 118 110 / 0.3);">
+        Sign In to Portal
+      </button>
+
+      <div id="rider-register-prompt" style="display:none;margin-top:16px;text-align:center;font-size:var(--text-sm);color:var(--gray-500);">
+        New Delivery Partner? <a href="javascript:void(0)" onclick="toggleRiderRegister(true)" style="color:var(--primary-dark);font-weight:700;">Apply / Register Here</a>
+      </div>
+
+      <div class="divider"></div>
+      <a href="../index.html" style="font-size:var(--text-sm);color:var(--gray-500);display:block;text-align:center;">🏪 Return to Customer Store</a>
     </div>
 
-    <button class="btn btn-primary btn-lg w-full" id="login-btn" onclick="handleLogin()"
-      style="background:linear-gradient(135deg, #0f766e, #115e59);box-shadow: 0 10px 25px -5px rgb(15 118 110 / 0.3);">
-      Sign In to Portal
-    </button>
+    <!-- RIDER REGISTRATION FORM -->
+    <div id="rider-register-box" style="display:none;">
+      <h1 style="font-size:var(--text-lg);font-weight:var(--fw-bold);margin-bottom:var(--sp-4);text-align:center;">Delivery Partner Registration</h1>
+      
+      <div class="form-group mb-3">
+        <label class="form-label">Full Name *</label>
+        <input type="text" class="form-input" id="reg-name" placeholder="e.g. Ramesh Kumar" required>
+      </div>
 
-    <div class="divider"></div>
-    <a href="../index.html" style="font-size:var(--text-sm);color:var(--gray-500);display:block;text-align:center;">🏪 Return to Customer Store</a>
+      <div class="form-group mb-3">
+        <label class="form-label">Email Address *</label>
+        <input type="email" class="form-input" id="reg-email" placeholder="driver@email.com" required>
+      </div>
+
+      <div class="form-group mb-3">
+        <label class="form-label">Mobile Number *</label>
+        <input type="tel" class="form-input" id="reg-mobile" placeholder="+91 98765 43210" required>
+      </div>
+
+      <div class="form-group mb-3">
+        <label class="form-label">Vehicle Info *</label>
+        <input type="text" class="form-input" id="reg-vehicle" placeholder="e.g. Honda Activa (UP 85 AB 1234)" required>
+      </div>
+
+      <div class="form-group mb-3">
+        <label class="form-label">Driving License No. *</label>
+        <input type="text" class="form-input" id="reg-license" placeholder="e.g. UP852021000123" required>
+      </div>
+
+      <div class="form-group mb-4">
+        <label class="form-label">Password *</label>
+        <input type="password" class="form-input" id="reg-password" placeholder="Minimum 6 characters" minlength="6" required>
+      </div>
+
+      <button class="btn btn-primary btn-lg w-full mb-3" id="reg-btn" onclick="handleRiderRegister()"
+        style="background:linear-gradient(135deg, #0f766e, #115e59);">
+        Submit Partner Application
+      </button>
+
+      <div style="text-align:center;font-size:var(--text-sm);">
+        Already registered? <a href="javascript:void(0)" onclick="toggleRiderRegister(false)" style="color:var(--primary-dark);font-weight:700;">Back to Login</a>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -122,13 +172,30 @@
 
     const titleEl    = document.getElementById('login-title');
     const emailInput = document.getElementById('login-email');
+    const promptEl   = document.getElementById('rider-register-prompt');
+
+    toggleRiderRegister(false);
 
     if (role === 'admin') {
       titleEl.textContent     = 'Admin Login';
       emailInput.placeholder  = 'admin@mathuraquickmart.in';
+      if (promptEl) promptEl.style.display = 'none';
     } else {
       titleEl.textContent     = 'Delivery Rider Login';
       emailInput.placeholder  = 'rider@mathuraquickmart.in';
+      if (promptEl) promptEl.style.display = 'block';
+    }
+  }
+
+  function toggleRiderRegister(show) {
+    const loginBox = document.getElementById('login-form-box');
+    const regBox   = document.getElementById('rider-register-box');
+    if (show) {
+      loginBox.style.display = 'none';
+      regBox.style.display   = 'block';
+    } else {
+      loginBox.style.display = 'block';
+      regBox.style.display   = 'none';
     }
   }
 
@@ -165,58 +232,176 @@
 
     setLoading(true);
 
-    function doLogin() {
+    async function doLogin() {
       const auth    = window.FirebaseAuth;
       const authFns = window.FirebaseAuthFns;
       const db      = window.FirebaseDB;
       const fs      = window.Firestore;
 
-      authFns.signInWithEmailAndPassword(auth, email, password)
-        .then(async (userCredential) => {
-          const fbUser = userCredential.user;
+      if (!auth || !authFns) {
+        setLoading(false);
+        MathuraQuickMart.toast('Firebase not ready. Please refresh the page and try again.', 'error');
+        return;
+      }
 
-          // Verify role from Firestore users/{uid}
-          let name         = fbUser.displayName || email.split('@')[0];
-          let firestoreRole = null;
+      try {
+        const userCredential = await authFns.signInWithEmailAndPassword(auth, email, password);
+        const fbUser = userCredential.user;
 
+        let name          = fbUser.displayName || email.split('@')[0];
+        let firestoreRole  = null;
+        let approvalStatus = 'approved';
+
+        // Always fetch the Firestore profile — critical for role checking
+        if (fs && db) {
           try {
             const profileSnap = await fs.getDoc(fs.doc(db, 'users', fbUser.uid));
             if (profileSnap.exists()) {
-              const data   = profileSnap.data();
-              name         = data.name || name;
-              firestoreRole = data.role || null;
+              const data     = profileSnap.data();
+              name           = data.name || name;
+              firestoreRole  = data.role || null;
+              approvalStatus = data.approvalStatus || 'approved';
             }
-          } catch (e) { /* Firestore optional */ }
-
-          // Role mismatch – sign out and deny access
-          if (firestoreRole && firestoreRole !== currentRole) {
-            await authFns.signOut(auth);
-            setLoading(false);
-            MathuraQuickMart.toast(
-              `Access Denied. This account is not a ${currentRole === 'admin' ? 'Store Admin' : 'Delivery Rider'}.`,
-              'error'
-            );
-            return;
+          } catch (fsErr) {
+            console.warn('Could not read Firestore profile:', fsErr);
           }
+        }
 
-          const user = { uid: fbUser.uid, name, email: fbUser.email, role: currentRole };
-          MathuraQuickMart.login(user);
-
-          const redirect = currentRole === 'admin'
-            ? '/admin/dashboard.html'
-            : '/delivery/dashboard.html';
-          setTimeout(() => { window.location.href = redirect; }, 1000);
-        })
-        .catch((error) => {
+        // Role mismatch – sign out and deny access
+        if (firestoreRole && firestoreRole !== currentRole) {
+          await authFns.signOut(auth);
           setLoading(false);
-          MathuraQuickMart.toast(getAuthErrorMessage(error.code), 'error');
-        });
+          MathuraQuickMart.toast(
+            `Access Denied. This account is not a ${currentRole === 'admin' ? 'Store Admin' : 'Delivery Rider'}.`,
+            'error'
+          );
+          return;
+        }
+
+        // Check Delivery Approval Status
+        if (currentRole === 'delivery' && approvalStatus === 'pending') {
+          await authFns.signOut(auth);
+          setLoading(false);
+          MathuraQuickMart.toast('⚠️ Your account is pending Admin approval. Please wait for activation.', 'warning', 6000);
+          return;
+        }
+
+        if (currentRole === 'delivery' && approvalStatus === 'rejected') {
+          await authFns.signOut(auth);
+          setLoading(false);
+          MathuraQuickMart.toast('❌ Your registration request was rejected by Admin.', 'error', 6000);
+          return;
+        }
+
+        // Successful login
+        const user = { uid: fbUser.uid, name, email: fbUser.email, role: firestoreRole || currentRole };
+        MathuraQuickMart.login(user);
+
+        const redirect = (firestoreRole || currentRole) === 'admin'
+          ? '/admin/dashboard.html'
+          : '/delivery/dashboard.html';
+        setTimeout(() => { window.location.href = redirect; }, 800);
+
+      } catch (error) {
+        setLoading(false);
+        console.error('Login error:', error.code, error.message);
+        MathuraQuickMart.toast(getAuthErrorMessage(error.code), 'error');
+      }
     }
 
-    if (window.FirebaseAuth && window.FirebaseAuthFns) {
+    // Firebase modules are async — check flag set by firebase-init.js to avoid race condition
+    if (window.firebaseIsReady || (window.FirebaseAuth && window.FirebaseAuthFns)) {
       doLogin();
     } else {
-      window.addEventListener('firebase-ready', doLogin, { once: true });
+      // Show user feedback while waiting
+      const waitTimeout = setTimeout(() => {
+        setLoading(false);
+        MathuraQuickMart.toast('Firebase is taking too long to load. Please refresh the page.', 'error');
+      }, 8000);
+
+      window.addEventListener('firebase-ready', () => {
+        clearTimeout(waitTimeout);
+        doLogin();
+      }, { once: true });
+    }
+  }
+
+  async function handleRiderRegister() {
+    const name     = document.getElementById('reg-name').value.trim();
+    const email    = document.getElementById('reg-email').value.trim();
+    const mobile   = document.getElementById('reg-mobile').value.trim();
+    const vehicle  = document.getElementById('reg-vehicle').value.trim();
+    const license  = document.getElementById('reg-license').value.trim();
+    const password = document.getElementById('reg-password').value;
+    const btn      = document.getElementById('reg-btn');
+
+    if (!name || !email || !mobile || !vehicle || !license || !password) {
+      MathuraQuickMart.toast('Please fill in all required fields.', 'warning');
+      return;
+    }
+
+    if (password.length < 6) {
+      MathuraQuickMart.toast('Password must be at least 6 characters.', 'warning');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Submitting Request...';
+
+    // Wait for Firebase if not ready yet
+    if (!window.FirebaseAuth || !window.FirebaseAuthFns || !window.Firestore) {
+      await new Promise((resolve, reject) => {
+        const t = setTimeout(() => reject(new Error('Firebase timed out. Refresh and try again.')), 8000);
+        window.addEventListener('firebase-ready', () => { clearTimeout(t); resolve(); }, { once: true });
+      }).catch(err => {
+        MathuraQuickMart.toast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Submit Partner Application';
+        throw err;
+      });
+    }
+
+    try {
+      const { createUserWithEmailAndPassword } = window.FirebaseAuthFns;
+      const auth = window.FirebaseAuth;
+      const fs   = window.Firestore;
+      const db   = window.FirebaseDB;
+
+      // 1. Create Auth Account
+      const userCred = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCred.user;
+
+      // 2. Save Driver Document in Firestore with pending status
+      await fs.setDoc(fs.doc(db, 'users', user.uid), {
+        uid: user.uid,
+        name,
+        email,
+        mobile,
+        vehicle,
+        license,
+        role: 'delivery',
+        approvalStatus: 'pending',
+        assignedOrders: [],
+        createdAt: new Date().toISOString()
+      });
+
+      MathuraQuickMart.toast('🎉 Registration submitted! Pending Admin Approval.', 'success', 6000);
+
+      // Return to login form
+      toggleRiderRegister(false);
+      document.getElementById('login-email').value = email;
+      btn.disabled = false;
+      btn.textContent = 'Submit Partner Application';
+
+    } catch (err) {
+      console.error('Registration error:', err);
+      // Show a clean error for duplicate email
+      const msg = err.code === 'auth/email-already-in-use'
+        ? 'This email is already registered. Try logging in instead.'
+        : err.message || 'Registration failed. Please try again.';
+      MathuraQuickMart.toast(msg, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Submit Partner Application';
     }
   }
 

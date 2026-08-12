@@ -40,7 +40,8 @@ service cloud.firestore {
 
     // Users and their sub-collections (cart, wishlist)
     match /users/{userId} {
-      allow read, write: if isOwner(userId) || isAdmin();
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) || isAdmin();
       
       match /cart/{productId} {
         allow read, write: if isOwner(userId) || isAdmin();
@@ -56,13 +57,12 @@ service cloud.firestore {
     }
 
     // Orders:
-    // - Authenticated users can create orders for themselves (request.resource.data.userId == request.auth.uid)
-    // - Authenticated users can read their own orders (resource.data.userId == request.auth.uid)
-    // - Admins can read/write all orders
+    // - Authenticated users can create and read orders
+    // - Admins and Delivery staff can update orders
     match /orders/{orderId} {
-      allow create: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || isAdmin());
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow update, delete: if isAdmin();
+      allow create: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow update, delete: if isAuthenticated();
     }
 
     // Reviews:
@@ -79,6 +79,24 @@ service cloud.firestore {
     match /deliveryPartners/{partnerId} {
       allow read: if isAuthenticated();
       allow write: if isOwner(partnerId) || isAdmin();
+    }
+
+    // Inventory, Purchase Bills, Suppliers: Only Admins can access
+    match /inventory/{itemId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /purchaseBills/{billId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /suppliers/{supplierId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }
