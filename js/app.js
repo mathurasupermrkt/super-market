@@ -29,6 +29,7 @@ const MathuraQuickMart = {
     this.initSearch();
     this.initMobileMenu();
     this.initAnimations();
+    this.initStoreStatusListener();
 
     const setupAuthListener = () => {
       const auth = window.FirebaseAuth;
@@ -85,6 +86,48 @@ const MathuraQuickMart = {
       const saved = localStorage.getItem('mathuraquickmart_state');
       if (saved) {
         const parsed = JSON.parse(saved);
+
+        // Deduplicate and merge cart items
+        if (parsed.cart && Array.isArray(parsed.cart)) {
+          const cartMap = new Map();
+          parsed.cart.forEach(item => {
+            if (!item || !item.id) return;
+            const key = String(item.id);
+            if (cartMap.has(key)) {
+              cartMap.get(key).qty = (cartMap.get(key).qty || 1) + (item.qty || 1);
+            } else {
+              cartMap.set(key, { ...item, id: parseInt(item.id) || item.id, qty: item.qty || 1 });
+            }
+          });
+          parsed.cart = Array.from(cartMap.values());
+        }
+
+        // Deduplicate wishlist items
+        if (parsed.wishlist && Array.isArray(parsed.wishlist)) {
+          const wishMap = new Map();
+          parsed.wishlist.forEach(item => {
+            if (!item || !item.id) return;
+            const key = String(item.id);
+            if (!wishMap.has(key)) {
+              wishMap.set(key, { ...item, id: parseInt(item.id) || item.id });
+            }
+          });
+          parsed.wishlist = Array.from(wishMap.values());
+        }
+
+        // Deduplicate orders
+        if (parsed.orders && Array.isArray(parsed.orders)) {
+          const orderMap = new Map();
+          parsed.orders.forEach(order => {
+            if (!order || !order.id) return;
+            const key = String(order.id);
+            if (!orderMap.has(key)) {
+              orderMap.set(key, order);
+            }
+          });
+          parsed.orders = Array.from(orderMap.values());
+        }
+
         this.state = { ...this.state, ...parsed };
       }
     } catch(e) { console.warn('State load error:', e); }
@@ -199,11 +242,12 @@ const MathuraQuickMart = {
   },
 
   addToCart(product, qty = 1) {
-    const existing = this.state.cart.find(i => i.id === product.id);
+    const prodId = String(product.id);
+    const existing = this.state.cart.find(i => String(i.id) === prodId);
     if (existing) {
       existing.qty += qty;
     } else {
-      this.state.cart.push({ ...product, qty });
+      this.state.cart.push({ ...product, id: parseInt(product.id) || product.id, qty });
     }
     this.saveState();
     this.renderCartBadge();
@@ -214,7 +258,8 @@ const MathuraQuickMart = {
   },
 
   removeFromCart(productId) {
-    this.state.cart = this.state.cart.filter(i => i.id !== productId);
+    const pId = String(productId);
+    this.state.cart = this.state.cart.filter(i => String(i.id) !== pId);
     this.saveState();
     this.renderCartBadge();
     this.toast('Item removed from cart', 'success');
@@ -224,7 +269,8 @@ const MathuraQuickMart = {
 
   updateCartQty(productId, qty) {
     if (qty < 1) { this.removeFromCart(productId); return; }
-    const item = this.state.cart.find(i => i.id === productId);
+    const pId = String(productId);
+    const item = this.state.cart.find(i => String(i.id) === pId);
     if (item) {
       item.qty = qty;
       this.saveState();
@@ -268,18 +314,20 @@ const MathuraQuickMart = {
   getWishlist() { return this.state.wishlist; },
 
   isInWishlist(productId) {
-    return this.state.wishlist.some(i => i.id === productId);
+    const pId = String(productId);
+    return this.state.wishlist.some(i => String(i.id) === pId);
   },
 
   toggleWishlist(product) {
-    const idx = this.state.wishlist.findIndex(i => i.id === product.id);
+    const pId = String(product.id);
+    const idx = this.state.wishlist.findIndex(i => String(i.id) === pId);
     if (idx >= 0) {
       this.state.wishlist.splice(idx, 1);
       this.toast(`${product.name} removed from wishlist`, 'success');
       // Sync removal to Firestore
       this._deleteWishlistItemFromFirestore(product.id);
     } else {
-      this.state.wishlist.push(product);
+      this.state.wishlist.push({ ...product, id: parseInt(product.id) || product.id });
       this.toast(`${product.name} added to wishlist ❤️`, 'success');
       // Sync addition to Firestore
       this._syncWishlistItemToFirestore(product);
@@ -563,9 +611,18 @@ const MathuraQuickMart = {
         // 1. Load cart from users/{uid}/cart
         const cartSnap = await fs.getDocs(fs.collection(db, 'users', uid, 'cart'));
         if (!cartSnap.empty) {
-          const cartItems = [];
-          cartSnap.forEach(d => cartItems.push(d.data()));
-          this.state.cart = cartItems;
+          const cartMap = new Map();
+          cartSnap.forEach(d => {
+            const item = d.data();
+            if (!item || !item.id) return;
+            const key = String(item.id);
+            if (cartMap.has(key)) {
+              cartMap.get(key).qty = (cartMap.get(key).qty || 1) + (item.qty || 1);
+            } else {
+              cartMap.set(key, { ...item, id: parseInt(item.id) || item.id, qty: item.qty || 1 });
+            }
+          });
+          this.state.cart = Array.from(cartMap.values());
           this.saveState();
           this.renderCartBadge();
         }
@@ -573,9 +630,16 @@ const MathuraQuickMart = {
         // 2. Load wishlist from users/{uid}/wishlist
         const wishSnap = await fs.getDocs(fs.collection(db, 'users', uid, 'wishlist'));
         if (!wishSnap.empty) {
-          const wishItems = [];
-          wishSnap.forEach(d => wishItems.push(d.data()));
-          this.state.wishlist = wishItems;
+          const wishMap = new Map();
+          wishSnap.forEach(d => {
+            const item = d.data();
+            if (!item || !item.id) return;
+            const key = String(item.id);
+            if (!wishMap.has(key)) {
+              wishMap.set(key, { ...item, id: parseInt(item.id) || item.id });
+            }
+          });
+          this.state.wishlist = Array.from(wishMap.values());
           this.saveState();
           this.renderWishlistBadge();
         }
@@ -588,9 +652,17 @@ const MathuraQuickMart = {
           );
           const ordersSnap = await fs.getDocs(ordersQuery);
           if (!ordersSnap.empty) {
-            const orders = [];
-            ordersSnap.forEach(d => orders.push(d.data()));
-            orders.sort((a, b) => new Date(b.date) - new Date(a.date));
+            const orderMap = new Map();
+            ordersSnap.forEach(d => {
+              const order = d.data();
+              if (!order || !order.id) return;
+              const key = String(order.id);
+              if (!orderMap.has(key)) {
+                orderMap.set(key, order);
+              }
+            });
+            const orders = Array.from(orderMap.values());
+            orders.sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
             this.state.orders = orders;
             this.saveState();
           }
@@ -600,9 +672,17 @@ const MathuraQuickMart = {
         try {
           const returnsSnap = await fs.getDocs(fs.collection(db, 'users', uid, 'returns'));
           if (!returnsSnap.empty) {
-            const returns = [];
-            returnsSnap.forEach(d => returns.push(d.data()));
-            returns.sort((a, b) => new Date(b.date) - new Date(a.date));
+            const returnMap = new Map();
+            returnsSnap.forEach(d => {
+              const r = d.data();
+              if (!r || !r.id) return;
+              const key = String(r.id);
+              if (!returnMap.has(key)) {
+                returnMap.set(key, r);
+              }
+            });
+            const returns = Array.from(returnMap.values());
+            returns.sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
             this.state.returns = returns;
             this.saveState();
           } else {
@@ -621,6 +701,136 @@ const MathuraQuickMart = {
     } else {
       window.addEventListener('firebase-ready', doLoad, { once: true });
     }
+  },
+
+  // ============ STORE STATUS MANAGEMENT (OPEN / CLOSED) ============
+  initStoreStatusListener() {
+    this.storeStatus = {
+      isOpen: true,
+      message: "Store is temporarily closed. We're currently not accepting orders. Please try again later.",
+      updatedAt: null
+    };
+
+    const doListen = () => {
+      if (!window.FirebaseDB || !window.Firestore) return;
+      const fs = window.Firestore;
+      const db = window.FirebaseDB;
+      try {
+        fs.onSnapshot(fs.doc(db, 'settings', 'store'), (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            this.storeStatus = {
+              isOpen: data.isOpen !== false,
+              message: data.message || "Store is temporarily closed. We're currently not accepting orders. Please try again later.",
+              updatedAt: data.updatedAt || null
+            };
+          } else {
+            this.storeStatus = {
+              isOpen: true,
+              message: "Store is temporarily closed. We're currently not accepting orders. Please try again later.",
+              updatedAt: null
+            };
+          }
+          this.renderStoreStatusUI();
+        }, (err) => {
+          console.warn('Store status listener note:', err);
+        });
+      } catch (e) {
+        console.warn('Error attaching store status listener:', e);
+      }
+    };
+
+    if (window.FirebaseDB && window.Firestore) {
+      doListen();
+    } else {
+      window.addEventListener('firebase-ready', doListen, { once: true });
+    }
+  },
+
+  renderStoreStatusUI() {
+    const isOpen = this.storeStatus ? this.storeStatus.isOpen !== false : true;
+    const message = this.storeStatus ? (this.storeStatus.message || "Store is temporarily closed. We're currently not accepting orders. Please try again later.") : "";
+
+    // 1. Sticky Store Closed Banner on Customer Pages
+    let banner = document.getElementById('store-closed-sticky-banner');
+    const isCustomerPage = !window.location.pathname.includes('/admin/') && !window.location.pathname.includes('/delivery/');
+
+    if (!isOpen && isCustomerPage) {
+      if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'store-closed-sticky-banner';
+        banner.style.cssText = 'background:linear-gradient(135deg, #991b1b, #dc2626);color:#ffffff;padding:12px 20px;text-align:center;font-size:13px;font-weight:600;position:sticky;top:0;z-index:99999;box-shadow:0 3px 12px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;';
+        document.body.prepend(banner);
+      }
+      banner.innerHTML = `
+        <span style="font-size:16px;">🔴</span>
+        <span><strong>Store Temporarily Closed:</strong> ${this.escapeHtml(message)}</span>
+        <span style="font-size:11px;background:rgba(255,255,255,0.2);padding:3px 10px;border-radius:12px;font-weight:bold;">Existing orders are not cancelled &amp; are being delivered</span>
+      `;
+      banner.style.display = 'flex';
+    } else if (banner) {
+      banner.style.display = 'none';
+    }
+
+    // 2. Disable Place Order and Checkout buttons if closed
+    const checkoutBtns = document.querySelectorAll('#btn-checkout, #btn-cart-checkout, #btn-place-order, .btn-place-order, #btn-proceed-checkout, #place-order-btn');
+    checkoutBtns.forEach(btn => {
+      if (!isOpen) {
+        btn.disabled = true;
+        btn.setAttribute('data-store-closed', 'true');
+        if (!btn.getAttribute('data-original-text')) {
+          btn.setAttribute('data-original-text', btn.innerHTML);
+        }
+        btn.innerHTML = '🔴 Store Closed (Orders Paused)';
+        btn.style.opacity = '0.65';
+        btn.style.cursor = 'not-allowed';
+      } else {
+        btn.disabled = false;
+        btn.removeAttribute('data-store-closed');
+        if (btn.getAttribute('data-original-text')) {
+          btn.innerHTML = btn.getAttribute('data-original-text');
+        }
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+      }
+    });
+
+    // 3. Dispatch custom event for page-specific UI components
+    window.dispatchEvent(new CustomEvent('store-status-changed', { detail: this.storeStatus }));
+  },
+
+  showStoreClosedModal(customMessage) {
+    const msg = customMessage || (this.storeStatus ? this.storeStatus.message : "Store is temporarily closed. We're currently not accepting orders. Please try again later.");
+    
+    let modal = document.getElementById('store-closed-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'store-closed-modal';
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="modal" style="max-width:480px;width:92%;text-align:center;padding:26px;border-radius:16px;">
+          <div style="font-size:3rem;margin-bottom:12px;">🏪🔴</div>
+          <h3 style="margin:0 0 8px 0;font-size:20px;color:var(--gray-900);">Store Temporarily Closed</h3>
+          <p id="store-closed-modal-msg" style="font-size:14px;color:var(--gray-600);line-height:1.6;margin:0 0 16px 0;">${this.escapeHtml(msg)}</p>
+          <div style="background:#fef2f2;border-left:4px solid #ef4444;padding:12px 14px;border-radius:8px;font-size:12px;color:#991b1b;text-align:left;margin-bottom:20px;line-height:1.5;">
+            ℹ️ <strong>Existing Orders Active:</strong> All existing orders already accepted are being processed and delivered normally. Only new orders are temporarily paused.
+          </div>
+          <button class="btn btn-primary w-full" onclick="document.getElementById('store-closed-modal').classList.add('hidden')" style="background:#00695c;padding:10px 0;font-weight:bold;">
+            Understood
+          </button>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    } else {
+      const msgEl = document.getElementById('store-closed-modal-msg');
+      if (msgEl) msgEl.textContent = msg;
+      modal.classList.remove('hidden');
+    }
+  },
+
+  escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   },
 };
 
@@ -656,7 +866,7 @@ const API = {
     { id: 7, name: 'Personal Care', icon: '🧴', count: 89, color: '#ec4899' },
     { id: 8, name: 'Health & Wellness', icon: '💊', count: 67, color: '#06b6d4' },
     { id: 9, name: 'Frozen Foods', icon: '🧊', count: 45, color: '#3b82f6' },
-    { id: 10, name: 'Household', icon: '🧹', count: 112, count: 112, color: '#6366f1' },
+    { id: 10, name: 'Household', icon: '🧹', count: 112, color: '#6366f1' },
   ],
 
   coupons: [
@@ -731,6 +941,31 @@ const API = {
 
   // Place order
   async placeOrder(orderData) {
+    // ── STRICT STORE STATUS VERIFICATION BEFORE ORDER CREATION ──
+    if (window.FirebaseDB && window.Firestore) {
+      const fs = window.Firestore;
+      const db = window.FirebaseDB;
+      try {
+        const storeDoc = await fs.getDoc(fs.doc(db, 'settings', 'store'));
+        if (storeDoc.exists()) {
+          const sData = storeDoc.data();
+          if (sData.isOpen === false) {
+            const closedMsg = sData.message || "Store is temporarily closed. We're currently not accepting orders. Please try again later.";
+            MathuraQuickMart.showStoreClosedModal(closedMsg);
+            throw new Error(`STORE_CLOSED: ${closedMsg}`);
+          }
+        }
+      } catch (err) {
+        if (err.message && err.message.startsWith('STORE_CLOSED:')) {
+          throw err;
+        }
+      }
+    } else if (MathuraQuickMart.storeStatus && MathuraQuickMart.storeStatus.isOpen === false) {
+      const closedMsg = MathuraQuickMart.storeStatus.message || "Store is temporarily closed. We're currently not accepting orders. Please try again later.";
+      MathuraQuickMart.showStoreClosedModal(closedMsg);
+      throw new Error(`STORE_CLOSED: ${closedMsg}`);
+    }
+
     const nowMs = Date.now();
     const nowISO = new Date(nowMs).toISOString();
     const expiresISO = new Date(nowMs + 30 * 1000).toISOString(); // 30s timeout
@@ -754,6 +989,13 @@ const API = {
 
     // Save order (local state + Firestore)
     await this.saveOrder(order);
+
+    // ── Queue WhatsApp Order Message (Non-blocking, deduplicated) ──
+    try {
+      if (typeof WhatsAppService !== 'undefined') {
+        WhatsAppService.queueOrderMessage(order, 'ORDER_PLACED').catch(e => console.warn('WhatsApp queue err:', e));
+      }
+    } catch (waErr) { console.warn(waErr); }
 
     // ── Automatic Stock Decrement (Parallel & Non-Blocking) ──
     if (window.FirebaseDB && window.Firestore && order.items && order.items.length > 0) {
@@ -792,7 +1034,7 @@ const API = {
   },
 
   // Save/Update order in local state and Firestore
-  async saveOrder(order) {
+  async saveOrder(order, triggerWhatsApp = false) {
     // Update memory array
     const idx = this.orders.findIndex(o => o.id === order.id);
     if (idx >= 0) {
@@ -819,6 +1061,10 @@ const API = {
       } catch (error) {
         console.error("Error saving order to Firestore:", error);
       }
+    }
+
+    if (triggerWhatsApp && typeof WhatsAppService !== 'undefined') {
+      WhatsAppService.queueOrderMessage(order).catch(e => console.warn('WhatsApp queue err:', e));
     }
   },
 
@@ -909,36 +1155,51 @@ const API = {
         getDocs(collection(db, 'reviews')).catch(e => { console.warn("reviews sync:", e.message); return null; }),
       ]);
 
-    // Process results
+    // Process results with deduplication
     if (productsSnap && !productsSnap.empty) {
-      const prods = [];
+      const prodMap = new Map();
       productsSnap.forEach(doc => {
         const p = doc.data();
         p.id = parseInt(p.id) || p.id;
-        prods.push(p);
+        const key = String(p.id);
+        if (!prodMap.has(key)) prodMap.set(key, p);
       });
-      this.products = prods;
-      console.log(`Synced ${prods.length} products.`);
+      this.products = Array.from(prodMap.values());
+      console.log(`Synced ${this.products.length} products.`);
     }
 
     if (categoriesSnap && !categoriesSnap.empty) {
-      const cats = [];
-      categoriesSnap.forEach(doc => cats.push(doc.data()));
-      this.categories = cats;
-      console.log(`Synced ${cats.length} categories.`);
+      const catMap = new Map();
+      categoriesSnap.forEach(doc => {
+        const c = doc.data();
+        const key = String(c.id || c.name);
+        if (!catMap.has(key)) catMap.set(key, c);
+      });
+      this.categories = Array.from(catMap.values());
+      console.log(`Synced ${this.categories.length} categories.`);
     }
 
     if (couponsSnap && !couponsSnap.empty) {
-      const coups = [];
-      couponsSnap.forEach(doc => coups.push(doc.data()));
-      this.coupons = coups;
-      console.log(`Synced ${coups.length} coupons.`);
+      const coupMap = new Map();
+      couponsSnap.forEach(doc => {
+        const c = doc.data();
+        const key = String(c.code || '').toUpperCase();
+        if (key && !coupMap.has(key)) coupMap.set(key, c);
+      });
+      this.coupons = Array.from(coupMap.values());
+      console.log(`Synced ${this.coupons.length} coupons.`);
     }
 
     if (ordersSnap && !ordersSnap.empty) {
-      const ords = [];
-      ordersSnap.forEach(doc => ords.push(doc.data()));
-      ords.sort((a, b) => new Date(b.date) - new Date(a.date));
+      const ordMap = new Map();
+      ordersSnap.forEach(doc => {
+        const o = doc.data();
+        if (!o || !o.id) return;
+        const key = String(o.id);
+        if (!ordMap.has(key)) ordMap.set(key, o);
+      });
+      const ords = Array.from(ordMap.values());
+      ords.sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
       this.orders = ords;
       MathuraQuickMart.state.orders = ords;
       MathuraQuickMart.saveState();
@@ -946,10 +1207,14 @@ const API = {
     }
 
     if (reviewsSnap && !reviewsSnap.empty) {
-      const revs = [];
-      reviewsSnap.forEach(doc => revs.push(doc.data()));
-      this.reviews = revs;
-      console.log(`Synced ${revs.length} reviews.`);
+      const revMap = new Map();
+      reviewsSnap.forEach(doc => {
+        const r = doc.data();
+        const key = String(r.id || (r.productId + '_' + (r.user || '')));
+        if (!revMap.has(key)) revMap.set(key, r);
+      });
+      this.reviews = Array.from(revMap.values());
+      console.log(`Synced ${this.reviews.length} reviews.`);
     }
 
     console.log(`🔄 Data sync complete in ${Math.round(performance.now() - t0)}ms`);
@@ -1178,13 +1443,19 @@ function toggleWishlist(productId) {
 function renderCategories(containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  container.innerHTML = API.categories.map(cat => `
+  container.innerHTML = API.categories.map(cat => {
+    // Count actual products belonging to this category (case-insensitive match)
+    const realCount = API.products.filter(p =>
+      p.category && p.category.toLowerCase() === cat.name.toLowerCase()
+    ).length;
+    return `
     <div class="category-card" onclick="window.location.href='/customer/products.html?category=${encodeURIComponent(cat.name)}'">
       <span class="category-icon">${cat.icon}</span>
       <div class="category-name">${cat.name}</div>
-      <div class="category-count">${cat.count} items</div>
+      <div class="category-count">${realCount} item${realCount !== 1 ? 's' : ''}</div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 // ============ DROPDOWN TOGGLE ============
@@ -1196,7 +1467,198 @@ function toggleDropdown(id) {
   menu.style.display = isVisible ? 'none' : 'block';
 }
 
+// ============ WHATSAPP MESSAGE SERVICE (ZERO API - CLICK-TO-CHAT ONLY) ============
+const WhatsAppService = {
+  // Default message templates
+  DEFAULT_TEMPLATES: {
+    ORDER_PLACED: "🛒 *Mathura QuickMart*\n\nHello {customerName},\n\nYour order #{orderId} has been received successfully.\n\n*Order Total:* ₹{total}\n\nThank you for shopping with Mathura QuickMart!",
+    ORDER_CONFIRMED: "✅ *Mathura QuickMart*\n\nHello {customerName},\n\nYour order #{orderId} has been confirmed.\n\n*Order Total:* ₹{total}\n\nWe are preparing your order now.\n\nThank you!",
+    PROCESSING: "📦 *Mathura QuickMart*\n\nHello {customerName},\n\nYour order #{orderId} is being prepared and packed.\n\n*Order Total:* ₹{total}\n\nThank you for your patience!",
+    READY: "🛍️ *Mathura QuickMart*\n\nHello {customerName},\n\nYour order #{orderId} is ready and waiting for delivery partner pickup.\n\nThank you for choosing Mathura QuickMart!",
+    OUT_FOR_DELIVERY: "🛵 *Mathura QuickMart*\n\nHello {customerName},\n\nYour order #{orderId} is now out for delivery.\n\nOur delivery partner is on the way.\n\nThank you for shopping with us!",
+    DELIVERED: "✅ *Mathura QuickMart*\n\nHello {customerName},\n\nYour order #{orderId} has been delivered successfully.\n\nThank you for shopping with us! 🙏",
+    CANCELLED: "❌ *Mathura QuickMart*\n\nHello {customerName},\n\nYour order #{orderId} has been cancelled.\n\nIf you have any questions, please contact us.",
+    SPECIAL_OFFER: "Hello {customerName} 👋\n\n🔥 *Weekend Special at Mathura QuickMart!*\n\nGet {discount} on orders above ₹{minOrder}.\n\nUse coupon code: *{couponCode}*\n\nValid until: {expiryDate}\n\nShop now and save! 🛒",
+    CUSTOM_MESSAGE: "Hello {customerName} 👋\n\n{customText}\n\nBest regards,\n*Mathura QuickMart*"
+  },
+
+  // Map order status string to template key
+  mapStatusToMessageType(status) {
+    if (!status) return 'ORDER_PLACED';
+    const s = String(status).toLowerCase().replace(/[-_]/g, '');
+    if (s.includes('placed')) return 'ORDER_PLACED';
+    if (s.includes('confirm')) return 'ORDER_CONFIRMED';
+    if (s.includes('process')) return 'PROCESSING';
+    if (s.includes('ready') || s.includes('pack')) return 'READY';
+    if (s.includes('out') || s.includes('delivery')) return 'OUT_FOR_DELIVERY';
+    if (s.includes('deliver')) return 'DELIVERED';
+    if (s.includes('cancel')) return 'CANCELLED';
+    return 'ORDER_CONFIRMED';
+  },
+
+  // Format and validate phone numbers for WhatsApp click-to-chat
+  formatPhone(phone) {
+    if (!phone) return { isValid: false, formattedPhone: '', rawPhone: '', displayPhone: 'No phone' };
+    const raw = String(phone).trim();
+    // Strip all non-digit characters
+    let digits = raw.replace(/\D/g, '');
+    
+    // Auto-handle 10-digit Indian standard mobile numbers
+    if (digits.length === 10) {
+      digits = '91' + digits;
+    } else if (digits.length === 11 && digits.startsWith('0')) {
+      digits = '91' + digits.substring(1);
+    }
+    
+    const isValid = digits.length >= 10 && digits.length <= 15;
+    const displayPhone = isValid
+      ? (digits.startsWith('91') && digits.length === 12 ? `+91 ${digits.slice(2, 7)} ${digits.slice(7)}` : `+${digits}`)
+      : raw;
+
+    return {
+      isValid,
+      formattedPhone: digits,
+      rawPhone: raw,
+      displayPhone
+    };
+  },
+
+  // Fill message template placeholders
+  fillTemplate(template, vars = {}) {
+    if (!template) return '';
+    let res = template;
+    const allVars = {
+      customerName: vars.customerName || vars.customer || 'Valued Customer',
+      orderId: vars.orderId || vars.id || 'N/A',
+      total: vars.total !== undefined ? vars.total : (vars.subtotal || 0),
+      couponCode: vars.couponCode || 'SPECIAL',
+      expiryDate: vars.expiryDate || 'Limited Period',
+      discount: vars.discount ? (typeof vars.discount === 'number' ? `${vars.discount}% OFF` : vars.discount) : 'Special Discount',
+      minOrder: vars.minOrder || 299,
+      deliveryAddress: vars.deliveryAddress || vars.address || 'your address',
+      shopName: 'Mathura QuickMart',
+      customText: vars.customText || '',
+      ...vars
+    };
+
+    Object.keys(allVars).forEach(key => {
+      const regex = new RegExp(`\\{${key}\\}`, 'gi');
+      res = res.replace(regex, allVars[key]);
+    });
+    return res;
+  },
+
+  // Generate official wa.me link
+  getClickToChatUrl(phone, messageText) {
+    const { formattedPhone, isValid } = this.formatPhone(phone);
+    if (!isValid || !formattedPhone) return null;
+    const encoded = encodeURIComponent(messageText || '');
+    return `https://wa.me/${formattedPhone}?text=${encoded}`;
+  },
+
+  // Queue order WhatsApp message in Firestore with deduplication key
+  async queueOrderMessage(order, statusOverride = null) {
+    if (!order || !order.id) return null;
+    const status = statusOverride || order.status || 'placed';
+    const messageType = this.mapStatusToMessageType(status);
+    const messageId = `msg_${order.id}_${messageType}`;
+
+    const phoneData = this.formatPhone(order.customerPhone || order.phone);
+    const customerName = order.customerName || order.customer || 'Valued Customer';
+    
+    // Check custom template in local cache or fallback default
+    const customTemplates = window.WhatsAppCustomTemplates || {};
+    const rawTemplate = customTemplates[messageType] || this.DEFAULT_TEMPLATES[messageType] || this.DEFAULT_TEMPLATES.ORDER_CONFIRMED;
+
+    const messageText = this.fillTemplate(rawTemplate, {
+      customerName,
+      orderId: order.id,
+      total: order.total || order.subtotal || 0,
+      deliveryAddress: order.address || 'your registered address'
+    });
+
+    const msgPayload = {
+      messageId,
+      customerId: order.userId || 'guest',
+      customerName,
+      customerPhone: phoneData.formattedPhone || phoneData.rawPhone || '',
+      rawPhone: phoneData.rawPhone || '',
+      orderId: order.id,
+      campaignId: null,
+      messageType,
+      message: messageText,
+      status: 'pending',
+      isValidPhone: phoneData.isValid,
+      createdAt: new Date().toISOString(),
+      openedAt: null,
+      sentAt: null
+    };
+
+    if (window.FirebaseDB && window.Firestore) {
+      const db = window.FirebaseDB;
+      const fs = window.Firestore;
+      try {
+        const existingDoc = await fs.getDoc(fs.doc(db, 'whatsappMessages', messageId));
+        if (existingDoc.exists()) {
+          console.log(`ℹ️ WhatsApp message ${messageId} exists with status: ${existingDoc.data().status}`);
+          return existingDoc.data();
+        }
+        await fs.setDoc(fs.doc(db, 'whatsappMessages', messageId), msgPayload);
+        console.log(`📱 WhatsApp order message record created: ${messageId}`);
+      } catch (err) {
+        console.warn('Could not save WhatsApp message record:', err);
+      }
+    }
+
+    // ── Automated Serverless Backend Dispatch to Meta WhatsApp Cloud API ──
+    try {
+      fetch('/api/whatsapp/send-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order.id,
+          eventType: messageType,
+          customerName,
+          customerPhone: phoneData.formattedPhone || phoneData.rawPhone,
+          total: order.total || order.subtotal || 0,
+          driverName: order.driverName || order.assignedDriver || null,
+          customerId: order.userId || null
+        })
+      }).then(res => res.json()).then(data => {
+        if (data.success) {
+          console.log(`✅ [Meta WhatsApp Cloud API] Notification delivered for order ${order.id} (WAMID: ${data.whatsappMessageId})`);
+        } else if (data.skipped) {
+          console.log(`ℹ️ [WhatsApp Notification] Skipped: ${data.reason || data.message}`);
+        } else {
+          console.warn(`⚠️ [WhatsApp Notification] API note: ${data.error || 'Check server logs'}`);
+        }
+      }).catch(err => {
+        console.warn('[WhatsApp Notification Dispatch] Backend API unavailable or offline:', err.message);
+      });
+    } catch (e) {
+      console.warn('Background WhatsApp dispatch error:', e);
+    }
+
+    return msgPayload;
+  }
+};
+
+window.WhatsAppService = WhatsAppService;
+
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
   MathuraQuickMart.init();
 });
+
+// PWA Service Worker Registration
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then(registration => {
+        console.log('PWA service worker registered:', registration.scope);
+      })
+      .catch(error => {
+        console.error('PWA service worker registration failed:', error);
+      });
+  });
+}

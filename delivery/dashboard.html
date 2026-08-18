@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Delivery Portal – Mathura Quick Mart</title>
+  <meta name="theme-color" content="#00695c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/images/icon.svg">
   <link rel="stylesheet" href="../styles/main.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
@@ -227,7 +233,12 @@
 
       <div style="font-size:13px;color:var(--gray-700);">
         <div><strong>Customer:</strong> <span id="task-cust-name">—</span></div>
-        <div style="margin-top:4px;"><strong>Contact:</strong> <span id="task-cust-phone">—</span></div>
+        <div style="margin-top:6px;display:flex;align-items:center;justify-content:space-between;">
+          <div><strong>Contact:</strong> <span id="task-cust-phone">—</span></div>
+          <button class="btn btn-sm" id="btn-task-wa" style="background:#25d366;color:#000;font-weight:bold;font-size:11px;padding:3px 10px;border:none;" onclick="openDeliveryWhatsApp(currentSelectedOrder ? currentSelectedOrder.id : null)">
+            💬 WhatsApp
+          </button>
+        </div>
         <div style="margin-top:4px;"><strong>Address:</strong> <span id="task-cust-addr">—</span></div>
       </div>
 
@@ -387,10 +398,44 @@ function loadDeliveryTasks() {
           <div style="margin-top:2px;">🏠 <strong>Address:</strong> ${o.address}</div>
         </div>
         ${locBadge}
-        <button class="btn btn-outline btn-sm w-full mt-4"
-                onclick="openTaskModal('${o.id}')">Start / Update Task</button>
+        <div class="flex gap-2 mt-4">
+          <button class="btn btn-outline btn-sm flex-1"
+                  onclick="openTaskModal('${o.id}')">Start / Update Task</button>
+          <button class="btn btn-sm" style="background:#25d366;color:#000;font-weight:bold;padding:4px 10px;border:none;"
+                  onclick="openDeliveryWhatsApp('${o.id}')" title="Chat on WhatsApp">💬 WA</button>
+        </div>
       </div>`;
   }).join('');
+}
+
+function openDeliveryWhatsApp(orderId) {
+  const o = activeTasks.find(task => task.id === orderId) || currentSelectedOrder;
+  if (!o) {
+    MathuraQuickMart.toast('Order details not found', 'error');
+    return;
+  }
+  const phone = o.phone || o.customerPhone;
+  if (!phone) {
+    MathuraQuickMart.toast('⚠️ WhatsApp phone number unavailable', 'error');
+    return;
+  }
+  const phoneData = (typeof WhatsAppService !== 'undefined') ? WhatsAppService.formatPhone(phone) : { isValid: true, formattedPhone: phone.replace(/\D/g, '') };
+  if (!phoneData.isValid) {
+    MathuraQuickMart.toast('⚠️ Invalid customer phone number', 'error');
+    return;
+  }
+
+  const custName = o.customer || o.customerName || 'Customer';
+  const text = `Hello ${custName} 👋\n\nThis is your *Mathura QuickMart* delivery partner regarding order *#${o.id}*.\n\nI am currently handling your delivery. Please let me know if you have any landmark directions.\n\nThank you!`;
+  
+  const url = (typeof WhatsAppService !== 'undefined')
+    ? WhatsAppService.getClickToChatUrl(phoneData.formattedPhone, text)
+    : `https://wa.me/${phoneData.formattedPhone}?text=${encodeURIComponent(text)}`;
+
+  if (url) {
+    window.open(url, '_blank');
+    MathuraQuickMart.toast('💬 WhatsApp opened for delivery contact!', 'success');
+  }
 }
 
 /* ─────────────────────────────────────────────────
@@ -539,6 +584,17 @@ function submitStatusUpdate() {
       setDoc(doc(window.FirebaseDB, 'orders', currentSelectedOrder.id),
         { status, updatedAt: new Date().toISOString() }, { merge: true }
       ).catch(e => console.warn('Status sync error:', e));
+    }
+
+    // Attach rider info for notification
+    const currentUser = MathuraQuickMart.state.user;
+    if (currentUser) {
+      currentSelectedOrder.driverName = currentUser.name || 'Delivery Partner';
+    }
+
+    // Automatically trigger WhatsApp notification task in Firestore & Meta Cloud API
+    if (typeof WhatsAppService !== 'undefined') {
+      WhatsAppService.queueOrderMessage(currentSelectedOrder, status).catch(e => console.warn('WhatsApp queue err:', e));
     }
 
     if (status === 'delivered' || status === 'cancelled') {

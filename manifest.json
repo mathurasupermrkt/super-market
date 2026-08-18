@@ -1,0 +1,43 @@
+{
+  "id": "/index.html",
+  "name": "Mathura Quick Mart - Online Grocery & Delivery",
+  "short_name": "QuickMart",
+  "description": "Your premium online supermarket. Fresh groceries, daily essentials, and quick delivery.",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#00695c",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop-v.png",
+      "sizes": "1365x645",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshots/mobile-v.png",
+      "sizes": "390x844",
+      "type": "image/png"
+    }
+  ],
+  "categories": [
+    "shopping",
+    "food",
+    "lifestyle"
+  ]
+}

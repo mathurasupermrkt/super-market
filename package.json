@@ -1,0 +1,16 @@
+{
+  "name": "mathura-quickmart",
+  "version": "2.0.0",
+  "description": "Mathura QuickMart Grocery & Delivery Platform with Meta WhatsApp Business Cloud API Integration",
+  "main": "index.html",
+  "type": "module",
+  "scripts": {
+    "start": "serve .",
+    "dev": "vercel dev"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -56,11 +56,17 @@ service cloud.firestore {
       }
     }
 
+    // Helper: Check if store is open (defaults to true if settings/store doesn't exist)
+    function isStoreOpen() {
+      return !exists(/databases/(default)/documents/settings/store) ||
+             get(/databases/(default)/documents/settings/store).data.isOpen != false;
+    }
+
     // Orders:
-    // - Authenticated users can create and read orders
-    // - Admins and Delivery staff can update orders
+    // - Authenticated users can create orders ONLY when store is open (or if Admin)
+    // - Authenticated users can read/update their orders
     match /orders/{orderId} {
-      allow create: if isAuthenticated();
+      allow create: if isAuthenticated() && (isAdmin() || isStoreOpen());
       allow read: if isAuthenticated();
       allow update, delete: if isAuthenticated();
     }
@@ -97,6 +103,17 @@ service cloud.firestore {
     match /settings/{settingId} {
       allow read: if true;
       allow write: if isAdmin();
+    }
+
+    // WhatsApp Message Center & Campaigns: Admin controlled, authenticated users can queue their order messages
+    match /whatsappMessages/{messageId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow create: if isAuthenticated() || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    match /whatsappCampaigns/{campaignId} {
+      allow read, write: if isAdmin();
     }
   }
 }

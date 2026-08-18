@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offer Campaigns &amp; WhatsApp Blasts – Mathura Quick Mart</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <link rel="stylesheet" href="../styles/whatsapp.css">
+  <style>
+    .admin-sidebar { background: #022c22; }
+  </style>
+
+  <script type='module' src='/js/firebase-init.js'></script>
+</head>
+<body class="admin-layout">
+
+<!-- Admin Sidebar -->
+<aside class="admin-sidebar" id="admin-sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">🛒</div>
+    <div>
+      <div class="sidebar-logo-text">Mathura Quick Mart</div>
+      <div class="sidebar-logo-sub">ADMIN WORKSPACE</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="sidebar-section-label">General</div>
+    <a href="dashboard.html" class="sidebar-item">
+      <span class="sidebar-item-icon">📊</span> Dashboard
+    </a>
+    <a href="dashboard.html" class="sidebar-item">
+      <span class="sidebar-item-icon">📦</span> Orders
+    </a>
+    <a href="dashboard.html" class="sidebar-item">
+      <span class="sidebar-item-icon">👥</span> Customers
+    </a>
+    <a href="dashboard.html" class="sidebar-item">
+      <span class="sidebar-item-icon">🍎</span> Products
+    </a>
+    <a href="dashboard.html" class="sidebar-item">
+      <span class="sidebar-item-icon">🗂️</span> Categories
+    </a>
+
+    <div class="sidebar-section-label">Communications</div>
+    <a href="whatsapp.html" class="sidebar-item">
+      <span class="sidebar-item-icon">📱</span> WhatsApp Center
+    </a>
+    <a href="offers.html" class="sidebar-item active" style="background:rgba(37,211,102,0.15);color:#25d366;font-weight:700;">
+      <span class="sidebar-item-icon">🔥</span> Offer Campaigns
+    </a>
+
+    <div class="sidebar-section-label">Management</div>
+    <a href="dashboard.html" class="sidebar-item">
+      <span class="sidebar-item-icon">🛵</span> Delivery Partners
+    </a>
+    <a href="dashboard.html" class="sidebar-item">
+      <span class="sidebar-item-icon">🎟️</span> Coupons
+    </a>
+
+    <div class="divider" style="background:rgba(255,255,255,0.1);margin:20px 0;"></div>
+    <a href="../index.html" class="sidebar-item">
+      <span class="sidebar-item-icon">🏪</span> View Storefront
+    </a>
+    <a onclick="MathuraQuickMart.logout()" class="sidebar-item" style="color:var(--error);">
+      <span class="sidebar-item-icon">🚪</span> Logout
+    </a>
+  </nav>
+</aside>
+
+<!-- Admin Main Container -->
+<div class="admin-main">
+  <!-- Topbar -->
+  <header class="admin-topbar">
+    <button class="btn btn-ghost btn-icon-sm" id="sidebar-toggle" style="display:none;">☰</button>
+    <div style="font-weight:var(--fw-bold);color:var(--gray-800);display:flex;align-items:center;gap:8px;">
+      <span style="font-size:1.3rem;">🔥</span> Promotional Offer Campaigns
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="whatsapp.html" class="btn btn-outline btn-sm" style="border-color:#25d366;color:#15803d;">
+        📱 Open WhatsApp Center
+      </a>
+    </div>
+  </header>
+
+  <!-- Admin Content Panel -->
+  <div class="admin-content">
+    <!-- Meta Official Platform Banner -->
+    <div class="wa-safety-banner" style="background:linear-gradient(135deg, #075e54, #128c7e);">
+      <div class="wa-safety-banner-text">
+        <h4>⚡ Meta WhatsApp Business Cloud API — Automated Offer Broadcaster</h4>
+        <p>Target opted-in customers with personalized coupon codes and discount banners. Messages are broadcast automatically in controlled batches via the official Meta WhatsApp Cloud API.</p>
+      </div>
+      <a href="whatsapp.html" class="btn btn-sm" style="background:#fff;color:#075e54;font-weight:700;">
+        Go to WhatsApp Center ➔
+      </a>
+    </div>
+
+    <div class="grid grid-2 gap-6">
+      <div class="card-flat p-6" style="background:var(--white);border-radius:var(--radius-2xl);border:1px solid var(--gray-200);">
+        <h3 style="margin:0 0 16px 0;">Automated Campaign Broadcast</h3>
+        <div class="form-group mb-4">
+          <label class="form-label">Offer Title *</label>
+          <input type="text" class="form-input" id="camp-title" placeholder="Weekend Super Sale" oninput="WhatsAppAdmin.updateCampaignPreview()">
+        </div>
+        <div class="grid grid-2 gap-4 mb-4">
+          <div class="form-group">
+            <label class="form-label">Coupon Code *</label>
+            <input type="text" class="form-input" id="camp-coupon" placeholder="WEEKEND20" style="text-transform:uppercase;" oninput="WhatsAppAdmin.updateCampaignPreview()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Discount *</label>
+            <input type="text" class="form-input" id="camp-discount" placeholder="20% OFF" oninput="WhatsAppAdmin.updateCampaignPreview()">
+          </div>
+        </div>
+        <div class="grid grid-2 gap-4 mb-4">
+          <div class="form-group">
+            <label class="form-label">Minimum Order (₹)</label>
+            <input type="number" class="form-input" id="camp-min-order" value="500" oninput="WhatsAppAdmin.updateCampaignPreview()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Valid Until</label>
+            <input type="text" class="form-input" id="camp-expiry" value="25 August" oninput="WhatsAppAdmin.updateCampaignPreview()">
+          </div>
+        </div>
+
+        <div class="form-group mb-4">
+          <label class="form-label">Target Customers</label>
+          <select class="form-select" id="camp-target-select" onchange="WhatsAppAdmin.setCampaignTarget(this.value)">
+            <option value="opted_in">All Opted-in Customers (marketingMessagesEnabled == true)</option>
+            <option value="recent_30">Recent Customers (Ordered in last 30 days)</option>
+            <option value="inactive_60">Inactive Customers (No orders in 60+ days)</option>
+            <option value="high_value">High-Value Customers (&gt;₹1000 spent)</option>
+          </select>
+        </div>
+
+        <div class="form-group mb-6">
+          <label class="form-label">Banner Image URL (Optional)</label>
+          <input type="url" class="form-input" id="camp-banner-url" placeholder="https://example.com/banner.jpg" oninput="WhatsAppAdmin.handleBannerUrlInput(this.value)">
+        </div>
+
+        <button class="btn btn-primary btn-lg w-full" onclick="WhatsAppAdmin.openCampaignConfirmationModal()" style="background:linear-gradient(135deg,#075e54,#128c7e);">
+          🚀 Launch Automated Broadcast via Meta API
+        </button>
+      </div>
+
+      <div>
+        <h3 class="mb-4">Live Performance &amp; History</h3>
+        <div id="wa-campaigns-list">
+          <p style="color:var(--gray-500);">Loading campaign records…</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Campaign Confirmation Modal -->
+<div class="modal-overlay hidden" id="wa-confirm-modal">
+  <div class="modal" style="max-width:540px;width:95%;">
+    <div class="modal-header">
+      <h3 style="margin:0;">🚀 Confirm Campaign Broadcast</h3>
+      <button class="btn btn-ghost btn-icon-sm" onclick="WhatsAppAdmin.closeConfirmModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="p-4 mb-4" style="background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;font-size:13px;line-height:1.6;">
+        <div><strong>Campaign:</strong> <span id="confirm-camp-title">—</span></div>
+        <div><strong>Coupon:</strong> <code id="confirm-camp-coupon" style="color:#b45309;font-weight:bold;">—</code> (<span id="confirm-camp-discount">—</span>)</div>
+        <div><strong>Target Audience:</strong> <span id="confirm-camp-target">—</span></div>
+        <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #cbd5e1;font-size:14px;color:#065f46;">
+          <strong>Total Estimated Recipients:</strong> <span id="confirm-camp-recipients" style="font-weight:bold;">0 customers</span>
+        </div>
+      </div>
+
+      <p style="font-size:12px;color:var(--gray-500);margin-bottom:20px;">
+        ⚠️ When you click <strong>Publish Campaign</strong>, the serverless backend will automatically queue and send messages to all eligible opted-in customers via the <strong>Meta WhatsApp Cloud API</strong>.
+      </p>
+
+      <div class="flex justify-end gap-3">
+        <button class="btn btn-ghost" onclick="WhatsAppAdmin.closeConfirmModal()">Cancel</button>
+        <button class="btn btn-primary" id="btn-confirm-publish" onclick="WhatsAppAdmin.executeCampaignPublish()" style="background:linear-gradient(135deg,#075e54,#128c7e);">
+          🚀 Publish Campaign Now
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="../js/app.js"></script>
+<script src="../js/whatsapp.js"></script>
+</body>
+</html>

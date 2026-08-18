@@ -1014,6 +1014,12 @@ async function selectSearchSuggestion(address, lat, lon) {
  * saves customerLocation to Firestore, then navigates to confirmation.
  */
 async function placeOrder() {
+  // ── Verification: Store Status ──
+  if (MathuraQuickMart.storeStatus && MathuraQuickMart.storeStatus.isOpen === false) {
+    MathuraQuickMart.showStoreClosedModal();
+    return;
+  }
+
   // ── Validation: delivery location ──
   // If user filled the address form manually (skipping the map modal),
   // build confirmedLocation from form values so they aren't blocked.
@@ -1102,7 +1108,9 @@ async function placeOrder() {
 
   } catch (err) {
     console.error('placeOrder error:', err);
-    MathuraQuickMart.toast('Failed to place order. Please try again.', 'error');
+    if (!err.message || !err.message.startsWith('STORE_CLOSED:')) {
+      MathuraQuickMart.toast('Failed to place order. Please try again.', 'error');
+    }
     if (btn) { btn.disabled = false; btn.textContent = '🔒 Place Order & Pay'; }
   }
 }

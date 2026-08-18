@@ -112,7 +112,7 @@
       </div>
 
       <!-- Empty State -->
-      <div class="empty-state hidden" id="cart-empty-state">
+      <div class="empty-state hidden" id="cart-empty-state" style="display:none;">
         <div class="empty-icon">🛒</div>
         <div class="empty-title">Your cart is empty</div>
         <div class="empty-desc">Add items from the store to see them here!</div>
@@ -154,7 +154,7 @@
         🚚 Add <strong>₹<span id="free-delivery-diff">0</span></strong> more for FREE delivery!
       </div>
 
-      <button class="btn btn-primary btn-lg w-full mt-6" onclick="proceedToCheckout()">
+      <button class="btn btn-primary btn-lg w-full mt-6" id="btn-cart-checkout" onclick="proceedToCheckout()">
         Proceed to Checkout →
       </button>
     </aside>
@@ -174,15 +174,21 @@
     const emptyState = document.getElementById('cart-empty-state');
     const summaryPanel = document.getElementById('summary-panel');
 
-    if (items.length === 0) {
-      container.innerHTML = '';
-      emptyState.classList.remove('hidden');
-      summaryPanel.style.display = 'none';
+    if (!items || items.length === 0) {
+      if (container) container.innerHTML = '';
+      if (emptyState) {
+        emptyState.style.display = 'flex';
+        emptyState.classList.remove('hidden');
+      }
+      if (summaryPanel) summaryPanel.style.display = 'none';
       return;
     }
 
-    emptyState.classList.add('hidden');
-    summaryPanel.style.display = 'block';
+    if (emptyState) {
+      emptyState.style.display = 'none';
+      emptyState.classList.add('hidden');
+    }
+    if (summaryPanel) summaryPanel.style.display = 'block';
 
     container.innerHTML = items.map(item => `
       <div class="cart-item">
@@ -282,6 +288,11 @@
   }
 
   function proceedToCheckout() {
+    if (MathuraQuickMart.storeStatus && MathuraQuickMart.storeStatus.isOpen === false) {
+      MathuraQuickMart.showStoreClosedModal();
+      return;
+    }
+
     // Save current coupon state so checkout page can use it
     if (appliedCoupon) {
       localStorage.setItem('mathuraquickmart_active_coupon', JSON.stringify({
@@ -299,6 +310,9 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    loadCart();
+  });
+  window.addEventListener('user-data-ready', () => {
     loadCart();
   });
 </script>

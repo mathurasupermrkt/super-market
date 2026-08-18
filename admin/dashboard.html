@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Workspace – Mathura Quick Mart</title>
+  <meta name="theme-color" content="#00695c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/images/icon.svg">
   <link rel="stylesheet" href="../styles/main.css">
   <style>
     /* Custom Admin Sidebar tweaks */
@@ -67,6 +73,14 @@
       <span class="sidebar-item-icon">🗂️</span> Categories
     </a>
 
+    <div class="sidebar-section-label">Communications</div>
+    <a href="whatsapp.html" class="sidebar-item" style="color:#25d366;font-weight:600;">
+      <span class="sidebar-item-icon">📱</span> WhatsApp Center
+    </a>
+    <a href="offers.html" class="sidebar-item">
+      <span class="sidebar-item-icon">🔥</span> Offer Campaigns
+    </a>
+
     <div class="sidebar-section-label">Inventory & POS</div>
     <a class="sidebar-item" onclick="switchTab('inventory')">
       <span class="sidebar-item-icon">📈</span> Inventory
@@ -114,6 +128,17 @@
     <button class="btn btn-ghost btn-icon-sm" id="sidebar-toggle" style="display:none;">☰</button>
     <div style="font-weight:var(--fw-bold);color:var(--gray-800);" id="topbar-title">Analytics Overview</div>
     <div class="flex items-center gap-4">
+      <!-- Store Status Widget -->
+      <div id="admin-store-status-widget" style="display:flex;align-items:center;gap:10px;background:#f8fafc;padding:5px 14px;border-radius:24px;border:1px solid #cbd5e1;">
+        <div id="admin-topbar-store-status" style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#15803d;">
+          <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#16a34a;box-shadow:0 0 6px #16a34a;"></span>
+          <span id="admin-topbar-store-status-text">🟢 Store Open</span>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="openStoreStatusModal()" style="font-size:11px;padding:3px 10px;border-radius:14px;">
+          ⚙️ Change
+        </button>
+      </div>
+
       <!-- Admin profile name -->
       <div style="text-align:right;">
         <div style="font-weight:var(--fw-bold);font-size:var(--text-sm);">Store Manager</div>
@@ -128,6 +153,28 @@
 
     <!-- TAB: Analytics -->
     <div id="tab-analytics" class="admin-tab-panel">
+
+      <!-- Store Status Management Card -->
+      <div class="card-flat p-6 mb-6" id="admin-store-status-card" style="background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-xl);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
+        <div style="max-width:560px;">
+          <div class="flex items-center gap-3 mb-2">
+            <h3 style="margin:0;font-size:17px;color:var(--gray-900);">🏪 Store Order Acceptance Status</h3>
+            <span class="badge badge-green" id="admin-store-status-badge">🟢 Store Open</span>
+          </div>
+          <p style="font-size:13px;color:var(--gray-600);margin:0 0 4px 0;" id="admin-store-status-desc">
+            When ON, customers can browse and place new grocery orders normally. When OFF, new order submissions are paused while existing orders continue processing.
+          </p>
+          <small style="color:var(--gray-400);font-size:11px;" id="admin-store-status-updated">Status live synchronized via Cloud Firestore</small>
+        </div>
+        <div class="flex items-center gap-4">
+          <label class="toggle-switch" style="transform:scale(1.2);">
+            <input type="checkbox" id="admin-store-toggle-input" onchange="handleStoreToggleChange(this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+          <button class="btn btn-outline btn-sm" onclick="openStoreStatusModal()">Edit Message</button>
+        </div>
+      </div>
+
       <!-- Stats Cards -->
       <div class="stats-grid">
         <div class="stat-card">
@@ -507,13 +554,15 @@
         <thead>
           <tr>
             <th>Name</th>
+            <th>Contact &amp; Phone</th>
             <th>Email</th>
-            <th>Orders Placed</th>
-            <th>Status</th>
+            <th>Orders</th>
+            <th>WhatsApp Alerts</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody id="admin-customers-tbody">
-          <tr><td colspan="4">Loading customers...</td></tr>
+          <tr><td colspan="6">Loading customers...</td></tr>
         </tbody>
       </table>
     </div>
@@ -1239,7 +1288,10 @@
     return `
     <tr>
       <td><strong style="font-size:0.8rem;">${o.id}</strong></td>
-      <td>${o.customerName || o.customer || 'Unknown'}</td>
+      <td>
+        <strong>${o.customerName || o.customer || 'Unknown'}</strong>
+        ${o.customerPhone || o.phone ? `<br><small style="color:var(--gray-500);font-size:0.75rem;">📞 ${o.customerPhone || o.phone}</small>` : ''}
+      </td>
       <td>${itemsSummary}</td>
       <td>${o.paymentMethod || 'Online'}</td>
       <td><strong>₹${o.total || o.subtotal || 0}</strong></td>
@@ -1257,8 +1309,9 @@
         ${assignedLabel}
         ${isDeliverable ? `<button class="btn btn-outline btn-sm" style="font-size:0.75rem;margin-top:${assignedLabel?'4px':'0'};" onclick="openAssignOrderModal('${o.id}', '${o.customerName || o.customer || 'Customer'}')">🛵 Assign Driver</button>` : '<span style="color:var(--gray-400);font-size:0.8rem;">—</span>'}
       </td>
-      <td>
-        <button class="btn btn-ghost btn-sm" onclick="MathuraQuickMart.toast('Order invoice generated!', 'success')">📄 Invoice</button>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-sm" style="background:#25d366;color:#000;font-weight:700;font-size:0.72rem;padding:2px 8px;border:none;" onclick="openWhatsAppForOrder('${o.id}')" title="Send WhatsApp Update">💬 WhatsApp</button>
+        <button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="MathuraQuickMart.toast('Order invoice generated!', 'success')">📄</button>
       </td>
     </tr>`;
   }
@@ -1368,7 +1421,65 @@
       fs.setDoc(fs.doc(db, 'orders', id), { status: val, updatedAt: new Date().toISOString() }, { merge: true })
         .catch(e => console.warn('Status sync error:', e));
     }
+
+    // Automatically queue WhatsApp notification task
+    if (typeof WhatsAppService !== 'undefined') {
+      const targetOrder = match || { id, status: val };
+      WhatsAppService.queueOrderMessage(targetOrder, val).catch(e => console.warn('WhatsApp queue error:', e));
+    }
+
     renderAdminOrders();
+  }
+
+  function openWhatsAppForOrder(orderId) {
+    const allOrders = (_adminOrdersCache && _adminOrdersCache.length > 0) ? _adminOrdersCache : (API.orders || []);
+    const order = allOrders.find(o => String(o.id) === String(orderId));
+    if (!order) {
+      MathuraQuickMart.toast('Order details not found', 'error');
+      return;
+    }
+    const phone = order.customerPhone || order.phone;
+    if (!phone) {
+      MathuraQuickMart.toast('⚠️ WhatsApp number unavailable for this order', 'error');
+      return;
+    }
+    const phoneData = WhatsAppService.formatPhone(phone);
+    if (!phoneData.isValid) {
+      MathuraQuickMart.toast('⚠️ Invalid customer phone number', 'error');
+      return;
+    }
+    const statusType = WhatsAppService.mapStatusToMessageType(order.status);
+    const rawTpl = (window.WhatsAppCustomTemplates && window.WhatsAppCustomTemplates[statusType]) || WhatsAppService.DEFAULT_TEMPLATES[statusType] || WhatsAppService.DEFAULT_TEMPLATES.ORDER_CONFIRMED;
+    const text = WhatsAppService.fillTemplate(rawTpl, {
+      customerName: order.customerName || order.customer || 'Customer',
+      orderId: order.id,
+      total: order.total || order.subtotal || 0,
+      deliveryAddress: order.address || ''
+    });
+
+    const url = WhatsAppService.getClickToChatUrl(phoneData.formattedPhone, text);
+    if (url) {
+      window.open(url, '_blank');
+      MathuraQuickMart.toast('💬 WhatsApp opened! Please press Send in WhatsApp.', 'success');
+    }
+  }
+
+  function openWhatsAppForCustomer(phone, name) {
+    if (!phone) {
+      MathuraQuickMart.toast('⚠️ WhatsApp number unavailable', 'error');
+      return;
+    }
+    const phoneData = WhatsAppService.formatPhone(phone);
+    if (!phoneData.isValid) {
+      MathuraQuickMart.toast('⚠️ Invalid phone number format', 'error');
+      return;
+    }
+    const text = `Hello ${name || 'Customer'} 👋\n\nThank you for choosing Mathura QuickMart! Let us know if you need any assistance with your orders.\n\nWarm regards,\n*Mathura QuickMart*`;
+    const url = WhatsAppService.getClickToChatUrl(phoneData.formattedPhone, text);
+    if (url) {
+      window.open(url, '_blank');
+      MathuraQuickMart.toast('💬 WhatsApp opened for direct chat!', 'success');
+    }
   }
 
   async function renderAdminCustomers() {
@@ -1384,28 +1495,39 @@
         
         usersSnap.forEach(doc => {
           const u = doc.data();
-          if (u.role === 'customer') {
+          if (u.role === 'customer' || !u.role) {
             // Count orders for this user using API.orders
-            const userOrdersCount = (API.orders || []).filter(o => o.userId === u.uid).length;
+            const userOrdersCount = (API.orders || []).filter(o => o.userId === doc.id || o.userId === u.uid).length;
+            const hasOptedIn = u.whatsappOptIn === true || u.offerMessagesEnabled === true;
+            const phone = u.phone || 'N/A';
+            const optInBadge = hasOptedIn 
+              ? `<span class="badge badge-green">Opted In</span>` 
+              : `<span class="badge badge-orange" style="opacity:0.8;">Standard</span>`;
             
             html += `
               <tr>
                 <td><strong>${u.name || 'Unknown'}</strong></td>
+                <td>📞 ${phone}</td>
                 <td>${u.email || 'N/A'}</td>
                 <td>${userOrdersCount} orders</td>
-                <td><span class="badge badge-green">Active</span></td>
+                <td>${optInBadge}</td>
+                <td>
+                  <button class="btn btn-sm" style="background:#25d366;color:#000;font-weight:700;font-size:0.75rem;padding:3px 8px;border:none;" onclick="openWhatsAppForCustomer('${u.phone || ''}', '${u.name || 'Customer'}')">
+                    💬 WhatsApp
+                  </button>
+                </td>
               </tr>
             `;
           }
         });
         
-        tbody.innerHTML = html || '<tr><td colspan="4">No customers found</td></tr>';
+        tbody.innerHTML = html || '<tr><td colspan="6">No customers found</td></tr>';
       } catch (e) {
         console.error("Error fetching customers:", e);
-        tbody.innerHTML = '<tr><td colspan="4">Error loading customers</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6">Error loading customers</td></tr>';
       }
     } else {
-      tbody.innerHTML = '<tr><td colspan="4">Firebase not initialized</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6">Firebase not initialized</td></tr>';
     }
   }
 
@@ -1845,7 +1967,207 @@
       renderAdminOrders();
     }
   }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // STORE STATUS MANAGEMENT (OPEN / CLOSED)
+  // ══════════════════════════════════════════════════════════════════════
+  let _adminStoreStatus = {
+    isOpen: true,
+    message: "Store is temporarily closed. We're currently not accepting orders. Please try again later."
+  };
+
+  function initAdminStoreStatusListener() {
+    const doListen = () => {
+      if (!window.FirebaseDB || !window.Firestore) return;
+      const fs = window.Firestore;
+      const db = window.FirebaseDB;
+      try {
+        fs.onSnapshot(fs.doc(db, 'settings', 'store'), (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            _adminStoreStatus = {
+              isOpen: data.isOpen !== false,
+              message: data.message || "Store is temporarily closed. We're currently not accepting orders. Please try again later.",
+              updatedAt: data.updatedAt || null,
+              updatedBy: data.updatedBy || null
+            };
+          } else {
+            _adminStoreStatus = {
+              isOpen: true,
+              message: "Store is temporarily closed. We're currently not accepting orders. Please try again later.",
+              updatedAt: null
+            };
+          }
+          paintAdminStoreStatusUI();
+        });
+      } catch (e) {
+        console.warn('Admin store status listener note:', e);
+      }
+    };
+
+    if (window.FirebaseDB && window.Firestore) {
+      doListen();
+    } else {
+      window.addEventListener('firebase-ready', doListen, { once: true });
+    }
+  }
+
+  function paintAdminStoreStatusUI() {
+    const isOpen = _adminStoreStatus.isOpen;
+    const msg = _adminStoreStatus.message;
+
+    // 1. Topbar Widget
+    const topbarText = document.getElementById('admin-topbar-store-status-text');
+    const topbarBox = document.getElementById('admin-topbar-store-status');
+    if (topbarText && topbarBox) {
+      if (isOpen) {
+        topbarBox.style.color = '#15803d';
+        topbarText.innerHTML = '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#16a34a;box-shadow:0 0 6px #16a34a;"></span> 🟢 Store Open';
+      } else {
+        topbarBox.style.color = '#dc2626';
+        topbarText.innerHTML = '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#dc2626;box-shadow:0 0 6px #dc2626;"></span> 🔴 Store Closed';
+      }
+    }
+
+    // 2. Dashboard Card
+    const badge = document.getElementById('admin-store-status-badge');
+    const toggle = document.getElementById('admin-store-toggle-input');
+    const desc = document.getElementById('admin-store-status-desc');
+    const updated = document.getElementById('admin-store-status-updated');
+
+    if (badge) {
+      badge.className = isOpen ? 'badge badge-green' : 'badge badge-orange';
+      badge.textContent = isOpen ? '🟢 Store Open' : '🔴 Store Temporarily Closed';
+      if (!isOpen) {
+        badge.style.background = '#fee2e2';
+        badge.style.color = '#b91c1c';
+        badge.style.borderColor = '#fca5a5';
+      } else {
+        badge.style.background = '';
+        badge.style.color = '';
+        badge.style.borderColor = '';
+      }
+    }
+
+    if (toggle) {
+      toggle.checked = isOpen;
+    }
+
+    if (desc) {
+      desc.textContent = isOpen
+        ? 'Store is currently OPEN. Customers can browse and place new grocery orders normally.'
+        : `Store is currently CLOSED: "${msg}" (Existing orders continue processing normally)`;
+    }
+
+    if (updated && _adminStoreStatus.updatedAt) {
+      const timeStr = new Date(_adminStoreStatus.updatedAt).toLocaleString('en-IN');
+      updated.textContent = `Last updated: ${timeStr}`;
+    }
+  }
+
+  function handleStoreToggleChange(newOpenState) {
+    if (!newOpenState) {
+      openStoreStatusModal(false);
+    } else {
+      saveStoreStatusToFirestore(true, _adminStoreStatus.message);
+    }
+  }
+
+  function openStoreStatusModal(overrideOpenState = null) {
+    const modal = document.getElementById('admin-store-status-modal');
+    if (!modal) return;
+
+    const isOpen = overrideOpenState !== null ? overrideOpenState : _adminStoreStatus.isOpen;
+    document.getElementById('modal-store-is-open').checked = isOpen;
+    document.getElementById('modal-store-message').value = _adminStoreStatus.message || "Store is temporarily closed. We're currently not accepting orders. Please try again later.";
+    
+    modal.classList.remove('hidden');
+  }
+
+  function closeStoreStatusModal() {
+    const modal = document.getElementById('admin-store-status-modal');
+    if (modal) modal.classList.add('hidden');
+    paintAdminStoreStatusUI();
+  }
+
+  async function saveStoreStatusFromModal() {
+    const isOpen = document.getElementById('modal-store-is-open').checked;
+    const message = document.getElementById('modal-store-message').value.trim() || "Store is temporarily closed. We're currently not accepting orders. Please try again later.";
+    
+    await saveStoreStatusToFirestore(isOpen, message);
+    closeStoreStatusModal();
+  }
+
+  async function saveStoreStatusToFirestore(isOpen, message) {
+    const user = MathuraQuickMart.state.user || {};
+    const payload = {
+      isOpen: Boolean(isOpen),
+      message: message,
+      updatedAt: new Date().toISOString(),
+      updatedBy: user.email || user.uid || 'admin'
+    };
+
+    _adminStoreStatus = { ...payload };
+    paintAdminStoreStatusUI();
+
+    if (window.FirebaseDB && window.Firestore) {
+      try {
+        const fs = window.Firestore;
+        const db = window.FirebaseDB;
+        await fs.setDoc(fs.doc(db, 'settings', 'store'), payload, { merge: true });
+        MathuraQuickMart.toast(isOpen ? '🟢 Store is now OPEN for orders!' : '🔴 Store order acceptance PAUSED.', isOpen ? 'success' : 'warning');
+      } catch (e) {
+        console.error('Error saving store status:', e);
+        MathuraQuickMart.toast('Error updating store status in Firestore', 'error');
+      }
+    } else {
+      MathuraQuickMart.toast('Store status saved locally (offline)', 'info');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    initAdminStoreStatusListener();
+  });
 </script>
+
+<!-- Store Status Modal -->
+<div class="modal-overlay hidden" id="admin-store-status-modal">
+  <div class="modal" style="max-width:520px;width:95%;border-radius:16px;">
+    <div class="modal-header">
+      <h3 style="margin:0;">🏪 Manage Store Status</h3>
+      <button class="btn btn-ghost btn-icon-sm" onclick="closeStoreStatusModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="p-4 mb-4" style="background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <strong style="display:block;font-size:14px;color:var(--gray-900);">Accept New Orders</strong>
+          <span style="font-size:12px;color:var(--gray-500);">Toggle store open/closed for customer checkout</span>
+        </div>
+        <label class="toggle-switch" style="transform:scale(1.15);">
+          <input type="checkbox" id="modal-store-is-open">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="form-group mb-4">
+        <label class="form-label">Customer Notice Message (shown when closed)</label>
+        <textarea class="form-input" id="modal-store-message" rows="3" placeholder="Store is temporarily closed. We're currently not accepting orders. Please try again later."></textarea>
+        <small style="color:var(--gray-500);font-size:11px;">This notice is displayed prominently on the homepage, cart, and checkout.</small>
+      </div>
+
+      <div class="p-3 mb-6" style="background:#fef2f2;border-left:4px solid #ef4444;border-radius:8px;font-size:12px;color:#991b1b;line-height:1.5;">
+        ℹ️ <strong>Active Orders Notice:</strong> Turning the store OFF will only pause <em>new</em> order placements. All existing confirmed orders will continue to be packed and delivered.
+      </div>
+
+      <div class="flex justify-end gap-3">
+        <button class="btn btn-ghost" onclick="closeStoreStatusModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveStoreStatusFromModal()" style="background:#00695c;">
+          💾 Save &amp; Apply Status
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script type="module">
   import { initInventoryModule } from '/js/admin-inventory.js';

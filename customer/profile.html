@@ -249,29 +249,70 @@
     <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
   </div>
 
-  <!-- Notification Preferences -->
-  <div class="profile-section animate-fade-in">
-    <h2 class="profile-section-title">🔔 Notification Preferences</h2>
+  <!-- WhatsApp Notification Preferences -->
+  <div class="profile-section animate-fade-in" style="border-left: 4px solid #25d366;">
+    <h2 class="profile-section-title" style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:1.3rem;">📱</span> WhatsApp Notifications
+      <span class="badge badge-green" style="font-size:11px;margin-left:auto;">Official Click-to-Chat</span>
+    </h2>
+    <p style="font-size:12px;color:var(--gray-500);margin-bottom:16px;">
+      Stay informed with instant updates on your WhatsApp number. You can toggle promotional messages and delivery alerts on or off at any time.
+    </p>
+
+    <div class="profile-row">
+      <div>
+        <div style="font-size:var(--text-sm);font-weight:var(--fw-bold);color:var(--gray-800);">Enable WhatsApp Alerts</div>
+        <div style="font-size:11px;color:var(--gray-400);">Allow Mathura QuickMart to send order and account updates to your phone</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="pref-whatsapp-optin">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
     <div class="profile-row">
       <div>
         <div style="font-size:var(--text-sm);font-weight:var(--fw-medium);color:var(--gray-800);">Order Updates</div>
-        <div style="font-size:11px;color:var(--gray-400);">Notifications for order status changes</div>
+        <div style="font-size:11px;color:var(--gray-400);">Order placed, confirmed, packing &amp; bill receipts</div>
       </div>
       <label class="toggle-switch">
-        <input type="checkbox" checked>
+        <input type="checkbox" id="pref-order-updates" checked>
         <span class="toggle-slider"></span>
       </label>
     </div>
+
     <div class="profile-row">
       <div>
-        <div style="font-size:var(--text-sm);font-weight:var(--fw-medium);color:var(--gray-800);">Promotions & Offers</div>
-        <div style="font-size:11px;color:var(--gray-400);">Deals, coupons, and seasonal offers</div>
+        <div style="font-size:var(--text-sm);font-weight:var(--fw-medium);color:var(--gray-800);">Delivery Updates</div>
+        <div style="font-size:11px;color:var(--gray-400);">Out for delivery alerts &amp; delivery completion notifications</div>
       </div>
       <label class="toggle-switch">
-        <input type="checkbox" checked>
+        <input type="checkbox" id="pref-delivery-updates" checked>
         <span class="toggle-slider"></span>
       </label>
     </div>
+
+    <div class="profile-row">
+      <div>
+        <div style="font-size:var(--text-sm);font-weight:var(--fw-medium);color:var(--gray-800);">Special Offers &amp; Discounts</div>
+        <div style="font-size:11px;color:var(--gray-400);">Promotional coupon codes, seasonal sales &amp; exclusive deals</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="pref-offer-messages">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div style="margin-top:16px;display:flex;align-items:center;justify-content:flex-end;">
+      <button class="btn btn-outline btn-sm" id="btn-save-wa-prefs" onclick="saveWhatsAppPreferences()" style="border-color:#25d366;color:#15803d;">
+        💾 Save WhatsApp Preferences
+      </button>
+    </div>
+  </div>
+
+  <!-- General Notification Preferences -->
+  <div class="profile-section animate-fade-in">
+    <h2 class="profile-section-title">🔔 App &amp; Email Notifications</h2>
     <div class="profile-row">
       <div>
         <div style="font-size:var(--text-sm);font-weight:var(--fw-medium);color:var(--gray-800);">Price Drop Alerts</div>
@@ -359,6 +400,12 @@
           document.getElementById('profile-email').textContent = data.email || user.email;
           document.getElementById('profile-avatar').textContent = (data.name || user.name || 'U').charAt(0).toUpperCase();
 
+          // WhatsApp Preferences
+          document.getElementById('pref-whatsapp-optin').checked = data.whatsappOptIn === true;
+          document.getElementById('pref-order-updates').checked = data.orderUpdatesEnabled !== false; // default true
+          document.getElementById('pref-delivery-updates').checked = data.deliveryUpdatesEnabled !== false; // default true
+          document.getElementById('pref-offer-messages').checked = data.offerMessagesEnabled === true; // default false
+
           // Member since badge
           if (data.createdAt) {
             const joined = new Date(data.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
@@ -433,6 +480,50 @@
       doSave();
     } else {
       window.addEventListener('firebase-ready', doSave, { once: true });
+    }
+  }
+
+  // ── Save WhatsApp Preferences ────────────────────────────────────────────────
+  async function saveWhatsAppPreferences() {
+    const user = MathuraQuickMart.state.user;
+    if (!user) { MathuraQuickMart.toast('Please log in first', 'error'); return; }
+
+    const whatsappOptIn = document.getElementById('pref-whatsapp-optin').checked;
+    const orderUpdatesEnabled = document.getElementById('pref-order-updates').checked;
+    const deliveryUpdatesEnabled = document.getElementById('pref-delivery-updates').checked;
+    const offerMessagesEnabled = document.getElementById('pref-offer-messages').checked;
+
+    const btn = document.getElementById('btn-save-wa-prefs');
+    if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
+
+    const whatsappPhone = document.getElementById('edit-phone').value.trim();
+
+    const prefs = {
+      whatsappOptIn,
+      orderUpdatesEnabled,
+      deliveryUpdatesEnabled,
+      offerMessagesEnabled,
+      marketingMessagesEnabled: offerMessagesEnabled,
+      whatsappPhone,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (!window.FirebaseDB || !window.Firestore) {
+      MathuraQuickMart.toast('Preferences saved locally', 'info');
+      if (btn) { btn.textContent = '💾 Save WhatsApp Preferences'; btn.disabled = false; }
+      return;
+    }
+
+    try {
+      const db = window.FirebaseDB;
+      const fs = window.Firestore;
+      await fs.setDoc(fs.doc(db, 'users', user.uid), prefs, { merge: true });
+      MathuraQuickMart.toast('✅ WhatsApp preferences saved!', 'success');
+    } catch (e) {
+      console.error('Error saving WhatsApp preferences:', e);
+      MathuraQuickMart.toast('Failed to save preferences. Please try again.', 'error');
+    } finally {
+      if (btn) { btn.textContent = '💾 Save WhatsApp Preferences'; btn.disabled = false; }
     }
   }
 

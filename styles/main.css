@@ -829,7 +829,7 @@ ul { list-style: none; }
 
 .w-full     { width: 100%; }
 .h-full     { height: 100%; }
-.hidden     { display: none; }
+.hidden     { display: none !important; }
 .block      { display: block; }
 .inline-block { display: inline-block; }
 .relative   { position: relative; }
