@@ -81,16 +81,57 @@ service cloud.firestore {
              get(/databases/(default)/documents/settings/store).data.isOpen != false;
     }
 
+    // Helper: Validate customerLocation map format
+    function isValidCustomerLocation(loc) {
+      return loc is map &&
+        loc.latitude is number &&
+        loc.longitude is number &&
+        (!('formattedAddress' in loc) || loc.formattedAddress is string || loc.formattedAddress == null);
+    }
+
     // Orders:
-    // - Authenticated users can create orders ONLY when store is open (or if Admin)
-    //   and the order userId MUST match the authenticated user's UID
-    // - Customers can only read their own orders
-    // - Admins and Delivery Partners can read orders
-    // - Customer can only update their own order; Admins and Delivery can update order status
+    // - Authenticated users can create orders ONLY when store is open (or if Admin),
+    //   userId must match authenticated UID, initial status must be 'confirmed' or 'pending',
+    //   and driverId must be null.
+    // - Customers can only read their own orders; Admins & Delivery can read all orders.
+    // - Updates are strictly partitioned by role:
+    //   * Admin: full update
+    //   * Delivery Partner: only delivery assignment and status transitions
+    //   * Customer: only customerLocation or cancellation of unfulfilled orders
+    // - Delete: Admin only
     match /orders/{orderId} {
-      allow create: if isAuthenticated() && (isAdmin() || (isStoreOpen() && request.resource.data.userId == request.auth.uid));
+      allow create: if isAuthenticated() && (
+        isAdmin() || (
+          isStoreOpen() &&
+          request.resource.data.userId == request.auth.uid &&
+          (request.resource.data.status in ['confirmed', 'pending']) &&
+          request.resource.data.driverId == null
+        )
+      );
       allow read: if isAdmin() || isDelivery() || (isAuthenticated() && resource.data.userId == request.auth.uid);
-      allow update: if isAdmin() || isDelivery() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || (
+        isDelivery() && (
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.total == resource.data.total &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'updatedAt', 'driverId', 'driverName', 'deliveryRequestStatus', 'declinedDrivers'
+          ])
+        )
+      ) || (
+        isAuthenticated() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.total == resource.data.total &&
+        (
+          // Case 1: Customer updating delivery GPS location during checkout
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['customerLocation']) &&
+           isValidCustomerLocation(request.resource.data.customerLocation)) ||
+          // Case 2: Customer cancelling an unfulfilled order
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+           request.resource.data.status == 'cancelled' &&
+           (resource.data.status in ['confirmed', 'pending']))
+        )
+      );
       allow delete: if isAdmin();
     }
 

@@ -31,6 +31,46 @@ try {
   console.warn('[PWA SW] FCM background script import skipped or offline:', fcmInitErr);
 }
 
+// Notification Click: Secure same-origin navigation & window focusing
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  // Safely extract and sanitize target URL from notification payload data
+  let targetPath = '/';
+  const rawUrl = event.notification?.data?.url || event.notification?.data?.link;
+  if (typeof rawUrl === 'string' && rawUrl.trim().length > 0) {
+    try {
+      const parsed = new URL(rawUrl, self.location.origin);
+      // Strictly enforce same-origin: only permit routes on this domain
+      if (parsed.origin === self.location.origin) {
+        targetPath = parsed.pathname + parsed.search + parsed.hash;
+      }
+    } catch (e) {
+      targetPath = '/';
+    }
+  }
+
+  const destinationUrl = new URL(targetPath, self.location.origin).href;
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // If a matching window is already open, focus it and navigate
+      for (const client of windowClients) {
+        if (client.url && client.url.startsWith(self.location.origin) && 'focus' in client) {
+          if ('navigate' in client && targetPath !== '/') {
+            client.navigate(destinationUrl);
+          }
+          return client.focus();
+        }
+      }
+      // If no window is open, open a new window
+      if (clients.openWindow) {
+        return clients.openWindow(destinationUrl);
+      }
+    })
+  );
+});
+
 const CACHE_NAME = 'mathura-quickmart-v3';
 const PRECACHE_ASSETS = [
   '/',
