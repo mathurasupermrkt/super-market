@@ -843,7 +843,7 @@ const MathuraQuickMart = {
           this.renderWishlistBadge();
         }
 
-        // 3. Load this user's orders (filtered by userId / customerId / email)
+        // 3. Load this user's orders (filtered strictly by userId / customerId)
         try {
           let ordersSnap = null;
           try {
@@ -852,7 +852,8 @@ const MathuraQuickMart = {
             try {
               ordersSnap = await fs.getDocs(fs.query(fs.collection(db, 'orders'), fs.where('customerId', '==', uid)));
             } catch (e2) {
-              ordersSnap = await fs.getDocs(fs.collection(db, 'orders'));
+              console.warn('Orders query failed:', e2.message);
+              ordersSnap = null;
             }
           }
 
@@ -1327,8 +1328,19 @@ const API = {
       }
     } catch (waErr) { console.warn(waErr); }
 
-    // ── Automatic Stock Decrement (Parallel & Non-Blocking) ──
-    if (window.FirebaseDB && window.Firestore && order.items && order.items.length > 0) {
+    // ── Local In-Memory Stock Decrement ──
+    if (order.items && order.items.length > 0) {
+      (order.items || []).forEach(item => {
+        const prod = this.products.find(p => String(p.id) === String(item.id) || p.name === item.name);
+        if (prod && typeof prod.stock === 'number') {
+          prod.stock = Math.max(0, prod.stock - (item.qty || 1));
+        }
+      });
+    }
+
+    // ── Remote Stock Decrement (Only when authenticated as Admin) ──
+    const authUser = MathuraQuickMart.state?.user;
+    if (authUser && authUser.role === 'admin' && window.FirebaseDB && window.Firestore && order.items && order.items.length > 0) {
       const fs = window.Firestore;
       const db = window.FirebaseDB;
       
@@ -1355,9 +1367,9 @@ const API = {
             }
           }
         } catch (e) {
-          console.error(`Error updating stock for ${item.name}:`, e);
+          console.warn(`Admin stock update notice for ${item.name}:`, e.message);
         }
-      })).catch(err => console.error('Background stock decrement error:', err));
+      })).catch(err => console.warn('Background stock decrement notice:', err.message));
     }
 
     return order;
@@ -1470,10 +1482,21 @@ const API = {
       return;
     }
     const db = window.FirebaseDB;
-    const { collection, getDocs } = window.Firestore;
+    const { collection, getDocs, query, where } = window.Firestore;
 
     console.log("🔄 Starting Firestore sync (parallel)...");
     const t0 = performance.now();
+
+    const currentUser = MathuraQuickMart.state?.user;
+    const isStaff = currentUser && (currentUser.role === 'admin' || currentUser.role === 'delivery');
+
+    // Secure order querying: staff get all orders; authenticated customer gets strictly their own orders; guests get none.
+    let ordersPromise = Promise.resolve(null);
+    if (isStaff) {
+      ordersPromise = getDocs(collection(db, 'orders')).catch(e => { console.warn("orders sync (staff):", e.message); return null; });
+    } else if (currentUser && currentUser.uid) {
+      ordersPromise = getDocs(query(collection(db, 'orders'), where('userId', '==', currentUser.uid))).catch(e => { console.warn("orders sync (user):", e.message); return null; });
+    }
 
     // Fire ALL reads in parallel — single network round-trip
     const [productsSnap, categoriesSnap, couponsSnap, ordersSnap, reviewsSnap, brandsSnap, bannersSnap] =
@@ -1481,7 +1504,7 @@ const API = {
         getDocs(collection(db, 'products')).catch(e => { console.warn("products sync:", e.message); return null; }),
         getDocs(collection(db, 'categories')).catch(e => { console.warn("categories sync:", e.message); return null; }),
         getDocs(collection(db, 'coupons')).catch(e => { console.warn("coupons sync:", e.message); return null; }),
-        getDocs(collection(db, 'orders')).catch(e => { console.warn("orders sync:", e.message); return null; }),
+        ordersPromise,
         getDocs(collection(db, 'reviews')).catch(e => { console.warn("reviews sync:", e.message); return null; }),
         getDocs(collection(db, 'brands')).catch(e => { console.warn("brands sync:", e.message); return null; }),
         getDocs(collection(db, 'banners')).catch(e => { console.warn("banners sync:", e.message); return null; }),
@@ -1534,27 +1557,8 @@ const API = {
       ords.sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0));
       this.orders = ords;
 
-      // Only update state.orders if user is admin/delivery, or if customer filter their own
-      const currentUser = MathuraQuickMart.state?.user;
       if (currentUser && currentUser.uid) {
-        if (currentUser.role === 'admin' || currentUser.role === 'delivery') {
-          MathuraQuickMart.state.orders = ords;
-        } else {
-          // Filter to logged in customer only
-          const uid = String(currentUser.uid);
-          const userEmail = (currentUser.email || '').toLowerCase().trim();
-          const userPhone = (currentUser.phone || '').replace(/[^0-9]/g, '');
-          
-          MathuraQuickMart.state.orders = ords.filter(o => {
-            const oUid = String(o.userId || o.customerId || '');
-            if (oUid && oUid === uid) return true;
-            const oEmail = (o.customerEmail || o.email || '').toLowerCase().trim();
-            if (userEmail && oEmail && oEmail === userEmail) return true;
-            const oPhone = (o.customerPhone || o.phone || '').replace(/[^0-9]/g, '');
-            if (userPhone && oPhone && (userPhone === oPhone || userPhone.endsWith(oPhone) || oPhone.endsWith(userPhone))) return true;
-            return false;
-          });
-        }
+        MathuraQuickMart.state.orders = ords;
         MathuraQuickMart.saveState();
       }
       console.log(`Synced ${ords.length} orders.`);

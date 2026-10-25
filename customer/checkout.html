@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Secure checkout at MathuraQuickMart. Confirm delivery details, select address via map, choose payment method, and complete order.">
   <title>Checkout – Mathura Quick Mart</title>
+  <meta name="theme-color" content="#00695c">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/images/icon.svg">
   <link rel="stylesheet" href="../styles/main.css">
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCrhrfd6_Hxh29dNJFRIbFatHbNrseHYEU&libraries=places" defer></script>
 
@@ -380,39 +383,39 @@
       <section class="checkout-section">
         <h2 class="checkout-section-title"><span>💳</span> Select Payment Method</h2>
 
-        <div class="payment-option selected" onclick="selectPayment('upi')">
-          <input type="radio" name="pay-radio" id="pay-upi" checked>
-          <div class="payment-icon">📱</div>
-          <div>
-            <div style="font-weight:var(--fw-bold);">UPI (GPay / PhonePe / Paytm)</div>
-            <div style="font-size:11px;color:var(--gray-500);">Instant checkout using UPI apps</div>
-          </div>
-        </div>
-
-        <div class="payment-option" onclick="selectPayment('card')">
-          <input type="radio" name="pay-radio" id="pay-card">
-          <div class="payment-icon">💳</div>
-          <div>
-            <div style="font-weight:var(--fw-bold);">Credit / Debit Card</div>
-            <div style="font-size:11px;color:var(--gray-500);">Visa, MasterCard, RuPay, Amex</div>
-          </div>
-        </div>
-
-        <div class="payment-option" onclick="selectPayment('netbanking')">
-          <input type="radio" name="pay-radio" id="pay-netbanking">
-          <div class="payment-icon">🏦</div>
-          <div>
-            <div style="font-weight:var(--fw-bold);">Net Banking</div>
-            <div style="font-size:11px;color:var(--gray-500);">All major Indian banks supported</div>
-          </div>
-        </div>
-
-        <div class="payment-option" onclick="selectPayment('cod')">
-          <input type="radio" name="pay-radio" id="pay-cod">
+        <div class="payment-option selected" onclick="selectPayment('cod')">
+          <input type="radio" name="pay-radio" id="pay-cod" checked>
           <div class="payment-icon">💵</div>
           <div>
-            <div style="font-weight:var(--fw-bold);">Cash on Delivery (COD)</div>
-            <div style="font-size:11px;color:var(--gray-500);">Pay in cash or card when delivered</div>
+            <div style="font-weight:var(--fw-bold);">Cash on Delivery (COD) <span style="font-size:10px;background:#dcfce7;color:#15803d;padding:2px 6px;border-radius:4px;margin-left:6px;">Available</span></div>
+            <div style="font-size:11px;color:var(--gray-500);">Pay cash or UPI upon delivery at your doorstep</div>
+          </div>
+        </div>
+
+        <div class="payment-option" onclick="selectPayment('upi')">
+          <input type="radio" name="pay-radio" id="pay-upi">
+          <div class="payment-icon">📱</div>
+          <div>
+            <div style="font-weight:var(--fw-bold);">UPI QR on Delivery <span style="font-size:10px;background:#dcfce7;color:#15803d;padding:2px 6px;border-radius:4px;margin-left:6px;">Available</span></div>
+            <div style="font-size:11px;color:var(--gray-500);">Scan delivery partner's QR code via GPay, PhonePe, or Paytm at doorstep</div>
+          </div>
+        </div>
+
+        <div class="payment-option" style="opacity:0.6;cursor:not-allowed;" onclick="selectPayment('card')">
+          <input type="radio" name="pay-radio" id="pay-card" disabled>
+          <div class="payment-icon">💳</div>
+          <div>
+            <div style="font-weight:var(--fw-bold);color:var(--gray-600);">Credit / Debit Card <span style="font-size:10px;background:#fef3c7;color:#b45309;padding:2px 6px;border-radius:4px;margin-left:6px;">Coming Soon</span></div>
+            <div style="font-size:11px;color:var(--gray-400);">Online card payment gateway under integration</div>
+          </div>
+        </div>
+
+        <div class="payment-option" style="opacity:0.6;cursor:not-allowed;" onclick="selectPayment('netbanking')">
+          <input type="radio" name="pay-radio" id="pay-netbanking" disabled>
+          <div class="payment-icon">🏦</div>
+          <div>
+            <div style="font-weight:var(--fw-bold);color:var(--gray-600);">Net Banking <span style="font-size:10px;background:#fef3c7;color:#b45309;padding:2px 6px;border-radius:4px;margin-left:6px;">Coming Soon</span></div>
+            <div style="font-size:11px;color:var(--gray-400);">Online bank gateway under integration</div>
           </div>
         </div>
       </section>
@@ -441,7 +444,7 @@
       </p>
 
       <button class="btn btn-primary btn-lg w-full" id="place-order-btn" onclick="placeOrder()">
-        🔒 Place Order &amp; Pay
+        🛍️ Place Order (Cash on Delivery)
       </button>
 
       <button class="btn-whatsapp w-full" id="btn-checkout-whatsapp" onclick="sendCheckoutToWhatsApp()" style="width:100%;min-height:48px;font-size:15px;margin-top:8px;">
@@ -530,7 +533,7 @@ const SHOP_NAME = 'Mathura Quick Mart';
 /* ─────────────────────────────────────────────────
    STATE
 ───────────────────────────────────────────────── */
-let paymentMethod     = 'upi';
+let paymentMethod     = 'cod';
 let activeCoupon      = null;
 let confirmedLocation = null;  // { latitude, longitude, formattedAddress }
 
@@ -931,6 +934,10 @@ function hideError() {
    PAYMENT METHOD SELECTION
 ───────────────────────────────────────────────── */
 function selectPayment(method) {
+  if (method === 'card' || method === 'netbanking') {
+    MathuraQuickMart.toast('Online card & net banking gateway is currently being integrated. Please choose Cash on Delivery or UPI on delivery.', 'info');
+    return;
+  }
   paymentMethod = method;
   document.querySelectorAll('.payment-option').forEach(o => o.classList.remove('selected'));
   document.querySelectorAll('[name="pay-radio"]').forEach(r => r.checked = false);
@@ -938,6 +945,10 @@ function selectPayment(method) {
   if (radio) {
     radio.checked = true;
     radio.closest('.payment-option').classList.add('selected');
+  }
+  const placeBtn = document.getElementById('place-order-btn');
+  if (placeBtn) {
+    placeBtn.textContent = method === 'cod' ? '🛍️ Place Order (Cash on Delivery)' : '🛍️ Place Order (UPI on Delivery)';
   }
 }
 
@@ -1061,9 +1072,20 @@ async function placeOrder() {
     return;
   }
 
+  // ── Verification: User Authentication Required for Order Security ──
+  const user = MathuraQuickMart.state.user;
+  if (!user || !user.uid) {
+    MathuraQuickMart.toast('Please sign in or create an account to place an order', 'warning');
+    setTimeout(() => {
+      window.location.href = '/customer/login.html?redirect=' + encodeURIComponent(window.location.pathname);
+    }, 1200);
+    return;
+  }
+
+  // ── Validation: duplicate tap prevention ──
+  if (window._isPlacingOrder) return;
+
   // ── Validation: delivery location ──
-  // If user filled the address form manually (skipping the map modal),
-  // build confirmedLocation from form values so they aren't blocked.
   if (!confirmedLocation) {
     const flat    = document.getElementById('flat-no')?.value.trim();
     const street  = document.getElementById('street-address')?.value.trim();
@@ -1073,10 +1095,9 @@ async function placeOrder() {
     const search  = document.getElementById('address-search')?.value.trim();
 
     if (flat && street && city && pin) {
-      // Build address from form fields
       const builtAddress = search || [flat, street, city, state, pin].filter(Boolean).join(', ');
       confirmedLocation = {
-        latitude:         SHOP_LAT,  // fallback to shop coords if GPS wasn't used
+        latitude:         SHOP_LAT,
         longitude:        SHOP_LNG,
         formattedAddress: builtAddress,
         isManualEntry:    true
@@ -1107,17 +1128,18 @@ async function placeOrder() {
     return;
   }
 
+  window._isPlacingOrder = true;
   const btn = document.getElementById('place-order-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Placing Order…'; }
 
-  const user = MathuraQuickMart.state.user;
   const city  = document.getElementById('city').value.trim();
   const state = document.getElementById('state').value.trim();
 
   const orderData = {
-    userId:           user ? user.uid : null,
+    userId:           user.uid,
     customerName:     name,
     customerPhone:    phone,
+    customerEmail:    user.email || '',
     address:          `${flat}, ${street}, ${city} - ${pin}`,
     paymentMethod:    paymentMethod.toUpperCase(),
     subtotal:         MathuraQuickMart.getCartTotal(),
@@ -1125,7 +1147,6 @@ async function placeOrder() {
     couponCode:       activeCoupon ? activeCoupon.code   : null,
     discount:         activeCoupon ? activeCoupon.discount : 0,
     items:            cart,
-    // Embed confirmed location directly in order data
     customerLocation: {
       latitude:         confirmedLocation.latitude,
       longitude:        confirmedLocation.longitude,
@@ -1136,7 +1157,6 @@ async function placeOrder() {
 
   try {
     const order = await API.placeOrder(orderData);
-    // Non-blocking location merge in background
     saveCustomerLocation(order.id).catch(e => console.warn(e));
 
     MathuraQuickMart.clearCart();
@@ -1149,10 +1169,14 @@ async function placeOrder() {
 
   } catch (err) {
     console.error('placeOrder error:', err);
+    window._isPlacingOrder = false;
     if (!err.message || !err.message.startsWith('STORE_CLOSED:')) {
       MathuraQuickMart.toast('Failed to place order. Please try again.', 'error');
     }
-    if (btn) { btn.disabled = false; btn.textContent = '🔒 Place Order & Pay'; }
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = paymentMethod === 'cod' ? '🛍️ Place Order (Cash on Delivery)' : '🛍️ Place Order (UPI on Delivery)';
+    }
   }
 }
 

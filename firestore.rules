@@ -22,6 +22,12 @@ service cloud.firestore {
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
     }
 
+    function isDelivery() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'delivery';
+    }
+
     // Products, Categories, Coupons: Anyone can read, only admin can write
     match /products/{productId} {
       allow read: if true;
@@ -53,7 +59,7 @@ service cloud.firestore {
 
     // Users and their sub-collections (cart, wishlist)
     match /users/{userId} {
-      allow read: if isAuthenticated();
+      allow read: if isOwner(userId) || isAdmin() || isDelivery();
       allow write: if isOwner(userId) || isAdmin();
       
       match /cart/{productId} {
@@ -77,11 +83,14 @@ service cloud.firestore {
 
     // Orders:
     // - Authenticated users can create orders ONLY when store is open (or if Admin)
-    // - Authenticated users can read/update their orders
+    //   and the order userId MUST match the authenticated user's UID
+    // - Customers can only read their own orders
+    // - Admins and Delivery Partners can read orders
+    // - Customer can only update their own order; Admins and Delivery can update order status
     match /orders/{orderId} {
-      allow create: if isAuthenticated() && (isAdmin() || isStoreOpen());
-      allow read: if isAuthenticated();
-      allow update: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && (isAdmin() || (isStoreOpen() && request.resource.data.userId == request.auth.uid));
+      allow read: if isAdmin() || isDelivery() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || isDelivery() || (isAuthenticated() && resource.data.userId == request.auth.uid);
       allow delete: if isAdmin();
     }
 

@@ -1355,10 +1355,25 @@
       <button class="btn btn-primary w-full" onclick="submitSupplierForm()">Save Supplier</button>
     </div>
   </div>
-</div>
-
 <script src="../js/app.js"></script>
 <script>
+  // Admin Authentication & Session Guard
+  function checkAdminSession() {
+    const user = MathuraQuickMart.state?.user;
+    if (!user || user.role !== 'admin') {
+      const auth = window.FirebaseAuth;
+      if (!auth || !auth.currentUser) {
+        window.location.href = '/admin/login.html';
+      }
+    }
+  }
+
+  if (window.FirebaseDB) {
+    checkAdminSession();
+  } else {
+    window.addEventListener('firebase-ready', checkAdminSession, { once: true });
+  }
+
   function switchTab(tabName) {
     document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
     document.querySelectorAll('.admin-tab-panel').forEach(p => p.classList.add('hidden'));

@@ -128,29 +128,39 @@ async function _initDeferredModules(app) {
     console.warn("Analytics load skipped:", e.message);
   }
 
-  // 2. FCM & Service Worker — lazy import
+  // 2. FCM & Service Worker Integration (uses unified PWA service worker)
   if ("serviceWorker" in navigator) {
     try {
-      const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
-      console.log("✅ Service Worker Registered");
-
+      const registration = await navigator.serviceWorker.ready;
       const { getMessaging, getToken } = await import("https://www.gstatic.com/firebasejs/10.9.0/firebase-messaging.js");
       const messaging = getMessaging(app);
       window.FirebaseMessaging = messaging;
 
-      const permission = await Notification.requestPermission();
-      if (permission === "granted") {
-        const token = await getToken(messaging, {
-          vapidKey: "BGRe9OaQHPYN7yNIA7Fw_wtCX8BOCGfsEm2HPZfQ--gApStykz0JUDvoF8JWKIN9nzIP0j02-nSy0iF8DMqeEQk",
-          serviceWorkerRegistration: registration
-        });
-        console.log("🔥 FCM Token:", token);
-        window.FCMToken = token;
-      } else {
-        console.log("❌ Notification permission denied.");
+      // User-action-based notification permission helper
+      window.requestNotificationPermission = async () => {
+        try {
+          const permission = await Notification.requestPermission();
+          if (permission === "granted") {
+            const token = await getToken(messaging, {
+              vapidKey: "BGRe9OaQHPYN7yNIA7Fw_wtCX8BOCGfsEm2HPZfQ--gApStykz0JUDvoF8JWKIN9nzIP0j02-nSy0iF8DMqeEQk",
+              serviceWorkerRegistration: registration
+            });
+            console.log("🔥 FCM Token obtained:", token);
+            window.FCMToken = token;
+            return token;
+          }
+        } catch (err) {
+          console.warn("FCM Token request notice:", err.message);
+        }
+        return null;
+      };
+
+      // If notification permission was already granted in a previous session, fetch token
+      if (typeof Notification !== 'undefined' && Notification.permission === "granted") {
+        window.requestNotificationPermission().catch(() => {});
       }
     } catch (fcmError) {
-      console.warn("FCM/SW setup skipped:", fcmError.message);
+      console.warn("FCM setup skipped:", fcmError.message);
     }
   }
 }
