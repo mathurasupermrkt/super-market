@@ -5,8 +5,12 @@ export function initInventoryModule() {
     const db = window.FirebaseDB;
     try {
       const snap = await fs.getDocs(fs.collection(db, 'suppliers'));
-      const suppliers = [];
-      snap.forEach(doc => suppliers.push({ id: doc.id, ...doc.data() }));
+      const supMap = new Map();
+      snap.forEach(doc => {
+        const s = { id: doc.id, ...doc.data() };
+        if (!supMap.has(s.id)) supMap.set(s.id, s);
+      });
+      const suppliers = Array.from(supMap.values());
       
       // Cache suppliers globally so purchase entry can use it
       window._cachedSuppliers = suppliers;

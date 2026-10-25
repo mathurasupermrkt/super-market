@@ -294,6 +294,7 @@
           <div data-auth style="display:none">
             <a class="dropdown-item" href="#" onclick="MathuraQuickMart.goToDashboard(event)">📊 Dashboard</a>
             <a class="dropdown-item" href="/customer/my-orders.html">📦 My Orders</a>
+            <a class="dropdown-item" href="/customer/returns.html">🔄 Returns & Refunds</a>
             <a class="dropdown-item" href="/customer/profile.html">👤 Profile</a>
             <div class="dropdown-divider"></div>
             <div class="dropdown-item" onclick="MathuraQuickMart.logout()">🚪 Logout</div>
@@ -358,17 +359,20 @@
         No description available.
       </p>
 
-      <div class="flex items-center gap-4 mt-4">
+      <div class="flex items-center gap-3 mt-4 flex-wrap">
         <div class="qty-selector">
           <button class="qty-btn" onclick="adjustQty(-1)">-</button>
           <div class="qty-value" id="qty-val">1</div>
           <button class="qty-btn" onclick="adjustQty(1)">+</button>
         </div>
 
-        <button class="btn btn-primary btn-lg" onclick="addToCartDetailed()" style="flex:1;">
+        <button class="btn btn-primary btn-lg" onclick="addToCartDetailed()" style="flex:1;min-width:140px;">
           🛒 Add to Cart
         </button>
-        <button class="btn btn-outline btn-icon-lg" onclick="toggleWishDetailed()" id="wishlist-detail-btn">
+        <button class="btn btn-whatsapp btn-lg" onclick="askProductOnWhatsApp()" style="flex:1;min-width:160px;">
+          💬 Ask on WhatsApp
+        </button>
+        <button class="btn btn-outline btn-icon-lg" onclick="toggleWishDetailed()" id="wishlist-detail-btn" title="Wishlist">
           🤍
         </button>
       </div>
@@ -512,6 +516,12 @@
       btn.textContent = isNow ? '❤️' : '🤍';
       btn.classList.toggle('active', isNow);
     }
+  }
+
+  function askProductOnWhatsApp() {
+    if (!activeProduct) return;
+    const msg = MathuraQuickMart.buildProductWhatsAppMessage(activeProduct);
+    MathuraQuickMart.openWhatsApp(msg);
   }
 
   function addFbtBundle() {

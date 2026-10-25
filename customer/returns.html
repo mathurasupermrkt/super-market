@@ -560,11 +560,11 @@
     const select = document.getElementById('return-order-select');
     const noOrdersMsg = document.getElementById('no-orders-msg');
     
-    // Fetch user's orders (both memory API and localState)
-    const userOrders = MathuraQuickMart.state.orders.length > 0 ? MathuraQuickMart.state.orders : API.orders;
+    // Fetch strictly this user's deduplicated orders
+    const userOrders = MathuraQuickMart.getUserOrders();
     
     // Filter delivered orders (show all delivered orders for demo purposes, but highlight return eligibility status)
-    const deliveredOrders = userOrders.filter(o => o.status === 'delivered' || o.status === 'out-for-delivery');
+    const deliveredOrders = userOrders.filter(o => o.status === 'delivered' || o.status === 'out-for-delivery' || o.status === 'out-delivery');
 
     // Reset dropdown
     select.innerHTML = '<option value="">-- Select Order --</option>';
@@ -578,11 +578,11 @@
 
     deliveredOrders.forEach(order => {
       // Calculate age of order
-      const orderDate = new Date(order.date);
+      const orderDate = new Date(order.date || order.createdAt || Date.now());
       const diffTime = Math.abs(new Date() - orderDate);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       
-      const label = `${order.id} - Placed ${MathuraQuickMart.formatDate(order.date)} (Total: ₹${order.total || order.subtotal})`;
+      const label = `${order.id} - Placed ${MathuraQuickMart.formatDate(order.date || order.createdAt)} (Total: ₹${order.total || order.subtotal || 0})`;
       
       const opt = document.createElement('option');
       opt.value = order.id;
@@ -601,7 +601,7 @@
       return;
     }
 
-    const userOrders = MathuraQuickMart.state.orders.length > 0 ? MathuraQuickMart.state.orders : API.orders;
+    const userOrders = MathuraQuickMart.getUserOrders();
     selectedOrder = userOrders.find(o => o.id === orderId);
 
     if (!selectedOrder) {

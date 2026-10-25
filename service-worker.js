@@ -10,8 +10,7 @@ const PRECACHE_ASSETS = [
   '/js/app.js',
   '/manifest.json',
   '/images/icon-192.png',
-  '/images/icon-512.png',
-  '/images/icon.png'
+  '/images/icon-512.png'
 ];
 
 // Install: Cache essential assets

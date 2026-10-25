@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="description" content="View shopping cart items, update quantities, apply coupon codes, and proceed to checkout.">
   <title>Shopping Cart – Mathura Quick Mart</title>
   <link rel="stylesheet" href="../styles/main.css">
   <style>
+    /* ── Navbar ── */
     .navbar {
       position: sticky;
       top: 0;
@@ -20,68 +21,564 @@
     .navbar-inner {
       max-width: var(--container-max);
       margin: 0 auto;
-      padding: 0 var(--sp-6);
+      padding: 0 var(--sp-4);
       height: 100%;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: var(--sp-2);
     }
-    .navbar-logo { display: flex; align-items: center; gap: var(--sp-2); text-decoration: none; }
-    .logo-icon { width: 38px; height: 38px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
-    .logo-text { font-family: var(--font-display); font-weight: var(--fw-black); font-size: var(--text-xl); background: linear-gradient(135deg, var(--primary-dark), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .navbar-logo { display: flex; align-items: center; gap: var(--sp-2); text-decoration: none; min-width: 0; }
+    .logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0; }
+    .logo-text { font-family: var(--font-display); font-weight: var(--fw-black); font-size: var(--text-lg); background: linear-gradient(135deg, var(--primary-dark), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    .cart-grid {
-      display: grid;
-      grid-template-columns: 1fr 360px;
-      gap: var(--sp-8);
-      margin-top: var(--sp-6);
-    }
-    .cart-items {
-      display: flex;
-      flex-direction: column;
-      gap: var(--sp-4);
-    }
-    .cart-item {
-      display: flex;
+    .nav-back-link {
+      display: inline-flex;
       align-items: center;
-      gap: var(--sp-4);
-      padding: var(--sp-4);
-      background: var(--white);
-      border-radius: var(--radius-xl);
-      border: 1px solid var(--gray-200);
-    }
-    .cart-item-img {
-      width: 80px;
-      height: 80px;
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-      border: 1px solid var(--gray-200);
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--primary-dark);
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: var(--radius-full);
+      background: var(--primary-pale);
+      transition: all 0.2s ease;
+      white-space: nowrap;
       flex-shrink: 0;
     }
-    .cart-item-img img { width: 100%; height: 100%; object-fit: cover; }
-    .cart-item-info { flex: 1; min-width: 0; }
-    .cart-item-name { font-size: var(--text-base); font-weight: var(--fw-semi); color: var(--gray-800); margin-bottom: 2px; }
-    .cart-item-weight { font-size: var(--text-xs); color: var(--gray-400); margin-bottom: 4px; }
-    .cart-item-price { font-size: var(--text-lg); font-weight: var(--fw-bold); color: var(--gray-900); }
+    .nav-back-link:hover {
+      background: var(--primary);
+      color: #fff;
+    }
 
+    /* ── Cart Container & Header ── */
+    .cart-page-container {
+      max-width: var(--container-max);
+      margin: 0 auto;
+      padding: var(--sp-4) var(--sp-4) 110px var(--sp-4);
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .cart-header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--sp-4);
+      flex-wrap: wrap;
+      gap: var(--sp-2);
+    }
+    .cart-page-title {
+      font-size: var(--text-2xl);
+      font-weight: var(--fw-black);
+      color: var(--gray-900);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0;
+    }
+    .cart-count-badge {
+      font-size: 12px;
+      font-weight: 700;
+      background: var(--primary-pale);
+      color: var(--primary-dark);
+      padding: 3px 10px;
+      border-radius: 99px;
+      border: 1px solid rgba(22, 163, 74, 0.2);
+    }
+    .btn-clear-cart {
+      font-size: 12px;
+      color: var(--error);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: var(--radius-md);
+      transition: background 0.2s;
+    }
+    .btn-clear-cart:hover { background: #fef2f2; }
+
+    /* ── Cart Grid Layout ── */
+    .cart-grid {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: var(--sp-6);
+      align-items: start;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .cart-items-wrapper {
+      min-width: 0;
+      width: 100%;
+    }
+
+    .cart-items-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+    }
+
+    /* ── Cart Item Card ── */
+    .cart-item-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      background: var(--white);
+      border-radius: 16px;
+      border: 1px solid var(--gray-200);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .cart-item-card:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    }
+    .cart-item-thumb {
+      width: 72px;
+      height: 72px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--gray-200);
+      background: var(--gray-50);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cart-item-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .cart-item-details {
+      flex: 1;
+      min-width: 0;
+    }
+    .cart-item-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--gray-800);
+      margin: 0 0 2px 0;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cart-item-unit {
+      font-size: 12px;
+      color: var(--gray-500);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    .cart-item-price-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .cart-item-current-price {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+    .cart-item-unit-calc {
+      font-size: 11px;
+      color: var(--gray-400);
+    }
+
+    /* ── Cart Action Controls ── */
+    .cart-item-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+    .cart-qty-pill {
+      display: inline-flex;
+      align-items: center;
+      background: #f0fdf4;
+      border: 1.5px solid var(--primary);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(22, 163, 74, 0.15);
+    }
+    .cart-qty-btn {
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: var(--primary-dark);
+      font-size: 17px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .cart-qty-btn:active,
+    .cart-qty-btn:hover {
+      background: var(--primary);
+      color: #ffffff;
+    }
+    .cart-qty-num {
+      min-width: 24px;
+      text-align: center;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--primary-dark);
+      padding: 0 4px;
+    }
+    .cart-remove-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #ef4444;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      padding: 0;
+      touch-action: manipulation;
+    }
+    .cart-remove-btn:hover,
+    .cart-remove-btn:active {
+      background: #ef4444;
+      color: #ffffff;
+      border-color: #ef4444;
+      transform: scale(1.06);
+    }
+
+    /* ── Order Summary Card ── */
     .summary-card {
       background: var(--white);
-      border-radius: var(--radius-xl);
-      padding: var(--sp-6);
+      border-radius: 20px;
+      padding: 22px 20px;
       border: 1px solid var(--gray-200);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
       height: fit-content;
       position: sticky;
       top: calc(var(--header-height) + 20px);
+      width: 100%;
+      box-sizing: border-box;
     }
-    .summary-title { font-size: var(--text-lg); font-weight: var(--fw-bold); margin-bottom: var(--sp-4); }
-    .summary-row { display: flex; justify-content: space-between; font-size: var(--text-sm); margin-bottom: var(--sp-3); color: var(--gray-600); }
-    .summary-row.total { font-size: var(--text-lg); font-weight: var(--fw-bold); color: var(--gray-900); border-top: 1px solid var(--gray-200); padding-top: var(--sp-4); margin-top: var(--sp-4); }
+    .summary-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin: 0 0 16px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--gray-900);
+      border-bottom: 1.5px solid var(--gray-100);
+      padding-bottom: 12px;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      margin-bottom: 10px;
+      color: var(--gray-600);
+    }
+    .summary-row.total-row {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--gray-900);
+      border-top: 1.5px dashed var(--gray-200);
+      padding-top: 14px;
+      margin-top: 14px;
+      margin-bottom: 16px;
+    }
+    .delivery-free-tag {
+      background: #dcfce7;
+      color: #15803d;
+      font-weight: 700;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.02em;
+    }
 
-    .coupon-box { display: flex; gap: var(--sp-2); margin-top: var(--sp-4); }
+    /* ── Promo Code Box ── */
+    .coupon-section {
+      background: var(--gray-50);
+      border-radius: 12px;
+      padding: 12px;
+      margin: 14px 0;
+      border: 1px solid var(--gray-200);
+    }
+    .coupon-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--gray-700);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .coupon-box {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .coupon-input {
+      flex: 1;
+      height: 42px;
+      border-radius: 10px;
+      border: 1.5px solid var(--gray-300);
+      padding: 0 12px;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      background: #ffffff;
+      outline: none;
+      transition: border-color 0.2s ease;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+    .coupon-input:focus {
+      border-color: var(--primary);
+    }
+    .coupon-apply-btn {
+      height: 42px;
+      padding: 0 16px;
+      border-radius: 10px;
+      background: var(--gray-800);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .coupon-apply-btn:hover {
+      background: var(--primary-dark);
+    }
+    #coupon-msg {
+      font-size: 11.5px;
+      margin-top: 6px;
+      font-weight: 600;
+    }
 
-    /* ---- Responsive ---- */
+    /* ── Proceed to Checkout Button ── */
+    .btn-checkout-cta {
+      width: 100%;
+      min-height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #16a34a, #22c55e);
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 700;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(34, 197, 94, 0.35);
+      transition: all 0.25s ease;
+      margin-top: 14px;
+      margin-bottom: 6px;
+      text-decoration: none;
+      touch-action: manipulation;
+      box-sizing: border-box;
+    }
+    .btn-checkout-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 22px rgba(34, 197, 94, 0.45);
+      background: linear-gradient(135deg, #15803d, #16a34a);
+    }
+    .btn-checkout-cta:active {
+      transform: translateY(0);
+    }
+    .btn-checkout-cta .checkout-arrow {
+      font-size: 18px;
+      transition: transform 0.2s ease;
+    }
+    .btn-checkout-cta:hover .checkout-arrow {
+      transform: translateX(3px);
+    }
+
+    /* ── Empty Cart State ── */
+    .cart-empty-wrapper {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 20px;
+      text-align: center;
+      background: var(--white);
+      border-radius: 24px;
+      border: 1px solid var(--gray-200);
+      max-width: 480px;
+      margin: 20px auto;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    }
+    .empty-cart-icon-bubble {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: #f0fdf4;
+      border: 2px dashed #86efac;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 42px;
+      margin-bottom: 18px;
+    }
+    .empty-cart-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--gray-900);
+      margin: 0 0 8px 0;
+    }
+    .empty-cart-subtitle {
+      font-size: 14px;
+      color: var(--gray-500);
+      max-width: 320px;
+      line-height: 1.45;
+      margin: 0 0 22px 0;
+    }
+    .btn-empty-shop {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 13px 28px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 4px 14px rgba(22, 163, 74, 0.3);
+      transition: all 0.2s ease;
+    }
+    .btn-empty-shop:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(22, 163, 74, 0.4);
+    }
+
+    /* ── Mobile Responsive Adjustments (< 768px) ── */
     @media (max-width: 768px) {
-      .cart-grid { grid-template-columns: 1fr; }
+      .cart-page-container {
+        padding: 12px 12px 110px 12px;
+      }
+      .cart-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      .summary-card {
+        position: static;
+        top: auto;
+        padding: 18px 16px;
+        border-radius: 18px;
+        margin-top: 8px;
+      }
+      .cart-item-card {
+        padding: 12px 12px;
+        gap: 10px;
+        border-radius: 14px;
+      }
+      .cart-item-thumb {
+        width: 64px;
+        height: 64px;
+        border-radius: 10px;
+      }
+      .cart-item-title {
+        font-size: 14px;
+      }
+      .cart-item-current-price {
+        font-size: 15px;
+      }
+      .cart-qty-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 15px;
+      }
+      .cart-qty-num {
+        min-width: 20px;
+        font-size: 13px;
+        padding: 0 2px;
+      }
+      .cart-remove-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 13px;
+      }
+      .btn-checkout-cta {
+        min-height: 52px;
+        font-size: 15.5px;
+      }
+      .cart-empty-wrapper {
+        padding: 36px 16px;
+        margin: 12px auto;
+        border-radius: 20px;
+      }
+      .empty-cart-icon-bubble {
+        width: 76px;
+        height: 76px;
+        font-size: 36px;
+        margin-bottom: 14px;
+      }
+      .empty-cart-title {
+        font-size: 18px;
+      }
+    }
+
+    /* ── Extra Small Screens (<= 375px) ── */
+    @media (max-width: 375px) {
+      .cart-page-container {
+        padding: 10px 10px 115px 10px;
+      }
+      .cart-item-card {
+        padding: 10px 10px;
+        gap: 8px;
+      }
+      .cart-item-thumb {
+        width: 54px;
+        height: 54px;
+      }
+      .cart-item-title {
+        font-size: 13px;
+      }
+      .cart-item-unit {
+        font-size: 11px;
+        margin-bottom: 4px;
+      }
+      .cart-item-current-price {
+        font-size: 14px;
+      }
+      .cart-qty-btn {
+        width: 26px;
+        height: 26px;
+      }
+      .cart-remove-btn {
+        width: 26px;
+        height: 26px;
+      }
+      .coupon-box {
+        flex-direction: row;
+      }
+      .coupon-apply-btn {
+        padding: 0 12px;
+        font-size: 12px;
+      }
     }
   </style>
 
@@ -97,69 +594,93 @@
         <div class="logo-text">Mathura Quick Mart</div>
       </div>
     </a>
-    <a href="/customer/products.html" class="btn btn-ghost">← Continue Shopping</a>
+    <a href="/customer/products.html" class="nav-back-link">
+      <span>←</span>
+      <span>Shop More</span>
+    </a>
   </div>
 </nav>
 
-<div class="container section-sm">
-  <h1 class="section-title">Shopping Cart</h1>
+<main class="cart-page-container">
+  <!-- Page Header Row -->
+  <div class="cart-header-bar" id="cart-header-bar">
+    <h1 class="cart-page-title">
+      <span>Shopping Cart</span>
+      <span class="cart-count-badge" id="cart-header-badge">0 items</span>
+    </h1>
+    <button class="btn-clear-cart" id="btn-clear-cart" onclick="handleClearCart()" style="display:none;" title="Remove all items from cart">
+      🗑️ Clear Cart
+    </button>
+  </div>
 
-  <div class="cart-grid">
-    <!-- Cart Items list -->
-    <div>
-      <div class="cart-items" id="cart-items-container">
+  <!-- Empty Cart State -->
+  <section class="cart-empty-wrapper" id="cart-empty-state" aria-live="polite">
+    <div class="empty-cart-icon-bubble">🛒</div>
+    <h2 class="empty-cart-title">Your cart is empty</h2>
+    <p class="empty-cart-subtitle">Looks like you haven't added anything to your cart yet. Explore fresh groceries and daily essentials!</p>
+    <a href="/customer/products.html" class="btn-empty-shop">
+      <span>🛍️</span>
+      <span>Start Shopping</span>
+    </a>
+  </section>
+
+  <!-- Cart Content Grid (Items + Summary) -->
+  <div class="cart-grid" id="cart-main-grid" style="display:none;">
+    <!-- Left / Top: Cart Items List -->
+    <div class="cart-items-wrapper">
+      <div class="cart-items-list" id="cart-items-container" role="list">
         <!-- Rendered dynamically -->
-      </div>
-
-      <!-- Empty State -->
-      <div class="empty-state hidden" id="cart-empty-state" style="display:none;">
-        <div class="empty-icon">🛒</div>
-        <div class="empty-title">Your cart is empty</div>
-        <div class="empty-desc">Add items from the store to see them here!</div>
-        <a href="/customer/products.html" class="btn btn-primary">Start Shopping</a>
       </div>
     </div>
 
-    <!-- Summary Panel -->
-    <aside class="summary-card" id="summary-panel">
-      <h2 class="summary-title">Order Summary</h2>
+    <!-- Right / Bottom: Order Summary Panel -->
+    <aside class="summary-card" id="summary-panel" aria-label="Order Summary">
+      <h2 class="summary-title">
+        <span>🧾</span>
+        <span>Bill Details</span>
+      </h2>
 
       <div class="summary-row">
-        <span>Subtotal</span>
-        <span id="summary-subtotal">₹0</span>
+        <span>Item Total (Subtotal)</span>
+        <span id="summary-subtotal" style="font-weight:600;color:var(--gray-800);">₹0</span>
       </div>
       <div class="summary-row">
-        <span>Delivery Charges</span>
-        <span id="summary-delivery">FREE</span>
+        <span>Delivery Partner Fee</span>
+        <span class="delivery-free-tag">FREE</span>
       </div>
       <div class="summary-row" id="coupon-row" style="display:none;color:var(--success);">
         <span id="applied-coupon-label">Discount (COUPON)</span>
-        <span id="summary-discount">-₹0</span>
+        <span id="summary-discount" style="font-weight:700;">-₹0</span>
       </div>
-      <div class="summary-row total">
-        <span>Total Amount</span>
-        <span id="summary-total">₹0</span>
-      </div>
-
-      <!-- Coupon Apply -->
-      <div class="divider"></div>
-      <label class="form-label">Apply Promo Code</label>
-      <div class="coupon-box">
-        <input type="text" class="form-input" id="coupon-input" placeholder="e.g. FRESH10" style="text-transform:uppercase;">
-        <button class="btn btn-outline" onclick="applyCouponCode()">Apply</button>
-      </div>
-      <div id="coupon-msg" style="font-size:11px;margin-top:4px;"></div>
-
-      <div style="font-size:11px;color:var(--gray-400);margin-top:12px;text-align:center;display:none;">
-        🚚 Add <strong>₹<span id="free-delivery-diff">0</span></strong> more for FREE delivery!
+      <div class="summary-row total-row">
+        <span>To Pay</span>
+        <span id="summary-total" style="color:var(--primary-dark);">₹0</span>
       </div>
 
-      <button class="btn btn-primary btn-lg w-full mt-6" id="btn-cart-checkout" onclick="proceedToCheckout()">
-        Proceed to Checkout →
+      <!-- Promo Code Apply -->
+      <div class="coupon-section">
+        <label class="coupon-label" for="coupon-input">
+          <span>🎟️</span>
+          <span>Apply Promo Code</span>
+        </label>
+        <div class="coupon-box">
+          <input type="text" class="coupon-input" id="coupon-input" placeholder="e.g. FRESH10" autocomplete="off" style="text-transform:uppercase;">
+          <button class="coupon-apply-btn" id="btn-apply-coupon" onclick="applyCouponCode()">Apply</button>
+        </div>
+        <div id="coupon-msg"></div>
+      </div>
+
+      <button class="btn-checkout-cta" id="btn-cart-checkout" onclick="proceedToCheckout()" aria-label="Proceed to Checkout">
+        <span>Proceed to Checkout</span>
+        <span class="checkout-arrow">→</span>
+      </button>
+
+      <button class="btn-whatsapp" id="btn-cart-whatsapp" onclick="sendCartToWhatsApp()" aria-label="Send Cart to WhatsApp" style="width:100%;min-height:48px;font-size:15px;margin-top:6px;">
+        <span>💬 Send Cart to WhatsApp</span>
       </button>
     </aside>
   </div>
-</div>
+</main>
 
 <div class="toast-container" id="toast-container"></div>
 
@@ -168,55 +689,100 @@
   let appliedCoupon = null;
   let couponDiscount = 0;
 
-  function loadCart() {
+  function sendCartToWhatsApp() {
     const items = MathuraQuickMart.getCart();
+    if (!items || items.length === 0) {
+      MathuraQuickMart.toast('Your cart is empty', 'warning');
+      return;
+    }
+    const subtotal = MathuraQuickMart.getCartTotal();
+    const total = Math.max(0, subtotal - couponDiscount);
+    const summary = {
+      subtotal,
+      deliveryFee: 0,
+      discount: couponDiscount,
+      total
+    };
+    const msg = MathuraQuickMart.buildCartWhatsAppMessage(items, summary);
+    MathuraQuickMart.openWhatsApp(msg);
+  }
+
+  function loadCart() {
+    // Ensure state is loaded
+    if (typeof MathuraQuickMart !== 'undefined' && typeof MathuraQuickMart.loadState === 'function') {
+      MathuraQuickMart.loadState();
+    }
+
+    const items = (typeof MathuraQuickMart !== 'undefined' && typeof MathuraQuickMart.getCart === 'function')
+      ? MathuraQuickMart.getCart()
+      : [];
+
     const container = document.getElementById('cart-items-container');
     const emptyState = document.getElementById('cart-empty-state');
-    const summaryPanel = document.getElementById('summary-panel');
+    const mainGrid = document.getElementById('cart-main-grid');
+    const headerBadge = document.getElementById('cart-header-badge');
+    const clearBtn = document.getElementById('btn-clear-cart');
 
     if (!items || items.length === 0) {
       if (container) container.innerHTML = '';
-      if (emptyState) {
-        emptyState.style.display = 'flex';
-        emptyState.classList.remove('hidden');
-      }
-      if (summaryPanel) summaryPanel.style.display = 'none';
+      if (emptyState) emptyState.style.display = 'flex';
+      if (mainGrid) mainGrid.style.display = 'none';
+      if (headerBadge) headerBadge.textContent = '0 items';
+      if (clearBtn) clearBtn.style.display = 'none';
       return;
     }
 
-    if (emptyState) {
-      emptyState.style.display = 'none';
-      emptyState.classList.add('hidden');
-    }
-    if (summaryPanel) summaryPanel.style.display = 'block';
+    // Cart has items: show items grid & summary, hide empty state completely
+    if (emptyState) emptyState.style.display = 'none';
+    if (mainGrid) mainGrid.style.display = 'grid';
+    if (clearBtn) clearBtn.style.display = 'inline-block';
 
-    container.innerHTML = items.map(item => `
-      <div class="cart-item">
-        <div class="cart-item-img">
-          <img src="${item.image}" alt="${item.name}">
-        </div>
-        <div class="cart-item-info">
-          <h3 class="cart-item-name">${item.name}</h3>
-          <div class="cart-item-weight">${item.weight}</div>
-          <div class="cart-item-price">₹${item.price}</div>
-        </div>
-        <div class="qty-selector" style="margin-left:auto;">
-          <button class="qty-btn" onclick="updateQty(${item.id}, -1)">-</button>
-          <div class="qty-value">${item.qty}</div>
-          <button class="qty-btn" onclick="updateQty(${item.id}, 1)">+</button>
-        </div>
-        <button class="btn btn-ghost btn-icon-sm" onclick="removeItem(${item.id})" style="color:var(--error);" title="Remove Item">✕</button>
-      </div>
-    `).join('');
+    const totalCount = items.reduce((sum, i) => sum + (i.qty || 1), 0);
+    if (headerBadge) {
+      headerBadge.textContent = `${totalCount} ${totalCount === 1 ? 'item' : 'items'}`;
+    }
+
+    if (container) {
+      container.innerHTML = items.map(item => {
+        const itemImg = item.image || '/images/placeholder.png';
+        const itemWeight = item.weight || item.unit || '1 unit';
+        const itemPrice = Math.round(item.price || 0);
+        const itemTotal = itemPrice * (item.qty || 1);
+
+        return `
+          <article class="cart-item-card" role="listitem">
+            <div class="cart-item-thumb">
+              <img src="${itemImg}" alt="${item.name}" loading="lazy" onerror="this.src='/images/placeholder.png'">
+            </div>
+            <div class="cart-item-details">
+              <h3 class="cart-item-title" title="${item.name}">${item.name}</h3>
+              <div class="cart-item-unit">${itemWeight}</div>
+              <div class="cart-item-price-row">
+                <span class="cart-item-current-price">₹${itemTotal}</span>
+                ${item.qty > 1 ? `<span class="cart-item-unit-calc">(₹${itemPrice} × ${item.qty})</span>` : ''}
+              </div>
+            </div>
+            <div class="cart-item-actions">
+              <div class="cart-qty-pill" aria-label="Quantity selector">
+                <button class="cart-qty-btn" onclick="updateQty('${item.id}', -1)" aria-label="Decrease quantity">−</button>
+                <div class="cart-qty-num" aria-live="polite">${item.qty}</div>
+                <button class="cart-qty-btn" onclick="updateQty('${item.id}', 1)" aria-label="Increase quantity">+</button>
+              </div>
+              <button class="cart-remove-btn" onclick="removeItem('${item.id}')" title="Remove item" aria-label="Remove ${item.name} from cart">✕</button>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
 
     calculateTotals();
   }
 
   function updateQty(id, change) {
     const cart = MathuraQuickMart.getCart();
-    const item = cart.find(i => i.id === id);
+    const item = cart.find(i => String(i.id) === String(id));
     if (item) {
-      MathuraQuickMart.updateCartQty(id, item.qty + change);
+      MathuraQuickMart.updateCartQty(item.id, item.qty + change);
       loadCart();
     }
   }
@@ -226,42 +792,57 @@
     loadCart();
   }
 
+  function handleClearCart() {
+    if (confirm('Are you sure you want to clear your cart?')) {
+      MathuraQuickMart.clearCart();
+      loadCart();
+    }
+  }
+
   function calculateTotals() {
     const subtotal = MathuraQuickMart.getCartTotal();
     const delivery = 0;
 
     // Recalculate coupon if applied
+    const couponRow = document.getElementById('coupon-row');
+    const appliedLabel = document.getElementById('applied-coupon-label');
+    const discountEl = document.getElementById('summary-discount');
+    const couponMsg = document.getElementById('coupon-msg');
+
     if (appliedCoupon) {
-      const res = API.validateCoupon(appliedCoupon.code, subtotal);
-      if (res.valid) {
-        couponDiscount = res.discount;
-        document.getElementById('coupon-row').style.display = 'flex';
-        document.getElementById('applied-coupon-label').textContent = `Discount (${appliedCoupon.code})`;
-        document.getElementById('summary-discount').textContent = `-₹${Math.round(couponDiscount)}`;
-      } else {
-        appliedCoupon = null;
-        couponDiscount = 0;
-        document.getElementById('coupon-row').style.display = 'none';
-        document.getElementById('coupon-msg').textContent = res.message;
-        document.getElementById('coupon-msg').style.color = 'var(--error)';
+      if (typeof API !== 'undefined' && typeof API.validateCoupon === 'function') {
+        const res = API.validateCoupon(appliedCoupon.code, subtotal);
+        if (res.valid) {
+          couponDiscount = res.discount;
+          if (couponRow) couponRow.style.display = 'flex';
+          if (appliedLabel) appliedLabel.textContent = `Discount (${appliedCoupon.code})`;
+          if (discountEl) discountEl.textContent = `-₹${Math.round(couponDiscount)}`;
+        } else {
+          appliedCoupon = null;
+          couponDiscount = 0;
+          if (couponRow) couponRow.style.display = 'none';
+          if (couponMsg) {
+            couponMsg.textContent = res.message;
+            couponMsg.style.color = 'var(--error)';
+          }
+        }
       }
+    } else {
+      if (couponRow) couponRow.style.display = 'none';
     }
 
-    const total = subtotal + delivery - couponDiscount;
+    const total = Math.max(0, subtotal + delivery - couponDiscount);
 
-    document.getElementById('summary-subtotal').textContent = `₹${subtotal}`;
-    document.getElementById('summary-delivery').textContent = delivery === 0 ? 'FREE' : `₹${delivery}`;
-    document.getElementById('summary-total').textContent = `₹${Math.round(total)}`;
+    const subtotalEl = document.getElementById('summary-subtotal');
+    const totalEl = document.getElementById('summary-total');
 
-    // Free delivery diff removed as delivery is always free
-    const diffEl = document.getElementById('free-delivery-diff');
-    if (diffEl && diffEl.parentElement) {
-      diffEl.parentElement.style.display = 'none';
-    }
+    if (subtotalEl) subtotalEl.textContent = `₹${subtotal}`;
+    if (totalEl) totalEl.textContent = `₹${Math.round(total)}`;
   }
 
   function applyCouponCode() {
-    const code = document.getElementById('coupon-input').value;
+    const input = document.getElementById('coupon-input');
+    const code = input ? input.value.trim() : '';
     const subtotal = MathuraQuickMart.getCartTotal();
     const msgEl = document.getElementById('coupon-msg');
 
@@ -270,20 +851,43 @@
       return;
     }
 
-    const res = API.validateCoupon(code, subtotal);
-    if (res.valid) {
-      appliedCoupon = res.coupon;
-      couponDiscount = res.discount;
-      msgEl.textContent = `Applied! ${res.message}`;
-      msgEl.style.color = 'var(--success)';
-      calculateTotals();
-      MathuraQuickMart.toast('🎟️ Coupon applied successfully!', 'success');
+    if (typeof API !== 'undefined' && typeof API.validateCoupon === 'function') {
+      const res = API.validateCoupon(code, subtotal);
+      if (res.valid) {
+        appliedCoupon = res.coupon;
+        couponDiscount = res.discount;
+        if (msgEl) {
+          msgEl.textContent = `✓ Applied! ${res.message}`;
+          msgEl.style.color = 'var(--success)';
+        }
+        calculateTotals();
+        MathuraQuickMart.toast('🎟️ Coupon applied successfully!', 'success');
+      } else {
+        appliedCoupon = null;
+        couponDiscount = 0;
+        if (msgEl) {
+          msgEl.textContent = `✕ ${res.message}`;
+          msgEl.style.color = 'var(--error)';
+        }
+        calculateTotals();
+      }
     } else {
-      appliedCoupon = null;
-      couponDiscount = 0;
-      msgEl.textContent = res.message;
-      msgEl.style.color = 'var(--error)';
-      calculateTotals();
+      // Fallback simple coupon calculation
+      if (code.toUpperCase() === 'FRESH10') {
+        appliedCoupon = { code: 'FRESH10' };
+        couponDiscount = Math.round(subtotal * 0.1);
+        if (msgEl) {
+          msgEl.textContent = '✓ Applied! 10% discount added';
+          msgEl.style.color = 'var(--success)';
+        }
+        calculateTotals();
+        MathuraQuickMart.toast('🎟️ Coupon applied!', 'success');
+      } else {
+        if (msgEl) {
+          msgEl.textContent = '✕ Invalid coupon code';
+          msgEl.style.color = 'var(--error)';
+        }
+      }
     }
   }
 
@@ -309,11 +913,19 @@
     }
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  // Event Listeners
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadCart);
+  } else {
     loadCart();
-  });
-  window.addEventListener('user-data-ready', () => {
-    loadCart();
+  }
+
+  window.addEventListener('user-data-ready', loadCart);
+  window.addEventListener('db-ready', loadCart);
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'mathuraquickmart_state') {
+      loadCart();
+    }
   });
 </script>
 

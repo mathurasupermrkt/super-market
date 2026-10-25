@@ -102,6 +102,12 @@
     <a class="sidebar-item" onclick="switchTab('coupons')">
       <span class="sidebar-item-icon">🎟️</span> Coupons
     </a>
+    <a class="sidebar-item" onclick="switchTab('brands')">
+      <span class="sidebar-item-icon">🏷️</span> Top Brands
+    </a>
+    <a class="sidebar-item" onclick="switchTab('banners')">
+      <span class="sidebar-item-icon">🎨</span> Promotional Banners
+    </a>
 
     <div class="sidebar-section-label">System</div>
     <a class="sidebar-item" onclick="switchTab('reports')">
@@ -302,6 +308,30 @@
       </div>
     </div>
 
+    <!-- TAB: Customers -->
+    <div id="tab-customers" class="admin-tab-panel hidden">
+      <div class="crud-header">
+        <h2>Customer Directory & WhatsApp Support</h2>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Customer Name</th>
+              <th>Phone Number</th>
+              <th>Email</th>
+              <th>Total Orders</th>
+              <th>Total Spent</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="admin-customers-tbody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- TAB: Products -->
     <div id="tab-products" class="admin-tab-panel hidden">
       <div class="crud-header">
@@ -344,6 +374,107 @@
           <!-- Populated dynamically -->
         </tbody>
       </table>
+    </div>
+
+    <!-- TAB: Brands -->
+    <div id="tab-brands" class="admin-tab-panel hidden">
+      <div class="crud-header">
+        <h2>Top Brands</h2>
+        <button class="btn btn-primary" onclick="openBrandModal()">➕ Add Brand</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Logo</th>
+            <th>Brand Name</th>
+            <th>Description</th>
+            <th>Order</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="admin-brands-tbody">
+          <!-- Populated dynamically -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB: Promotional Banners -->
+    <div id="tab-banners" class="admin-tab-panel hidden">
+      <div class="crud-header flex justify-between items-center flex-wrap gap-4 mb-6">
+        <div>
+          <h2 style="margin:0 0 4px 0;">🎨 Promotional Banner Carousel</h2>
+          <p style="margin:0;font-size:13px;color:var(--gray-500);">
+            Manage the dynamic homepage hero carousel, schedule discounts, upload images, and set custom destination links.
+          </p>
+        </div>
+        <div class="flex items-center gap-3">
+          <button class="btn btn-outline" onclick="openCarouselLivePreviewModal()">
+            👁️ Preview Live Carousel
+          </button>
+          <button class="btn btn-primary" onclick="openBannerModal()" style="background:#00695c;">
+            ➕ Add Banner
+          </button>
+        </div>
+      </div>
+
+      <!-- Banner Status Metrics Bar -->
+      <div class="grid grid-4 gap-4 mb-6" id="admin-banner-stats-bar">
+        <div class="card-flat p-4" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;">
+          <span style="font-size:12px;color:#166534;font-weight:600;">Active Live Banners</span>
+          <h3 style="font-size:22px;color:#15803d;margin:4px 0 0;" id="banner-stat-active">0</h3>
+        </div>
+        <div class="card-flat p-4" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;">
+          <span style="font-size:12px;color:#1e40af;font-weight:600;">Total Banners</span>
+          <h3 style="font-size:22px;color:#1d4ed8;margin:4px 0 0;" id="banner-stat-total">0</h3>
+        </div>
+        <div class="card-flat p-4" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;">
+          <span style="font-size:12px;color:#9a3412;font-weight:600;">Scheduled Future</span>
+          <h3 style="font-size:22px;color:#c2410c;margin:4px 0 0;" id="banner-stat-scheduled">0</h3>
+        </div>
+        <div class="card-flat p-4" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;">
+          <span style="font-size:12px;color:#4b5563;font-weight:600;">Disabled / Expired</span>
+          <h3 style="font-size:22px;color:#374151;margin:4px 0 0;" id="banner-stat-inactive">0</h3>
+        </div>
+      </div>
+
+      <!-- Search & Filters -->
+      <div class="flex justify-between items-center gap-4 mb-4 flex-wrap">
+        <div class="flex items-center gap-3 flex-1" style="max-width:520px;">
+          <input type="text" id="admin-banner-search" class="form-input" placeholder="Search banner title, badge, coupon code..." oninput="renderAdminBanners()">
+          <select id="admin-banner-filter-status" class="form-select" style="width:160px;" onchange="renderAdminBanners()">
+            <option value="all">All Statuses</option>
+            <option value="active">Active Only</option>
+            <option value="inactive">Inactive Only</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="expired">Expired</option>
+          </select>
+        </div>
+        <div style="font-size:12px;color:var(--gray-500);">
+          💡 Use <strong>▲ Up</strong> / <strong>▼ Down</strong> arrows in the table to reorder banners instantly.
+        </div>
+      </div>
+
+      <!-- Table of Banners -->
+      <div style="overflow-x:auto;background:var(--white);border-radius:var(--radius-xl);border:1px solid var(--gray-200);box-shadow:var(--shadow-sm);">
+        <table class="data-table" style="margin:0;width:100%;">
+          <thead>
+            <tr>
+              <th style="width:75px;text-align:center;">Order</th>
+              <th style="width:120px;">Banner Image</th>
+              <th>Title & Description</th>
+              <th>Promotional Offer</th>
+              <th>Destination Link</th>
+              <th>Schedule Window</th>
+              <th style="text-align:center;">Status</th>
+              <th style="text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="admin-banners-tbody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <!-- TAB: Inventory -->
@@ -687,23 +818,50 @@
 
     <!-- TAB: Settings -->
     <div id="tab-settings" class="admin-tab-panel hidden">
-      <h2>Store Settings</h2>
-      <div class="card-flat p-6 mt-6" style="max-width:600px;">
+      <h2>Store Settings & WhatsApp Configuration</h2>
+
+      <!-- WhatsApp Click-to-Chat Settings -->
+      <div class="card-flat p-6 mt-6 mb-6" style="max-width:640px;background:var(--white);border-radius:var(--radius-xl);border:1px solid var(--gray-200);">
+        <div class="flex justify-between items-center mb-4">
+          <div class="flex items-center gap-3">
+            <span style="font-size:1.6rem;">💬</span>
+            <div>
+              <h3 style="margin:0;font-size:16px;">WhatsApp Store Number</h3>
+              <p style="font-size:12px;color:var(--gray-500);margin:2px 0 0 0;">Used across customer click-to-chat links, order sending, and customer service.</p>
+            </div>
+          </div>
+          <span id="whatsapp-config-status" class="badge badge-green" style="font-size:11px;padding:3px 10px;">🟢 Configured</span>
+        </div>
+
+        <div class="form-group mb-4">
+          <label class="form-label">WhatsApp Number (with country code, e.g. 919876543210)</label>
+          <input type="tel" class="form-input" id="setting-whatsapp-num" placeholder="919876543210" oninput="updateWhatsAppConfigBadge()">
+          <small style="color:var(--gray-400);font-size:11px;margin-top:4px;display:block;">Standard format: Country code (91 for India) followed by 10-digit mobile number.</small>
+        </div>
+
+        <div class="flex gap-3">
+          <button class="btn btn-primary btn-sm" onclick="saveWhatsAppStoreConfig()">💾 Save WhatsApp Number</button>
+          <button class="btn btn-whatsapp btn-sm" onclick="testWhatsAppClickToChat()">📱 Test Chat Link</button>
+        </div>
+      </div>
+
+      <!-- General Store Config -->
+      <div class="card-flat p-6" style="max-width:640px;background:var(--white);border-radius:var(--radius-xl);border:1px solid var(--gray-200);">
+        <h3 style="font-size:16px;margin-bottom:14px;">🏪 General Store Configuration</h3>
         <div class="form-group mb-4">
           <label class="form-label">Store Outlet Location</label>
-          <input type="text" class="form-input" value="123 Market Street, Green Park, New Delhi">
+          <input type="text" class="form-input" id="setting-store-location" value="Madakottan, Ramanathapuram, Tamil Nadu - 623504">
         </div>
         <div class="form-group mb-4">
           <label class="form-label">Base Delivery Charge (Orders below ₹499)</label>
-          <input type="number" class="form-input" value="40">
+          <input type="number" class="form-input" id="setting-delivery-fee" value="40">
         </div>
         <div class="form-group mb-4">
           <label class="form-label">Store Sales Tax / GST (%)</label>
-          <input type="number" class="form-input" value="5">
+          <input type="number" class="form-input" id="setting-tax-rate" value="5">
         </div>
-        <button class="btn btn-primary" onclick="MathuraQuickMart.toast('Settings saved successfully!', 'success')">Save Store Config</button>
+        <button class="btn btn-outline btn-sm" onclick="saveGeneralStoreConfig()">Save Store Config</button>
       </div>
-
     </div>
 
   </div>
@@ -722,11 +880,20 @@
         <label class="form-label">Product Name</label>
         <input type="text" class="form-input" id="prod-name" placeholder="e.g. Fresh Mangoes">
       </div>
-      <div class="form-group mb-4">
-        <label class="form-label">Category</label>
-        <select class="form-select" id="prod-category">
-          <!-- Dynamic -->
-        </select>
+      <div class="grid grid-2 mb-4" style="gap:var(--sp-4);">
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select class="form-select" id="prod-category">
+            <!-- Dynamic -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Brand <span style="color:var(--gray-400);font-weight:400;">(optional)</span></label>
+          <select class="form-select" id="prod-brand">
+            <option value="">— No Brand —</option>
+            <!-- Dynamic -->
+          </select>
+        </div>
       </div>
       <div class="grid grid-2 mb-4" style="gap:var(--sp-4);">
         <div class="form-group">
@@ -753,6 +920,239 @@
         <input type="text" class="form-input" id="prod-image" value="https://images.unsplash.com/photo-1542838132-92c53300491e?w=400">
       </div>
       <button class="btn btn-primary w-full" onclick="saveProduct()">Save Product Information</button>
+    </div>
+  </div>
+</div>
+
+<!-- Brand Modal -->
+<div class="modal-overlay hidden" id="brand-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 style="margin:0;" id="brand-modal-title">Add New Brand</h3>
+      <button class="btn btn-ghost btn-icon-sm" onclick="closeBrandModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-brand-id">
+      <div class="form-group mb-4">
+        <label class="form-label">Brand Name <span style="color:var(--error)">*</span></label>
+        <input type="text" class="form-input" id="brand-name" placeholder="e.g. Amul">
+      </div>
+      <div class="grid grid-2 mb-4" style="gap:var(--sp-4);">
+        <div class="form-group">
+          <label class="form-label">Logo / Emoji</label>
+          <input type="text" class="form-input" id="brand-logo" placeholder="🥛 or image URL" maxlength="200">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Display Order</label>
+          <input type="number" class="form-input" id="brand-order" value="1" min="1">
+        </div>
+      </div>
+      <div class="form-group mb-4">
+        <label class="form-label">Description <span style="color:var(--gray-400);font-weight:400;">(optional)</span></label>
+        <input type="text" class="form-input" id="brand-desc" placeholder="Short brand description">
+      </div>
+      <div class="form-group mb-6" style="display:flex;align-items:center;gap:12px;">
+        <input type="checkbox" id="brand-active" checked style="width:18px;height:18px;accent-color:var(--primary);">
+        <label for="brand-active" class="form-label" style="margin:0;cursor:pointer;">Active (visible on storefront)</label>
+      </div>
+      <button class="btn btn-primary w-full" onclick="saveBrandAdmin()">Save Brand</button>
+    </div>
+  </div>
+</div>
+
+<!-- Promotional Banner Modal (Create / Edit) -->
+<div class="modal-overlay hidden" id="banner-modal">
+  <div class="modal" style="max-width:780px;width:95%;max-height:92vh;display:flex;flex-direction:column;border-radius:18px;">
+    <div class="modal-header" style="border-bottom:1px solid var(--gray-200);padding:16px 20px;">
+      <div>
+        <h3 style="margin:0;font-size:1.2rem;" id="banner-modal-title">Add Promotional Banner</h3>
+        <p style="margin:2px 0 0;font-size:12px;color:var(--gray-500);">Configure banner content, images, schedule, and storefront destination.</p>
+      </div>
+      <button class="btn btn-ghost btn-icon-sm" onclick="closeBannerModal()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px;overflow-y:auto;flex:1;">
+      <input type="hidden" id="edit-banner-id">
+
+      <!-- Title & Badge -->
+      <div class="grid grid-2 mb-4" style="gap:var(--sp-4);">
+        <div class="form-group">
+          <label class="form-label">Banner Title <span style="color:var(--error)">*</span></label>
+          <input type="text" class="form-input" id="banner-title" placeholder="e.g. Farm-Fresh Organic Harvest" oninput="updateModalBannerPreview()" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Promotional Badge <span style="font-weight:400;color:var(--gray-400);">(optional)</span></label>
+          <input type="text" class="form-input" id="banner-badge" placeholder="e.g. 🌿 Farm Fresh, ⚡ Flash Deal" oninput="updateModalBannerPreview()">
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="form-group mb-4">
+        <label class="form-label">Banner Description</label>
+        <textarea class="form-input" id="banner-desc" rows="2" placeholder="Short description highlighting the promotion or products..." oninput="updateModalBannerPreview()"></textarea>
+      </div>
+
+      <!-- Discount Text & Coupon Code -->
+      <div class="grid grid-2 mb-4" style="gap:var(--sp-4);">
+        <div class="form-group">
+          <label class="form-label">Discount Highlight Text <span style="font-weight:400;color:var(--gray-400);">(optional)</span></label>
+          <input type="text" class="form-input" id="banner-discount" placeholder="e.g. Flat 25% OFF, Buy 1 Get 1" oninput="updateModalBannerPreview()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Coupon Code <span style="font-weight:400;color:var(--gray-400);">(optional)</span></label>
+          <input type="text" class="form-input" id="banner-coupon" placeholder="e.g. FRESH25" style="text-transform:uppercase;" oninput="updateModalBannerPreview()">
+        </div>
+      </div>
+
+      <!-- Button Text & Destination URL -->
+      <div class="grid grid-2 mb-3" style="gap:var(--sp-4);">
+        <div class="form-group">
+          <label class="form-label">Action Button Text</label>
+          <input type="text" class="form-input" id="banner-button-text" placeholder="Shop Now" value="Shop Now" oninput="updateModalBannerPreview()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Destination URL <span style="color:var(--error)">*</span></label>
+          <input type="text" class="form-input" id="banner-button-url" placeholder="/customer/products.html" value="/customer/products.html">
+        </div>
+      </div>
+
+      <!-- URL Presets -->
+      <div class="mb-4" style="background:#f8fafc;padding:8px 12px;border-radius:10px;border:1px solid #e2e8f0;">
+        <span style="font-size:11px;color:var(--gray-500);font-weight:600;display:block;margin-bottom:4px;">Quick Target Link Presets:</span>
+        <div class="flex gap-2 flex-wrap" style="font-size:11px;">
+          <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px;background:#e2e8f0;" onclick="setBannerUrlPreset('/customer/products.html')">🛒 All Products</button>
+          <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px;background:#e2e8f0;" onclick="setBannerUrlPreset('/customer/products.html?category=Fruits+%26+Vegetables')">🥦 Fruits & Veg</button>
+          <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px;background:#e2e8f0;" onclick="setBannerUrlPreset('/customer/products.html?category=Dairy+%26+Eggs')">🥛 Dairy & Eggs</button>
+          <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px;background:#e2e8f0;" onclick="setBannerUrlPreset('/customer/products.html?category=Cooking+Essentials')">🧄 Cooking Essentials</button>
+          <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px;background:#e2e8f0;" onclick="setBannerUrlPreset('/customer/products.html?category=Snacks+%26+Beverages')">🧃 Snacks</button>
+          <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px;background:#e2e8f0;" onclick="setBannerUrlPreset('/customer/products.html?filter=deals')">🔥 Deals Page</button>
+        </div>
+      </div>
+
+      <!-- Desktop Image Section -->
+      <div class="p-4 mb-4" style="background:#f8fafc;border-radius:12px;border:1px solid #cbd5e1;">
+        <label class="form-label" style="font-weight:700;">🖥️ Desktop Banner Image (Recommended: 1400×600 or 1200×500) <span style="color:var(--error)">*</span></label>
+        <div class="grid grid-2 gap-4 items-center">
+          <div>
+            <label class="form-label" style="font-size:11px;color:var(--gray-500);">Upload Image (Auto upload to Firebase Storage, max 5MB):</label>
+            <input type="file" id="banner-desktop-file" class="form-input" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" onchange="handleBannerImageUpload(this, 'desktop')" style="padding:6px;">
+            <div style="font-size:11px;color:var(--gray-400);margin-top:4px;">Supports JPG, PNG, WebP, SVG.</div>
+          </div>
+          <div>
+            <label class="form-label" style="font-size:11px;color:var(--gray-500);">Or paste Direct Image URL:</label>
+            <input type="url" id="banner-desktop-url" class="form-input" placeholder="https://images.unsplash.com/..." oninput="handleBannerUrlInput('desktop')">
+          </div>
+        </div>
+        <div class="flex items-center gap-3 mt-3">
+          <div style="width:120px;height:55px;border-radius:8px;overflow:hidden;background:#e2e8f0;border:1px solid #cbd5e1;display:flex;align-items:center;justify-content:center;">
+            <img id="banner-desktop-preview" src="" alt="Desktop Preview" style="width:100%;height:100%;object-fit:cover;display:none;">
+            <span id="banner-desktop-placeholder" style="font-size:11px;color:#94a3b8;">No Image</span>
+          </div>
+          <span style="font-size:11px;color:var(--gray-500);" id="banner-desktop-status">Select a file or paste a URL above.</span>
+        </div>
+      </div>
+
+      <!-- Mobile Image Section -->
+      <div class="p-4 mb-4" style="background:#f8fafc;border-radius:12px;border:1px solid #cbd5e1;">
+        <label class="form-label" style="font-weight:700;">📱 Mobile Banner Image <span style="font-weight:400;color:var(--gray-500);">(Optional — falls back to desktop image if omitted)</span></label>
+        <div class="grid grid-2 gap-4 items-center">
+          <div>
+            <input type="file" id="banner-mobile-file" class="form-input" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" onchange="handleBannerImageUpload(this, 'mobile')" style="padding:6px;">
+          </div>
+          <div>
+            <input type="url" id="banner-mobile-url" class="form-input" placeholder="https://images.unsplash.com/..." oninput="handleBannerUrlInput('mobile')">
+          </div>
+        </div>
+        <div class="flex items-center gap-3 mt-3">
+          <div style="width:65px;height:55px;border-radius:8px;overflow:hidden;background:#e2e8f0;border:1px solid #cbd5e1;display:flex;align-items:center;justify-content:center;">
+            <img id="banner-mobile-preview" src="" alt="Mobile Preview" style="width:100%;height:100%;object-fit:cover;display:none;">
+            <span id="banner-mobile-placeholder" style="font-size:11px;color:#94a3b8;">Optional</span>
+          </div>
+          <span style="font-size:11px;color:var(--gray-500);" id="banner-mobile-status">Mobile-optimized crop (e.g. 800×600).</span>
+        </div>
+      </div>
+
+      <!-- Display Order, Start Date, End Date -->
+      <div class="grid grid-3 mb-4" style="gap:var(--sp-4);">
+        <div class="form-group">
+          <label class="form-label">Display Order (#)</label>
+          <input type="number" class="form-input" id="banner-order" value="1" min="1" step="1">
+          <small style="font-size:10px;color:var(--gray-400);">Lower numbers appear first</small>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Start Schedule <span style="font-weight:400;color:var(--gray-400);">(optional)</span></label>
+          <input type="datetime-local" class="form-input" id="banner-start-date">
+          <small style="font-size:10px;color:var(--gray-400);">Leave blank for immediate</small>
+        </div>
+        <div class="form-group">
+          <label class="form-label">End Schedule <span style="font-weight:400;color:var(--gray-400);">(optional)</span></label>
+          <input type="datetime-local" class="form-input" id="banner-end-date">
+          <small style="font-size:10px;color:var(--gray-400);">Leave blank for ongoing</small>
+        </div>
+      </div>
+
+      <!-- Published / Active Checkbox -->
+      <div class="form-group mb-5" style="display:flex;align-items:center;gap:12px;background:#f0fdf4;padding:12px;border-radius:10px;border:1px solid #bbf7d0;">
+        <input type="checkbox" id="banner-active" checked style="width:20px;height:20px;accent-color:var(--primary);cursor:pointer;">
+        <div>
+          <label for="banner-active" class="form-label" style="margin:0;cursor:pointer;font-weight:700;color:#166534;">Publish &amp; Activate on Homepage Carousel</label>
+          <small style="display:block;color:#15803d;font-size:11px;">When unchecked, banner is saved as draft and hidden from customers.</small>
+        </div>
+      </div>
+
+      <!-- Live Slide Preview -->
+      <div class="mb-4">
+        <label class="form-label" style="font-weight:700;display:flex;justify-content:space-between;align-items:center;">
+          <span>👁️ Live Banner Card Preview</span>
+          <span style="font-size:11px;font-weight:400;color:var(--gray-500);">Simulated customer storefront view</span>
+        </label>
+        <div id="modal-banner-preview-box" style="position:relative;border-radius:14px;overflow:hidden;background:#062c22;min-height:190px;display:flex;align-items:center;padding:24px;border:1px solid #14532d;box-shadow:var(--shadow-md);">
+          <img id="modal-preview-bg" src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=800" alt="Preview Background" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.35;">
+          <div style="position:absolute;inset:0;background:linear-gradient(90deg, rgba(2,44,34,0.92) 0%, rgba(6,78,59,0.85) 60%, rgba(0,0,0,0.4) 100%);"></div>
+          <div style="position:relative;z-index:2;color:#fff;max-width:520px;">
+            <div id="modal-preview-badge-row" style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+              <span id="modal-preview-badge" style="background:rgba(34,197,94,0.22);color:#86efac;border:1px solid rgba(134,239,172,0.4);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">🌿 Farm Fresh</span>
+              <span id="modal-preview-discount" style="background:#ea580c;color:#fff;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:800;">Flat 25% OFF</span>
+            </div>
+            <h3 id="modal-preview-title" style="margin:0 0 6px 0;font-size:1.35rem;color:#ffffff;font-family:var(--font-display);">Farm-Fresh Organic Harvest</h3>
+            <p id="modal-preview-desc" style="margin:0 0 12px 0;font-size:12px;color:rgba(255,255,255,0.85);line-height:1.4;">Handpicked fruits and vegetables delivered in 60 minutes.</p>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+              <span id="modal-preview-btn" style="background:#22c55e;color:#fff;padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;">Shop Now →</span>
+              <span id="modal-preview-coupon" style="background:rgba(255,255,255,0.15);border:1px dashed rgba(255,255,255,0.4);color:#fed7aa;padding:4px 10px;border-radius:20px;font-size:10px;font-weight:700;">🏷️ Code: FRESH25</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-3" style="border-top:1px solid var(--gray-200);">
+        <button type="button" class="btn btn-ghost" onclick="closeBannerModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-save-banner" onclick="saveBannerAdmin()" style="background:#00695c;">
+          💾 Save &amp; Publish Banner
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Promotional Carousel Live Preview Modal -->
+<div class="modal-overlay hidden" id="banner-preview-modal">
+  <div class="modal" style="max-width:960px;width:95%;padding:0;overflow:hidden;border-radius:20px;background:#022c22;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#064e3b;color:#fff;border-bottom:1px solid rgba(255,255,255,0.15);">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:1.2rem;">🎨</span>
+        <strong style="font-size:15px;">Live Storefront Carousel Preview</strong>
+        <span style="font-size:11px;background:rgba(34,197,94,0.25);color:#86efac;padding:2px 8px;border-radius:12px;">Auto-advancing (5s)</span>
+      </div>
+      <button class="btn btn-ghost btn-icon-sm" onclick="closeCarouselLivePreviewModal()" style="color:#fff;">✕</button>
+    </div>
+    <div id="admin-preview-carousel-wrap" style="position:relative;width:100%;min-height:420px;overflow:hidden;">
+      <div id="admin-preview-track" style="display:flex;width:100%;height:100%;transition:transform 0.5s ease;">
+        <!-- Injected dynamically -->
+      </div>
+      <button class="carousel-arrow carousel-arrow-prev" onclick="adminPreviewPrevSlide()" style="left:16px;">‹</button>
+      <button class="carousel-arrow carousel-arrow-next" onclick="adminPreviewNextSlide()" style="right:16px;">›</button>
+      <div id="admin-preview-indicators" class="carousel-indicators">
+        <!-- Dots -->
+      </div>
     </div>
   </div>
 </div>
@@ -972,15 +1372,176 @@
 
     if (tabName === 'products') renderAdminProducts();
     if (tabName === 'categories') renderAdminCategories();
+    if (tabName === 'brands') renderAdminBrands();
+    if (tabName === 'customers') renderAdminCustomers();
     if (tabName === 'inventory') renderAdminInventory();
     if (tabName === 'orders') renderAdminOrders();
     if (tabName === 'coupons') renderAdminCoupons();
+    if (tabName === 'banners') renderAdminBanners();
     if (tabName === 'analytics') loadDashboardStats();
     if (tabName === 'delivery') renderAdminDelivery();
+    if (tabName === 'settings') loadWhatsAppSettings();
     if (tabName === 'purchase-entry' && window.renderAdminPurchaseEntry) window.renderAdminPurchaseEntry();
     if (tabName === 'purchase-bills' && window.renderAdminPurchaseBills) window.renderAdminPurchaseBills();
     if (tabName === 'suppliers' && window.renderAdminSuppliers) window.renderAdminSuppliers();
     if (tabName === 'reports' && window.renderAdminReports) window.renderAdminReports();
+  }
+
+  async function renderAdminCustomers() {
+    const tbody = document.getElementById('admin-customers-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;">Loading customer directory...</td></tr>';
+
+    let customers = [];
+    if (window.FirebaseDB && window.Firestore) {
+      const fs = window.Firestore;
+      const db = window.FirebaseDB;
+      try {
+        const snap = await fs.getDocs(fs.collection(db, 'users'));
+        snap.forEach(docSnap => {
+          const d = docSnap.data();
+          if (d.role !== 'admin' && d.role !== 'delivery') {
+            customers.push({
+              id: docSnap.id,
+              name: d.name || d.displayName || 'Customer',
+              phone: d.phone || d.phoneNumber || '',
+              email: d.email || 'N/A'
+            });
+          }
+        });
+      } catch(e) { console.warn('Customers fetch note:', e); }
+    }
+
+    // Merge with orders customer data if any exist
+    const orders = API.orders || [];
+    orders.forEach(o => {
+      const p = o.customerPhone || o.phone;
+      if (p) {
+        if (!customers.some(c => c.phone === p)) {
+          customers.push({
+            id: o.userId || 'guest_' + p,
+            name: o.customerName || o.customer || 'Customer',
+            phone: p,
+            email: o.email || 'N/A'
+          });
+        }
+      }
+    });
+
+    if (customers.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--gray-500);">No customer records found.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = customers.map(c => {
+      const custOrders = orders.filter(o => (o.customerPhone === c.phone || o.phone === c.phone || o.userId === c.id));
+      const totalSpent = custOrders.reduce((sum, o) => sum + (o.total || o.subtotal || 0), 0);
+      const safePhone = c.phone || '919876543210';
+      const safeName = (c.name || 'Customer').replace(/'/g, "\\'");
+
+      return `
+        <tr>
+          <td><strong>${c.name}</strong></td>
+          <td>📞 ${c.phone || 'N/A'}</td>
+          <td>${c.email}</td>
+          <td><strong>${custOrders.length}</strong> order(s)</td>
+          <td style="color:var(--primary-dark);font-weight:bold;">₹${Math.round(totalSpent)}</td>
+          <td>
+            <button class="btn btn-whatsapp btn-sm" onclick="openCustomerWhatsApp('${safePhone}', '${safeName}')" title="Chat on WhatsApp">
+              💬 WhatsApp
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function openCustomerWhatsApp(phone, name) {
+    const custName = name || 'Customer';
+    const msg = `Hello ${custName} 👋\n\nThis is Mathura Quick Mart.\n\nHow can we help you today?`;
+    MathuraQuickMart.openWhatsApp(msg, phone);
+  }
+
+  // ============ ADMIN WHATSAPP CLICK-TO-CHAT INTEGRATION ============
+  function loadWhatsAppSettings() {
+    const num = (typeof MathuraQuickMart !== 'undefined') ? MathuraQuickMart.getWhatsAppNumber() : '919876543210';
+    const input = document.getElementById('setting-whatsapp-num');
+    if (input) input.value = num;
+    updateWhatsAppConfigBadge();
+  }
+
+  function updateWhatsAppConfigBadge() {
+    const input = document.getElementById('setting-whatsapp-num');
+    const badge = document.getElementById('whatsapp-config-status');
+    if (!input || !badge) return;
+    const val = input.value.trim().replace(/\D/g, '');
+    if (val && val.length >= 10) {
+      badge.className = 'badge badge-green';
+      badge.textContent = '🟢 Configured';
+    } else {
+      badge.className = 'badge badge-red';
+      badge.textContent = '🔴 Not Configured';
+    }
+  }
+
+  async function saveWhatsAppStoreConfig() {
+    const input = document.getElementById('setting-whatsapp-num');
+    if (!input) return;
+    const raw = input.value.trim();
+    const cleaned = MathuraQuickMart.cleanPhoneNumber(raw);
+    if (!cleaned || cleaned.length < 10) {
+      MathuraQuickMart.toast('Please enter a valid mobile number with country code (e.g. 919876543210)', 'error');
+      return;
+    }
+
+    MathuraQuickMart.setWhatsAppNumber(cleaned);
+    input.value = cleaned;
+    updateWhatsAppConfigBadge();
+
+    // Persist to Firestore settings/store
+    if (window.FirebaseDB && window.Firestore) {
+      const db = window.FirebaseDB;
+      const { doc, setDoc } = window.Firestore;
+      try {
+        await setDoc(doc(db, 'settings', 'store'), {
+          whatsappNumber: cleaned,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+        console.log('✅ WhatsApp store number saved to Firestore settings/store');
+      } catch (e) {
+        console.warn('Could not save WhatsApp config to Firestore:', e);
+      }
+    }
+
+    MathuraQuickMart.toast('✅ WhatsApp store number saved successfully!', 'success');
+  }
+
+  function testWhatsAppClickToChat() {
+    const input = document.getElementById('setting-whatsapp-num');
+    const num = input ? input.value.trim() : MathuraQuickMart.getWhatsAppNumber();
+    const testMsg = "Hello Mathura Quick Mart 👋\n\nThis is a test message to verify WhatsApp Click-to-Chat configuration.";
+    MathuraQuickMart.openWhatsApp(testMsg, num);
+  }
+
+  function saveGeneralStoreConfig() {
+    MathuraQuickMart.toast('✅ Store configuration saved successfully!', 'success');
+  }
+
+  function openWhatsAppForOrder(orderId) {
+    const list = (_adminOrdersCache && _adminOrdersCache.length > 0) ? _adminOrdersCache : (API.orders || []);
+    const order = list.find(o => String(o.id) === String(orderId));
+    if (!order) {
+      MathuraQuickMart.toast('Order not found', 'error');
+      return;
+    }
+    const customerPhone = order.customerPhone || order.phone;
+    if (!customerPhone) {
+      MathuraQuickMart.toast('⚠️ Customer phone number not available for WhatsApp', 'warning');
+      return;
+    }
+    const msg = MathuraQuickMart.buildAdminCustomerWhatsAppMessage(order);
+    MathuraQuickMart.openWhatsApp(msg, customerPhone);
+    MathuraQuickMart.toast('💬 WhatsApp chat opened with customer!', 'success');
   }
 
   async function loadDashboardStats() {
@@ -1042,7 +1603,14 @@
   }
 
   function renderAdminProducts() {
-    const list = API.products;
+    // Deduplicate products by id
+    const prodMap = new Map();
+    (API.products || []).forEach(p => {
+      if (!p || p.id == null) return;
+      const key = String(p.id);
+      if (!prodMap.has(key)) prodMap.set(key, p);
+    });
+    const list = Array.from(prodMap.values());
     document.getElementById('admin-products-tbody').innerHTML = list.map(p => `
       <tr>
         <td><img class="img-preview" src="${p.image}"></td>
@@ -1059,7 +1627,15 @@
   }
 
   function renderAdminCategories() {
-    document.getElementById('admin-categories-tbody').innerHTML = API.categories.map(c => `
+    // Deduplicate categories by name
+    const catMap = new Map();
+    (API.categories || []).forEach(c => {
+      if (!c || !c.name) return;
+      const key = c.name.toLowerCase().trim();
+      if (!catMap.has(key)) catMap.set(key, c);
+    });
+    const list = Array.from(catMap.values());
+    document.getElementById('admin-categories-tbody').innerHTML = list.map(c => `
       <tr>
         <td style="font-size:1.5rem">${c.icon}</td>
         <td><strong>${c.name}</strong></td>
@@ -1357,8 +1933,11 @@
     if (_adminOrdersUnsubscribe) return; // already running
     if (!window.FirebaseDB || !window.Firestore) {
       // Fall back to local orders if Firebase is not present
-      const local = API.orders || (MathuraQuickMart.state && MathuraQuickMart.state.orders) || [];
-      _paintOrdersTable(local);
+      const ordMap = new Map();
+      (API.orders || (MathuraQuickMart.state && MathuraQuickMart.state.orders) || []).forEach(o => {
+        if (o && o.id) ordMap.set(String(o.id), o);
+      });
+      _paintOrdersTable(Array.from(ordMap.values()));
       return;
     }
 
@@ -1369,23 +1948,35 @@
       _adminOrdersUnsubscribe = fs.onSnapshot(
         fs.collection(db, 'orders'),
         (snapshot) => {
-          const orders = [];
-          snapshot.forEach(doc => orders.push({ id: doc.id, ...doc.data() }));
+          const ordMap = new Map();
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            const orderId = String(data.id || doc.id).trim();
+            if (!ordMap.has(orderId)) {
+              ordMap.set(orderId, { id: orderId, ...data });
+            }
+          });
+          const orders = Array.from(ordMap.values());
           _adminOrdersCache = orders;
           if (typeof API !== 'undefined') API.orders = orders;
-          if (MathuraQuickMart.state) MathuraQuickMart.state.orders = orders;
           _paintOrdersTable(orders);
         },
         (err) => {
           console.warn('Orders snapshot error (falling back to local):', err);
-          const local = API.orders || (MathuraQuickMart.state && MathuraQuickMart.state.orders) || [];
-          _paintOrdersTable(local);
+          const ordMap = new Map();
+          (API.orders || (MathuraQuickMart.state && MathuraQuickMart.state.orders) || []).forEach(o => {
+            if (o && o.id) ordMap.set(String(o.id), o);
+          });
+          _paintOrdersTable(Array.from(ordMap.values()));
         }
       );
     } catch (e) {
       console.warn('Could not start orders listener (falling back to local):', e);
-      const local = API.orders || (MathuraQuickMart.state && MathuraQuickMart.state.orders) || [];
-      _paintOrdersTable(local);
+      const ordMap = new Map();
+      (API.orders || (MathuraQuickMart.state && MathuraQuickMart.state.orders) || []).forEach(o => {
+        if (o && o.id) ordMap.set(String(o.id), o);
+      });
+      _paintOrdersTable(Array.from(ordMap.values()));
     }
   }
 
@@ -1491,37 +2082,47 @@
         const fs = window.Firestore;
         const db = window.FirebaseDB;
         const usersSnap = await fs.getDocs(fs.collection(db, 'users'));
-        let html = '';
+        const userMap = new Map();
         
         usersSnap.forEach(doc => {
-          const u = doc.data();
+          const u = { id: doc.id, ...doc.data() };
           if (u.role === 'customer' || !u.role) {
-            // Count orders for this user using API.orders
-            const userOrdersCount = (API.orders || []).filter(o => o.userId === doc.id || o.userId === u.uid).length;
-            const hasOptedIn = u.whatsappOptIn === true || u.offerMessagesEnabled === true;
-            const phone = u.phone || 'N/A';
-            const optInBadge = hasOptedIn 
-              ? `<span class="badge badge-green">Opted In</span>` 
-              : `<span class="badge badge-orange" style="opacity:0.8;">Standard</span>`;
-            
-            html += `
-              <tr>
-                <td><strong>${u.name || 'Unknown'}</strong></td>
-                <td>📞 ${phone}</td>
-                <td>${u.email || 'N/A'}</td>
-                <td>${userOrdersCount} orders</td>
-                <td>${optInBadge}</td>
-                <td>
-                  <button class="btn btn-sm" style="background:#25d366;color:#000;font-weight:700;font-size:0.75rem;padding:3px 8px;border:none;" onclick="openWhatsAppForCustomer('${u.phone || ''}', '${u.name || 'Customer'}')">
-                    💬 WhatsApp
-                  </button>
-                </td>
-              </tr>
-            `;
+            const key = String(u.uid || u.email || doc.id).toLowerCase().trim();
+            if (!userMap.has(key)) {
+              userMap.set(key, u);
+            }
           }
         });
-        
-        tbody.innerHTML = html || '<tr><td colspan="6">No customers found</td></tr>';
+
+        const usersList = Array.from(userMap.values());
+        if (usersList.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;">No customers found.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = usersList.map(u => {
+          const userOrdersCount = (API.orders || []).filter(o => o.userId === u.id || o.userId === u.uid || o.customerId === u.uid || (u.email && o.customerEmail === u.email)).length;
+          const hasOptedIn = u.whatsappOptIn === true || u.offerMessagesEnabled === true;
+          const phone = u.phone || 'N/A';
+          const optInBadge = hasOptedIn 
+            ? `<span class="badge badge-green">Opted In</span>` 
+            : `<span class="badge badge-orange" style="opacity:0.8;">Standard</span>`;
+          
+          return `
+            <tr>
+              <td><strong>${u.name || 'Customer'}</strong></td>
+              <td>📞 ${phone}</td>
+              <td>${u.email || 'N/A'}</td>
+              <td>${userOrdersCount} orders</td>
+              <td>${optInBadge}</td>
+              <td>
+                <button class="btn btn-sm" style="background:#25d366;color:#000;font-weight:700;font-size:0.75rem;padding:3px 8px;border:none;" onclick="openWhatsAppForCustomer('${u.phone || ''}', '${u.name || 'Customer'}')">
+                  💬 WhatsApp
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
       } catch (e) {
         console.error("Error fetching customers:", e);
         tbody.innerHTML = '<tr><td colspan="6">Error loading customers</td></tr>';
@@ -1545,6 +2146,852 @@
         </td>
       </tr>
     `).join('');
+  }
+
+  // ---- Brand Management Functions ----
+  function renderAdminBrands() {
+    const tbody = document.getElementById('admin-brands-tbody');
+    if (!tbody) return;
+    const brands = API.brands || [];
+    if (brands.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--gray-400);">No brands added yet. Click "+ Add Brand" to get started.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = brands.map(b => {
+      const isEmoji = b.logo && b.logo.length <= 4 && !/^https?:/.test(b.logo);
+      const logoHtml = isEmoji
+        ? `<span style="font-size:1.8rem;">${b.logo}</span>`
+        : b.logo
+          ? `<img src="${b.logo}" alt="${b.name}" style="width:40px;height:40px;object-fit:contain;border-radius:6px;border:1px solid var(--gray-200);">`
+          : `<span style="font-size:1.8rem;">🏷️</span>`;
+      const statusBadge = b.isActive
+        ? `<span class="badge badge-green">Active</span>`
+        : `<span class="badge" style="background:var(--gray-100);color:var(--gray-500);">Inactive</span>`;
+      return `
+        <tr>
+          <td>${logoHtml}</td>
+          <td><strong>${b.name}</strong></td>
+          <td style="font-size:var(--text-xs);color:var(--gray-500);max-width:200px;">${b.description || '—'}</td>
+          <td><strong>#${b.displayOrder || 1}</strong></td>
+          <td>${statusBadge}</td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="editBrand('${b.id}')">Edit</button>
+            <button class="btn btn-ghost btn-sm" onclick="toggleBrandStatus('${b.id}')" style="color:${b.isActive ? 'var(--warning)' : 'var(--primary)'}">${b.isActive ? 'Disable' : 'Enable'}</button>
+            <button class="btn btn-ghost btn-sm" onclick="deleteBrandAdmin('${b.id}')" style="color:var(--error)">Delete</button>
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  function openBrandModal() {
+    document.getElementById('brand-modal-title').textContent = 'Add New Brand';
+    document.getElementById('edit-brand-id').value = '';
+    document.getElementById('brand-name').value = '';
+    document.getElementById('brand-logo').value = '';
+    document.getElementById('brand-desc').value = '';
+    document.getElementById('brand-order').value = (API.brands.length + 1);
+    document.getElementById('brand-active').checked = true;
+    document.getElementById('brand-modal').classList.remove('hidden');
+  }
+
+  function editBrand(id) {
+    const b = (API.brands || []).find(brand => brand.id === id);
+    if (!b) return;
+    document.getElementById('brand-modal-title').textContent = 'Edit Brand';
+    document.getElementById('edit-brand-id').value = b.id;
+    document.getElementById('brand-name').value = b.name;
+    document.getElementById('brand-logo').value = b.logo || '';
+    document.getElementById('brand-desc').value = b.description || '';
+    document.getElementById('brand-order').value = b.displayOrder || 1;
+    document.getElementById('brand-active').checked = b.isActive !== false;
+    document.getElementById('brand-modal').classList.remove('hidden');
+  }
+
+  function closeBrandModal() {
+    document.getElementById('brand-modal').classList.add('hidden');
+  }
+
+  async function saveBrandAdmin() {
+    const editId = document.getElementById('edit-brand-id').value.trim();
+    const name = document.getElementById('brand-name').value.trim();
+    const logo = document.getElementById('brand-logo').value.trim();
+    const desc = document.getElementById('brand-desc').value.trim();
+    const order = parseInt(document.getElementById('brand-order').value) || 1;
+    const isActive = document.getElementById('brand-active').checked;
+
+    if (!name) {
+      MathuraQuickMart.toast('Brand name is required!', 'error');
+      return;
+    }
+
+    const brandId = editId || name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+    const brand = { id: brandId, name, logo: logo || '🏷️', description: desc, isActive, displayOrder: order, createdAt: editId ? ((API.brands.find(b => b.id === editId) || {}).createdAt || new Date().toISOString()) : new Date().toISOString() };
+
+    try {
+      await API.saveBrand(brand);
+      MathuraQuickMart.toast(`Brand "${name}" ${editId ? 'updated' : 'added'} successfully!`, 'success');
+      closeBrandModal();
+      renderAdminBrands();
+    } catch (e) {
+      MathuraQuickMart.toast('Error saving brand. Please try again.', 'error');
+    }
+  }
+
+  async function deleteBrandAdmin(id) {
+    const brand = (API.brands || []).find(b => b.id === id);
+    if (!brand) return;
+    if (!confirm(`Delete brand "${brand.name}"? This won't remove products associated with this brand.`)) return;
+    await API.deleteBrand(id);
+    MathuraQuickMart.toast(`Brand "${brand.name}" deleted!`, 'success');
+    renderAdminBrands();
+  }
+
+  async function toggleBrandStatus(id) {
+    const brand = (API.brands || []).find(b => b.id === id);
+    if (!brand) return;
+    brand.isActive = !brand.isActive;
+    await API.saveBrand(brand);
+    MathuraQuickMart.toast(`Brand "${brand.name}" ${brand.isActive ? 'enabled' : 'disabled'}!`, 'success');
+    renderAdminBrands();
+  }
+
+  // ========================================================
+  // PROMOTIONAL BANNER MANAGEMENT (ADMIN WORKSPACE)
+  // ========================================================
+  let _pendingBannerDesktopFile = null;
+  let _pendingBannerMobileFile = null;
+  let _adminPreviewState = { currentIndex: 0, timer: null, banners: [] };
+
+  function renderAdminBanners() {
+    const tbody = document.getElementById('admin-banners-tbody');
+    if (!tbody) return;
+
+    const banners = (API && API.banners) ? [...API.banners] : [];
+    banners.sort((a, b) => (Number(a.displayOrder) || 99) - (Number(b.displayOrder) || 99));
+
+    // Calculate Banner Metrics
+    const now = Date.now();
+    let countActive = 0;
+    let countScheduled = 0;
+    let countInactive = 0;
+
+    banners.forEach(b => {
+      const isAct = b.isActive !== false;
+      const start = b.startDate ? new Date(b.startDate).getTime() : null;
+      const end = b.endDate ? new Date(b.endDate).getTime() : null;
+
+      if (!isAct) {
+        countInactive++;
+      } else if (end && !isNaN(end) && end < now) {
+        countInactive++;
+      } else if (start && !isNaN(start) && start > now) {
+        countScheduled++;
+      } else {
+        countActive++;
+      }
+    });
+
+    const elActive = document.getElementById('banner-stat-active');
+    const elTotal = document.getElementById('banner-stat-total');
+    const elScheduled = document.getElementById('banner-stat-scheduled');
+    const elInactive = document.getElementById('banner-stat-inactive');
+    if (elActive) elActive.textContent = countActive;
+    if (elTotal) elTotal.textContent = banners.length;
+    if (elScheduled) elScheduled.textContent = countScheduled;
+    if (elInactive) elInactive.textContent = countInactive;
+
+    // Filters
+    const searchVal = (document.getElementById('admin-banner-search')?.value || '').toLowerCase().trim();
+    const filterStatus = document.getElementById('admin-banner-filter-status')?.value || 'all';
+
+    let filtered = banners.filter(b => {
+      // Search filter
+      if (searchVal) {
+        const matchTitle = (b.title || '').toLowerCase().includes(searchVal);
+        const matchDesc = (b.description || '').toLowerCase().includes(searchVal);
+        const matchBadge = (b.badge || '').toLowerCase().includes(searchVal);
+        const matchCoupon = (b.couponCode || '').toLowerCase().includes(searchVal);
+        if (!matchTitle && !matchDesc && !matchBadge && !matchCoupon) return false;
+      }
+      // Status filter
+      const isAct = b.isActive !== false;
+      const start = b.startDate ? new Date(b.startDate).getTime() : null;
+      const end = b.endDate ? new Date(b.endDate).getTime() : null;
+
+      if (filterStatus === 'active') {
+        if (!isAct) return false;
+        if (start && start > now) return false;
+        if (end && end < now) return false;
+      } else if (filterStatus === 'inactive') {
+        if (isAct && (!end || end >= now)) return false;
+      } else if (filterStatus === 'scheduled') {
+        if (!isAct || !start || start <= now) return false;
+      } else if (filterStatus === 'expired') {
+        if (!end || end >= now) return false;
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align:center;padding:3rem 1rem;color:var(--gray-400);">
+            <div style="font-size:2.5rem;margin-bottom:8px;">🎨</div>
+            <strong style="font-size:15px;color:var(--gray-700);display:block;">No promotional banners found</strong>
+            <span style="font-size:12px;">Click "+ Add Banner" above to publish your first homepage promotional slide.</span>
+          </td>
+        </tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map((b, idx) => {
+      const isAct = b.isActive !== false;
+      const start = b.startDate ? new Date(b.startDate).getTime() : null;
+      const end = b.endDate ? new Date(b.endDate).getTime() : null;
+
+      let scheduleBadge = '';
+      if (!isAct) {
+        scheduleBadge = `<span class="badge" style="background:#f1f5f9;color:#64748b;">⚪ Draft / Off</span>`;
+      } else if (end && !isNaN(end) && end < now) {
+        scheduleBadge = `<span class="badge" style="background:#fee2e2;color:#991b1b;">🔴 Expired</span>`;
+      } else if (start && !isNaN(start) && start > now) {
+        scheduleBadge = `<span class="badge" style="background:#ffedd5;color:#c2410c;">⏳ Scheduled</span>`;
+      } else {
+        scheduleBadge = `<span class="badge" style="background:#dcfce7;color:#15803d;">🟢 Live Now</span>`;
+      }
+
+      const scheduleText = (b.startDate || b.endDate)
+        ? `<div style="font-size:11px;color:var(--gray-500);line-height:1.4;">
+            ${b.startDate ? `<div>From: ${new Date(b.startDate).toLocaleDateString('en-IN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}</div>` : ''}
+            ${b.endDate ? `<div>Until: ${new Date(b.endDate).toLocaleDateString('en-IN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}</div>` : '<div style="color:#15803d;">No end date</div>'}
+           </div>`
+        : `<span style="font-size:11px;color:var(--gray-400);">Always Active</span>`;
+
+      const offerPill = (b.discountText || b.couponCode)
+        ? `<div style="display:flex;flex-direction:column;gap:3px;">
+            ${b.discountText ? `<span style="font-size:11px;font-weight:700;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:4px;border:1px solid #fed7aa;">${b.discountText}</span>` : ''}
+            ${b.couponCode ? `<span style="font-size:11px;font-family:monospace;background:#f1f5f9;padding:2px 6px;border-radius:4px;border:1px dashed #cbd5e1;">Code: <strong>${b.couponCode}</strong></span>` : ''}
+           </div>`
+        : `<span style="color:var(--gray-400);font-size:12px;">—</span>`;
+
+      const destLink = b.buttonUrl
+        ? `<a href="${b.buttonUrl}" target="_blank" style="font-size:12px;color:var(--primary-dark);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+            <span>${b.buttonText || 'Shop Now'}</span>
+            <span style="font-size:10px;color:var(--gray-400);">(${b.buttonUrl.length > 22 ? b.buttonUrl.substring(0, 22) + '...' : b.buttonUrl})</span>
+           </a>`
+        : `<span style="color:var(--gray-400);font-size:12px;">Default</span>`;
+
+      const imgThumbnail = b.desktopImage
+        ? `<img src="${b.desktopImage}" alt="${b.title || 'Banner'}" style="width:105px;height:52px;object-fit:cover;border-radius:8px;border:1px solid var(--gray-200);box-shadow:var(--shadow-sm);" onerror="this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=200'">`
+        : `<div style="width:105px;height:52px;background:#f1f5f9;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#94a3b8;">No Image</div>`;
+
+      return `
+        <tr>
+          <td style="text-align:center;">
+            <div style="display:flex;align-items:center;justify-content:center;gap:4px;">
+              <span style="font-weight:800;font-size:13px;width:24px;">#${b.displayOrder || (idx + 1)}</span>
+              <div style="display:flex;flex-direction:column;gap:1px;">
+                <button type="button" class="btn btn-ghost btn-sm" style="padding:1px 5px;font-size:10px;line-height:1;" onclick="moveBannerOrderAdmin('${b.id}', 'up')" title="Move Up">▲</button>
+                <button type="button" class="btn btn-ghost btn-sm" style="padding:1px 5px;font-size:10px;line-height:1;" onclick="moveBannerOrderAdmin('${b.id}', 'down')" title="Move Down">▼</button>
+              </div>
+            </div>
+          </td>
+          <td>${imgThumbnail}</td>
+          <td>
+            <div style="max-width:240px;">
+              ${b.badge ? `<span style="font-size:10px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:10px;font-weight:700;display:inline-block;margin-bottom:2px;">${b.badge}</span>` : ''}
+              <div style="font-weight:700;font-size:13px;color:var(--gray-900);line-height:1.3;">${b.title || 'Untitled Banner'}</div>
+              <div style="font-size:11px;color:var(--gray-500);line-height:1.3;margin-top:2px;">${b.description ? (b.description.length > 55 ? b.description.substring(0, 55) + '...' : b.description) : ''}</div>
+            </div>
+          </td>
+          <td>${offerPill}</td>
+          <td>${destLink}</td>
+          <td>
+            <div style="margin-bottom:3px;">${scheduleBadge}</div>
+            ${scheduleText}
+          </td>
+          <td style="text-align:center;">
+            <label class="toggle-switch" style="transform:scale(0.85);" title="${isAct ? 'Click to Disable' : 'Click to Enable'}">
+              <input type="checkbox" ${isAct ? 'checked' : ''} onchange="toggleBannerStatusAdmin('${b.id}')">
+              <span class="toggle-slider"></span>
+            </label>
+          </td>
+          <td style="text-align:right;white-space:nowrap;">
+            <button class="btn btn-outline btn-sm" onclick="openBannerModal('${b.id}')" title="Edit Banner">✏️ Edit</button>
+            <button class="btn btn-ghost btn-sm" onclick="previewSingleBanner('${b.id}')" title="Preview Slide">👁️</button>
+            <button class="btn btn-ghost btn-sm" onclick="deleteBannerAdmin('${b.id}')" style="color:var(--error);" title="Delete Banner">🗑️</button>
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  function setBannerUrlPreset(url) {
+    const input = document.getElementById('banner-button-url');
+    if (input) {
+      input.value = url;
+      updateModalBannerPreview();
+    }
+  }
+
+  function handleBannerImageUpload(fileInput, type) {
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) return;
+    const file = fileInput.files[0];
+
+    // Validation: Image format
+    if (!file.type.startsWith('image/')) {
+      MathuraQuickMart.toast('Invalid file format. Please select an image (JPEG, PNG, WebP, SVG).', 'error');
+      fileInput.value = '';
+      return;
+    }
+
+    // Validation: Size (Max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      MathuraQuickMart.toast('Image file exceeds 5MB limit. Please choose a smaller image.', 'error');
+      fileInput.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      if (type === 'desktop') {
+        _pendingBannerDesktopFile = file;
+        const preview = document.getElementById('banner-desktop-preview');
+        const placeholder = document.getElementById('banner-desktop-placeholder');
+        const status = document.getElementById('banner-desktop-status');
+        if (preview) {
+          preview.src = dataUrl;
+          preview.style.display = 'block';
+        }
+        if (placeholder) placeholder.style.display = 'none';
+        if (status) status.innerHTML = `✅ <strong>${file.name}</strong> (${Math.round(file.size/1024)} KB) ready to upload.`;
+        // Clear text URL to avoid confusion
+        const urlInput = document.getElementById('banner-desktop-url');
+        if (urlInput) urlInput.value = '';
+      } else {
+        _pendingBannerMobileFile = file;
+        const preview = document.getElementById('banner-mobile-preview');
+        const placeholder = document.getElementById('banner-mobile-placeholder');
+        const status = document.getElementById('banner-mobile-status');
+        if (preview) {
+          preview.src = dataUrl;
+          preview.style.display = 'block';
+        }
+        if (placeholder) placeholder.style.display = 'none';
+        if (status) status.innerHTML = `✅ <strong>${file.name}</strong> ready to upload.`;
+        const urlInput = document.getElementById('banner-mobile-url');
+        if (urlInput) urlInput.value = '';
+      }
+      updateModalBannerPreview();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleBannerUrlInput(type) {
+    if (type === 'desktop') {
+      const url = document.getElementById('banner-desktop-url')?.value.trim();
+      const preview = document.getElementById('banner-desktop-preview');
+      const placeholder = document.getElementById('banner-desktop-placeholder');
+      const status = document.getElementById('banner-desktop-status');
+      if (url) {
+        _pendingBannerDesktopFile = null;
+        if (document.getElementById('banner-desktop-file')) document.getElementById('banner-desktop-file').value = '';
+        if (preview) {
+          preview.src = url;
+          preview.style.display = 'block';
+        }
+        if (placeholder) placeholder.style.display = 'none';
+        if (status) status.textContent = 'Using direct image URL.';
+      } else {
+        if (preview) preview.style.display = 'none';
+        if (placeholder) placeholder.style.display = 'block';
+      }
+    } else {
+      const url = document.getElementById('banner-mobile-url')?.value.trim();
+      const preview = document.getElementById('banner-mobile-preview');
+      const placeholder = document.getElementById('banner-mobile-placeholder');
+      if (url) {
+        _pendingBannerMobileFile = null;
+        if (document.getElementById('banner-mobile-file')) document.getElementById('banner-mobile-file').value = '';
+        if (preview) {
+          preview.src = url;
+          preview.style.display = 'block';
+        }
+        if (placeholder) placeholder.style.display = 'none';
+      }
+    }
+    updateModalBannerPreview();
+  }
+
+  function updateModalBannerPreview() {
+    const title = document.getElementById('banner-title')?.value.trim() || 'Banner Title Preview';
+    const badge = document.getElementById('banner-badge')?.value.trim();
+    const discount = document.getElementById('banner-discount')?.value.trim();
+    const coupon = document.getElementById('banner-coupon')?.value.trim();
+    const desc = document.getElementById('banner-desc')?.value.trim() || 'Banner description text appears here.';
+    const btnText = document.getElementById('banner-button-text')?.value.trim() || 'Shop Now';
+
+    const desktopPreview = document.getElementById('banner-desktop-preview')?.src;
+    const desktopUrl = document.getElementById('banner-desktop-url')?.value.trim();
+    const bgImg = desktopPreview || desktopUrl || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800';
+
+    const bgEl = document.getElementById('modal-preview-bg');
+    if (bgEl) bgEl.src = bgImg;
+
+    const titleEl = document.getElementById('modal-preview-title');
+    if (titleEl) titleEl.textContent = title;
+
+    const descEl = document.getElementById('modal-preview-desc');
+    if (descEl) descEl.textContent = desc;
+
+    const btnEl = document.getElementById('modal-preview-btn');
+    if (btnEl) btnEl.textContent = btnText + ' →';
+
+    const badgeEl = document.getElementById('modal-preview-badge');
+    if (badgeEl) {
+      if (badge) {
+        badgeEl.textContent = badge;
+        badgeEl.style.display = 'inline-block';
+      } else {
+        badgeEl.style.display = 'none';
+      }
+    }
+
+    const discountEl = document.getElementById('modal-preview-discount');
+    if (discountEl) {
+      if (discount) {
+        discountEl.textContent = discount;
+        discountEl.style.display = 'inline-block';
+      } else {
+        discountEl.style.display = 'none';
+      }
+    }
+
+    const couponEl = document.getElementById('modal-preview-coupon');
+    if (couponEl) {
+      if (coupon) {
+        couponEl.textContent = '🏷️ Code: ' + coupon.toUpperCase();
+        couponEl.style.display = 'inline-block';
+      } else {
+        couponEl.style.display = 'none';
+      }
+    }
+  }
+
+  function openBannerModal(id = null) {
+    _pendingBannerDesktopFile = null;
+    _pendingBannerMobileFile = null;
+
+    const modalTitle = document.getElementById('banner-modal-title');
+    const editIdInput = document.getElementById('edit-banner-id');
+    const titleInput = document.getElementById('banner-title');
+    const badgeInput = document.getElementById('banner-badge');
+    const descInput = document.getElementById('banner-desc');
+    const discountInput = document.getElementById('banner-discount');
+    const couponInput = document.getElementById('banner-coupon');
+    const btnTextInput = document.getElementById('banner-button-text');
+    const btnUrlInput = document.getElementById('banner-button-url');
+    const orderInput = document.getElementById('banner-order');
+    const startInput = document.getElementById('banner-start-date');
+    const endInput = document.getElementById('banner-end-date');
+    const activeInput = document.getElementById('banner-active');
+
+    const deskFileInput = document.getElementById('banner-desktop-file');
+    const deskUrlInput = document.getElementById('banner-desktop-url');
+    const deskPreview = document.getElementById('banner-desktop-preview');
+    const deskPlaceholder = document.getElementById('banner-desktop-placeholder');
+    const deskStatus = document.getElementById('banner-desktop-status');
+
+    const mobFileInput = document.getElementById('banner-mobile-file');
+    const mobUrlInput = document.getElementById('banner-mobile-url');
+    const mobPreview = document.getElementById('banner-mobile-preview');
+    const mobPlaceholder = document.getElementById('banner-mobile-placeholder');
+
+    if (deskFileInput) deskFileInput.value = '';
+    if (mobFileInput) mobFileInput.value = '';
+
+    if (id) {
+      const b = (API.banners || []).find(item => item.id === id);
+      if (!b) return;
+      if (modalTitle) modalTitle.textContent = 'Edit Promotional Banner';
+      if (editIdInput) editIdInput.value = b.id;
+      if (titleInput) titleInput.value = b.title || '';
+      if (badgeInput) badgeInput.value = b.badge || '';
+      if (descInput) descInput.value = b.description || '';
+      if (discountInput) discountInput.value = b.discountText || '';
+      if (couponInput) couponInput.value = b.couponCode || '';
+      if (btnTextInput) btnTextInput.value = b.buttonText || 'Shop Now';
+      if (btnUrlInput) btnUrlInput.value = b.buttonUrl || '/customer/products.html';
+      if (orderInput) orderInput.value = b.displayOrder || 1;
+      if (startInput) startInput.value = b.startDate ? b.startDate.substring(0, 16) : '';
+      if (endInput) endInput.value = b.endDate ? b.endDate.substring(0, 16) : '';
+      if (activeInput) activeInput.checked = b.isActive !== false;
+
+      if (deskUrlInput) deskUrlInput.value = b.desktopImage || '';
+      if (deskPreview) {
+        if (b.desktopImage) {
+          deskPreview.src = b.desktopImage;
+          deskPreview.style.display = 'block';
+          if (deskPlaceholder) deskPlaceholder.style.display = 'none';
+        } else {
+          deskPreview.style.display = 'none';
+          if (deskPlaceholder) deskPlaceholder.style.display = 'block';
+        }
+      }
+      if (deskStatus) deskStatus.textContent = b.desktopImage ? 'Current image loaded.' : 'No image set.';
+
+      if (mobUrlInput) mobUrlInput.value = b.mobileImage || '';
+      if (mobPreview) {
+        if (b.mobileImage) {
+          mobPreview.src = b.mobileImage;
+          mobPreview.style.display = 'block';
+          if (mobPlaceholder) mobPlaceholder.style.display = 'none';
+        } else {
+          mobPreview.style.display = 'none';
+          if (mobPlaceholder) mobPlaceholder.style.display = 'block';
+        }
+      }
+    } else {
+      if (modalTitle) modalTitle.textContent = 'Add Promotional Banner';
+      if (editIdInput) editIdInput.value = '';
+      if (titleInput) titleInput.value = '';
+      if (badgeInput) badgeInput.value = '';
+      if (descInput) descInput.value = '';
+      if (discountInput) discountInput.value = '';
+      if (couponInput) couponInput.value = '';
+      if (btnTextInput) btnTextInput.value = 'Shop Now';
+      if (btnUrlInput) btnUrlInput.value = '/customer/products.html';
+      if (orderInput) orderInput.value = (API.banners ? API.banners.length + 1 : 1);
+      if (startInput) startInput.value = '';
+      if (endInput) endInput.value = '';
+      if (activeInput) activeInput.checked = true;
+
+      if (deskUrlInput) deskUrlInput.value = '';
+      if (deskPreview) deskPreview.style.display = 'none';
+      if (deskPlaceholder) deskPlaceholder.style.display = 'block';
+      if (deskStatus) deskStatus.textContent = 'Select a file or paste a URL above.';
+
+      if (mobUrlInput) mobUrlInput.value = '';
+      if (mobPreview) mobPreview.style.display = 'none';
+      if (mobPlaceholder) mobPlaceholder.style.display = 'block';
+    }
+
+    updateModalBannerPreview();
+    const modal = document.getElementById('banner-modal');
+    if (modal) modal.classList.remove('hidden');
+  }
+
+  function closeBannerModal() {
+    const modal = document.getElementById('banner-modal');
+    if (modal) modal.classList.add('hidden');
+    _pendingBannerDesktopFile = null;
+    _pendingBannerMobileFile = null;
+  }
+
+  async function saveBannerAdmin() {
+    const editId = document.getElementById('edit-banner-id')?.value.trim();
+    const title = document.getElementById('banner-title')?.value.trim();
+    const badge = document.getElementById('banner-badge')?.value.trim() || '';
+    const desc = document.getElementById('banner-desc')?.value.trim() || '';
+    const discount = document.getElementById('banner-discount')?.value.trim() || '';
+    const coupon = (document.getElementById('banner-coupon')?.value.trim() || '').toUpperCase();
+    const btnText = document.getElementById('banner-button-text')?.value.trim() || 'Shop Now';
+    let btnUrl = document.getElementById('banner-button-url')?.value.trim() || '/customer/products.html';
+    const order = parseInt(document.getElementById('banner-order')?.value) || 1;
+    const startDate = document.getElementById('banner-start-date')?.value || '';
+    const endDate = document.getElementById('banner-end-date')?.value || '';
+    const isActive = document.getElementById('banner-active')?.checked !== false;
+
+    let desktopUrl = document.getElementById('banner-desktop-url')?.value.trim() || '';
+    let mobileUrl = document.getElementById('banner-mobile-url')?.value.trim() || '';
+
+    // Validation
+    if (!title) {
+      MathuraQuickMart.toast('Please enter a banner title!', 'error');
+      document.getElementById('banner-title')?.focus();
+      return;
+    }
+
+    // URL Safety check
+    if (/^(javascript|data|vbscript):/i.test(btnUrl)) {
+      MathuraQuickMart.toast('Unsafe destination URL rejected.', 'error');
+      btnUrl = '/customer/products.html';
+    }
+
+    // Must have either an uploaded file or an image URL for desktop banner
+    const existingBanner = editId ? (API.banners || []).find(b => b.id === editId) : null;
+    if (!_pendingBannerDesktopFile && !desktopUrl && (!existingBanner || !existingBanner.desktopImage)) {
+      MathuraQuickMart.toast('Please provide a desktop banner image (file upload or URL).', 'error');
+      return;
+    }
+
+    const saveBtn = document.getElementById('btn-save-banner');
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = '⏳ Uploading & Saving...';
+    }
+
+    try {
+      // 1. Upload Desktop Image if file selected
+      if (_pendingBannerDesktopFile) {
+        if (window.FirebaseStorage && window.FirebaseStorageFns) {
+          try {
+            const storage = window.FirebaseStorage;
+            const { ref, uploadBytes, getDownloadURL } = window.FirebaseStorageFns;
+            const safeName = _pendingBannerDesktopFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+            const path = `banners/${Date.now()}_desktop_${safeName}`;
+            const fileRef = ref(storage, path);
+            const snap = await uploadBytes(fileRef, _pendingBannerDesktopFile);
+            desktopUrl = await getDownloadURL(snap.ref);
+            console.log("Desktop image uploaded to Firebase Storage:", desktopUrl);
+          } catch (storageErr) {
+            console.warn("Firebase Storage upload fallback:", storageErr);
+            // Fallback to data URL from preview
+            const previewSrc = document.getElementById('banner-desktop-preview')?.src;
+            if (previewSrc) desktopUrl = previewSrc;
+          }
+        } else {
+          const previewSrc = document.getElementById('banner-desktop-preview')?.src;
+          if (previewSrc) desktopUrl = previewSrc;
+        }
+      } else if (!desktopUrl && existingBanner && existingBanner.desktopImage) {
+        desktopUrl = existingBanner.desktopImage;
+      }
+
+      // 2. Upload Mobile Image if file selected
+      if (_pendingBannerMobileFile) {
+        if (window.FirebaseStorage && window.FirebaseStorageFns) {
+          try {
+            const storage = window.FirebaseStorage;
+            const { ref, uploadBytes, getDownloadURL } = window.FirebaseStorageFns;
+            const safeName = _pendingBannerMobileFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+            const path = `banners/${Date.now()}_mobile_${safeName}`;
+            const fileRef = ref(storage, path);
+            const snap = await uploadBytes(fileRef, _pendingBannerMobileFile);
+            mobileUrl = await getDownloadURL(snap.ref);
+            console.log("Mobile image uploaded to Firebase Storage:", mobileUrl);
+          } catch (storageErr) {
+            console.warn("Mobile Storage upload fallback:", storageErr);
+            const previewSrc = document.getElementById('banner-mobile-preview')?.src;
+            if (previewSrc) mobileUrl = previewSrc;
+          }
+        } else {
+          const previewSrc = document.getElementById('banner-mobile-preview')?.src;
+          if (previewSrc) mobileUrl = previewSrc;
+        }
+      } else if (!mobileUrl && existingBanner && existingBanner.mobileImage) {
+        mobileUrl = existingBanner.mobileImage;
+      }
+
+      const bannerId = editId || ('banner_' + Date.now());
+      const nowIso = new Date().toISOString();
+
+      const bannerData = {
+        id: bannerId,
+        title,
+        badge,
+        description: desc,
+        discountText: discount,
+        couponCode: coupon,
+        buttonText: btnText,
+        buttonUrl: btnUrl,
+        desktopImage: desktopUrl || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=1200',
+        mobileImage: mobileUrl || desktopUrl || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800',
+        displayOrder: order,
+        startDate: startDate ? new Date(startDate).toISOString() : '',
+        endDate: endDate ? new Date(endDate).toISOString() : '',
+        isActive,
+        createdAt: existingBanner?.createdAt || nowIso,
+        updatedAt: nowIso
+      };
+
+      await API.saveBanner(bannerData);
+      MathuraQuickMart.toast(`Banner "${title}" ${editId ? 'updated' : 'created'} successfully! 🎉`, 'success');
+      closeBannerModal();
+      renderAdminBanners();
+    } catch (err) {
+      console.error("Error saving banner:", err);
+      MathuraQuickMart.toast('Error saving banner to Firestore. Please try again.', 'error');
+    } finally {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = '💾 Save & Publish Banner';
+      }
+    }
+  }
+
+  async function deleteBannerAdmin(id) {
+    const b = (API.banners || []).find(item => item.id === id);
+    if (!b) return;
+    if (!confirm(`Delete banner "${b.title || 'Untitled'}"? This action cannot be undone.`)) return;
+
+    try {
+      await API.deleteBanner(id);
+      MathuraQuickMart.toast('Banner deleted successfully.', 'success');
+      renderAdminBanners();
+    } catch (err) {
+      console.error("Error deleting banner:", err);
+      MathuraQuickMart.toast('Error deleting banner from Firestore.', 'error');
+    }
+  }
+
+  async function toggleBannerStatusAdmin(id) {
+    const b = (API.banners || []).find(item => item.id === id);
+    if (!b) return;
+    b.isActive = !b.isActive;
+
+    try {
+      await API.saveBanner(b);
+      MathuraQuickMart.toast(`Banner "${b.title}" ${b.isActive ? 'published & activated' : 'disabled & hidden'}!`, 'success');
+      renderAdminBanners();
+    } catch (err) {
+      console.error("Error toggling banner status:", err);
+      MathuraQuickMart.toast('Error updating banner status.', 'error');
+    }
+  }
+
+  async function moveBannerOrderAdmin(id, direction) {
+    const list = [...(API.banners || [])];
+    list.sort((a, b) => (Number(a.displayOrder) || 99) - (Number(b.displayOrder) || 99));
+
+    const curIndex = list.findIndex(b => b.id === id);
+    if (curIndex < 0) return;
+
+    const targetIndex = direction === 'up' ? curIndex - 1 : curIndex + 1;
+    if (targetIndex < 0 || targetIndex >= list.length) {
+      MathuraQuickMart.toast(direction === 'up' ? 'Banner is already at the top!' : 'Banner is already at the bottom!', 'info');
+      return;
+    }
+
+    // Swap positions
+    const temp = list[curIndex];
+    list[curIndex] = list[targetIndex];
+    list[targetIndex] = temp;
+
+    const orderedIds = list.map(b => b.id);
+    try {
+      await API.reorderBanners(orderedIds);
+      MathuraQuickMart.toast('Banner display order updated!', 'success');
+      renderAdminBanners();
+    } catch (err) {
+      console.error("Error reordering banners:", err);
+      MathuraQuickMart.toast('Error updating banner order in Firestore.', 'error');
+    }
+  }
+
+  function previewSingleBanner(id) {
+    openCarouselLivePreviewModal(id);
+  }
+
+  function openCarouselLivePreviewModal(targetId = null) {
+    const modal = document.getElementById('banner-preview-modal');
+    const track = document.getElementById('admin-preview-track');
+    const indicators = document.getElementById('admin-preview-indicators');
+    if (!modal || !track) return;
+
+    const banners = (API.banners && API.banners.length > 0)
+      ? [...API.banners]
+      : [{
+          title: 'Farm-Fresh Harvest Delivered Daily',
+          description: 'Handpicked fruits and crisp vegetables delivered to your door in 60 minutes.',
+          badge: '🌿 Farm Fresh Pick',
+          discountText: 'Flat 25% OFF',
+          couponCode: 'FRESH25',
+          buttonText: 'Shop Fresh Produce',
+          buttonUrl: '/customer/products.html',
+          desktopImage: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=1200'
+        }];
+
+    banners.sort((a, b) => (Number(a.displayOrder) || 99) - (Number(b.displayOrder) || 99));
+    _adminPreviewState.banners = banners;
+
+    let initialIdx = 0;
+    if (targetId) {
+      const foundIdx = banners.findIndex(b => b.id === targetId);
+      if (foundIdx >= 0) initialIdx = foundIdx;
+    }
+    _adminPreviewState.currentIndex = initialIdx;
+
+    track.innerHTML = banners.map((b, idx) => `
+      <div class="carousel-slide ${idx === initialIdx ? 'active' : ''}" style="min-height:420px;">
+        <div class="carousel-bg-wrap">
+          <img class="carousel-bg-img" src="${b.desktopImage || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=1200'}" alt="${b.title || 'Banner'}">
+        </div>
+        <div class="carousel-overlay"></div>
+        <div class="carousel-glow"></div>
+        <div class="carousel-content-container">
+          <div class="carousel-content">
+            ${(b.badge || b.discountText) ? `
+              <div class="carousel-badge-row">
+                ${b.badge ? `<span class="carousel-badge">${b.badge}</span>` : ''}
+                ${b.discountText ? `<span class="carousel-discount-pill">${b.discountText}</span>` : ''}
+              </div>` : ''}
+            <h2 class="carousel-title" style="font-size:2rem;">${b.title || 'Untitled Banner'}</h2>
+            <p class="carousel-desc" style="font-size:13px;">${b.description || ''}</p>
+            <div class="carousel-action-row">
+              <span class="carousel-btn" style="cursor:default;">${b.buttonText || 'Shop Now'} →</span>
+              ${b.couponCode ? `
+                <div class="carousel-coupon-chip">
+                  <span>🏷️ Code:</span>
+                  <strong>${b.couponCode}</strong>
+                </div>` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    if (indicators) {
+      indicators.innerHTML = banners.map((b, idx) => `
+        <button class="carousel-dot ${idx === initialIdx ? 'active' : ''}" onclick="adminPreviewGoTo(${idx})"></button>
+      `).join('');
+    }
+
+    updateAdminPreviewPosition();
+    modal.classList.remove('hidden');
+
+    if (_adminPreviewState.timer) clearInterval(_adminPreviewState.timer);
+    if (banners.length > 1) {
+      _adminPreviewState.timer = setInterval(() => {
+        adminPreviewNextSlide();
+      }, 5000);
+    }
+  }
+
+  function updateAdminPreviewPosition() {
+    const track = document.getElementById('admin-preview-track');
+    if (!track) return;
+    const idx = _adminPreviewState.currentIndex;
+    track.style.transform = `translateX(-${idx * 100}%)`;
+
+    document.querySelectorAll('#admin-preview-indicators .carousel-dot').forEach((dot, i) => {
+      dot.classList.toggle('active', i === idx);
+    });
+  }
+
+  function adminPreviewGoTo(index) {
+    const len = _adminPreviewState.banners.length;
+    if (len === 0) return;
+    _adminPreviewState.currentIndex = (index + len) % len;
+    updateAdminPreviewPosition();
+  }
+
+  function adminPreviewNextSlide() {
+    adminPreviewGoTo(_adminPreviewState.currentIndex + 1);
+  }
+
+  function adminPreviewPrevSlide() {
+    adminPreviewGoTo(_adminPreviewState.currentIndex - 1);
+  }
+
+  function closeCarouselLivePreviewModal() {
+    const modal = document.getElementById('banner-preview-modal');
+    if (modal) modal.classList.add('hidden');
+    if (_adminPreviewState.timer) {
+      clearInterval(_adminPreviewState.timer);
+      _adminPreviewState.timer = null;
+    }
   }
 
   // ---- Coupon Modal Functions ----
@@ -1626,6 +3073,10 @@
     const select = document.getElementById('prod-category');
     select.innerHTML = API.categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
 
+    const brandSelect = document.getElementById('prod-brand');
+    brandSelect.innerHTML = '<option value="">— No Brand —</option>' +
+      API.brands.filter(b => b.isActive).map(b => `<option value="${b.id}">${b.logo || ''} ${b.name}</option>`).join('');
+
     document.getElementById('product-modal').classList.remove('hidden');
   }
 
@@ -1643,6 +3094,7 @@
     document.getElementById('prod-stock').value = p.stock;
     document.getElementById('prod-category').value = p.category;
     document.getElementById('prod-image').value = p.image;
+    document.getElementById('prod-brand').value = p.brandId || '';
   }
 
   function deleteProduct(id) {
@@ -1682,14 +3134,23 @@
         match.weight = weight;
         match.stock = stock;
         match.image = img;
+        // Brand
+        const brandId = document.getElementById('prod-brand').value;
+        const brandObj = API.brands.find(b => b.id === brandId);
+        match.brandId = brandId || null;
+        match.brand = brandObj ? brandObj.name : null;
         API.saveProduct(match);
         MathuraQuickMart.toast('Product info updated successfully!', 'success');
       }
     } else {
+      const brandId = document.getElementById('prod-brand').value;
+      const brandObj = API.brands.find(b => b.id === brandId);
       const newP = {
         id: Date.now(),
         name,
         category: cat,
+        brandId: brandId || null,
+        brand: brandObj ? brandObj.name : null,
         price,
         originalPrice: orig,
         weight,
@@ -1713,9 +3174,11 @@
     loadDashboardStats();
     renderAdminProducts();
     renderAdminCategories();
+    renderAdminBrands();
     renderAdminInventory();
     renderAdminOrders();
     renderAdminCoupons();
+    renderAdminBanners();
     renderAdminCustomers();
     renderAdminDelivery();
     if (window.renderAdminSuppliers) window.renderAdminSuppliers();
@@ -2127,6 +3590,10 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     initAdminStoreStatusListener();
+    loadWhatsAppSettings();
+  });
+  window.addEventListener('db-ready', () => {
+    loadWhatsAppSettings();
   });
 </script>
 

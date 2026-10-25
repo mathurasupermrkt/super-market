@@ -227,9 +227,14 @@
     }
   }
 
-  // Allow pressing Enter to submit
+  // Allow pressing Enter to submit when focused in email or password input
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') handleLogin();
+    if (e.key === 'Enter') {
+      const active = document.activeElement;
+      if (active && (active.id === 'login-email' || active.id === 'login-password')) {
+        handleLogin();
+      }
+    }
   });
 </script>
 </body>

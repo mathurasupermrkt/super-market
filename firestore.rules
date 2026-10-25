@@ -38,6 +38,19 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /brands/{brandId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Promotional Banners:
+    // - Customers may read published active banners
+    // - Only authorized admins may create, update, publish, reorder, or delete banners
+    match /banners/{bannerId} {
+      allow read: if isAdmin() || resource.data.isActive == true;
+      allow write: if isAdmin();
+    }
+
     // Users and their sub-collections (cart, wishlist)
     match /users/{userId} {
       allow read: if isAuthenticated();
@@ -68,7 +81,8 @@ service cloud.firestore {
     match /orders/{orderId} {
       allow create: if isAuthenticated() && (isAdmin() || isStoreOpen());
       allow read: if isAuthenticated();
-      allow update, delete: if isAuthenticated();
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow delete: if isAdmin();
     }
 
     // Reviews:

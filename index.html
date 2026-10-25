@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="description"
     content="Mathura Quick Mart - Your premium online supermarket. Fresh groceries, daily essentials, and more delivered to your door in minutes.">
   <title>Mathura Quick Mart – Fresh Groceries Delivered Fast</title>
@@ -16,7 +16,7 @@
   <link rel="icon" type="image/svg+xml" href="/images/icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="styles/main.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCrhrfd6_Hxh29dNJFRIbFatHbNrseHYEU" defer></script>
   <style>
     /* ---- Navbar ---- */
     .navbar {
@@ -565,6 +565,381 @@
       color: #cbd5e1 !important;
     }
 
+    /* ========================================================
+       PROMOTIONAL BANNER CAROUSEL (HERO SECTION)
+       ======================================================== */
+    .hero-carousel-wrapper {
+      position: relative;
+      width: 100%;
+      background: #022c22;
+      overflow: hidden;
+    }
+
+    .hero-carousel {
+      position: relative;
+      width: 100%;
+      min-height: 480px;
+      overflow: hidden;
+      display: block;
+      outline: none;
+    }
+
+    @media (min-width: 1024px) {
+      .hero-carousel {
+        height: 520px;
+        min-height: 520px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .hero-carousel {
+        min-height: 440px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .hero-carousel {
+        min-height: 400px;
+      }
+    }
+
+    .carousel-track {
+      display: flex;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+      will-change: transform;
+    }
+
+    .carousel-slide {
+      position: relative;
+      flex: 0 0 100%;
+      width: 100%;
+      height: 100%;
+      min-height: inherit;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* Background image with high quality visual rendering */
+    .carousel-bg-wrap {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    .carousel-bg-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center right;
+      transform: scale(1.02);
+      transition: transform 7s ease;
+    }
+
+    .carousel-slide.active .carousel-bg-img {
+      transform: scale(1.08);
+    }
+
+    /* Gradient overlay: guarantees crystal-clear legibility with Mathura brand greens */
+    .carousel-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      background: linear-gradient(90deg, 
+        rgba(2, 44, 34, 0.95) 0%, 
+        rgba(6, 78, 59, 0.88) 42%, 
+        rgba(6, 78, 59, 0.48) 75%, 
+        rgba(0, 0, 0, 0.35) 100%
+      );
+    }
+
+    @media (max-width: 768px) {
+      .carousel-overlay {
+        background: linear-gradient(180deg, 
+          rgba(2, 44, 34, 0.88) 0%, 
+          rgba(6, 78, 59, 0.94) 50%, 
+          rgba(6, 78, 59, 0.98) 100%
+        );
+      }
+      .carousel-bg-img {
+        object-position: center center;
+      }
+    }
+
+    /* Decorative backdrop glow */
+    .carousel-glow {
+      position: absolute;
+      width: 480px;
+      height: 480px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(34, 197, 94, 0.3) 0%, transparent 70%);
+      top: -15%;
+      left: 5%;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* Content container */
+    .carousel-content-container {
+      position: relative;
+      z-index: 5;
+      max-width: var(--container-max);
+      margin: 0 auto;
+      padding: var(--sp-10) var(--sp-6);
+      width: 100%;
+    }
+
+    .carousel-content {
+      max-width: 640px;
+      color: var(--white);
+      animation: carouselFadeIn 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes carouselFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .carousel-badge-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: var(--sp-4);
+    }
+
+    .carousel-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(34, 197, 94, 0.22);
+      border: 1px solid rgba(134, 239, 172, 0.45);
+      color: #86efac;
+      padding: 0.35rem 0.95rem;
+      border-radius: var(--radius-full);
+      font-size: var(--text-xs);
+      font-weight: var(--fw-bold);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .carousel-discount-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      color: var(--white);
+      padding: 0.35rem 0.9rem;
+      border-radius: var(--radius-full);
+      font-size: var(--text-xs);
+      font-weight: var(--fw-black);
+      letter-spacing: 0.04em;
+      box-shadow: 0 4px 12px rgba(234, 88, 12, 0.35);
+    }
+
+    .carousel-title {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 4.4vw, 3.4rem);
+      font-weight: var(--fw-black);
+      line-height: 1.15;
+      color: #ffffff;
+      margin-bottom: var(--sp-3);
+      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.38);
+    }
+
+    .carousel-desc {
+      font-size: clamp(0.95rem, 1.6vw, 1.15rem);
+      color: rgba(255, 255, 255, 0.9);
+      line-height: 1.6;
+      margin-bottom: var(--sp-6);
+      max-width: 540px;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .carousel-action-row {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-4);
+      flex-wrap: wrap;
+    }
+
+    .carousel-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: #ffffff !important;
+      padding: 0.85rem 1.85rem;
+      border-radius: var(--radius-full);
+      font-weight: var(--fw-bold);
+      font-size: var(--text-sm);
+      text-decoration: none;
+      box-shadow: 0 8px 24px rgba(34, 197, 94, 0.35), 0 2px 4px rgba(0, 0, 0, 0.2);
+      transition: all var(--transition-fast);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .carousel-btn:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 12px 28px rgba(34, 197, 94, 0.45);
+      background: linear-gradient(135deg, #4ade80, #16a34a);
+    }
+
+    .carousel-coupon-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.14);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px dashed rgba(255, 255, 255, 0.5);
+      padding: 0.55rem 1rem;
+      border-radius: var(--radius-full);
+      color: #ffffff;
+      font-size: var(--text-xs);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .carousel-coupon-chip:hover {
+      background: rgba(255, 255, 255, 0.25);
+      border-color: #86efac;
+      transform: translateY(-1px);
+    }
+
+    .carousel-coupon-chip strong {
+      color: #fed7aa;
+      font-weight: var(--fw-black);
+      letter-spacing: 0.05em;
+      font-size: var(--text-sm);
+    }
+
+    /* Arrows */
+    .carousel-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 10;
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-full);
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.95);
+      color: #064e3b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      transition: all var(--transition-fast);
+      outline: none;
+    }
+
+    .carousel-arrow:hover {
+      background: #ffffff;
+      color: #16a34a;
+      transform: translateY(-50%) scale(1.1);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .carousel-arrow:focus-visible {
+      box-shadow: 0 0 0 3px #22c55e;
+    }
+
+    .carousel-arrow-prev {
+      left: 20px;
+    }
+
+    .carousel-arrow-next {
+      right: 20px;
+    }
+
+    @media (max-width: 640px) {
+      .carousel-arrow {
+        width: 38px;
+        height: 38px;
+        font-size: 1.15rem;
+      }
+      .carousel-arrow-prev { left: 8px; }
+      .carousel-arrow-next { right: 8px; }
+    }
+
+    /* Indicators / Dots */
+    .carousel-indicators {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.32);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+
+    .carousel-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: var(--radius-full);
+      background: rgba(255, 255, 255, 0.45);
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      transition: all 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .carousel-dot.active {
+      width: 32px;
+      background: #22c55e;
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.7);
+    }
+
+    .carousel-dot:hover:not(.active) {
+      background: rgba(255, 255, 255, 0.85);
+    }
+
+    .carousel-dot:focus-visible {
+      outline: 2px solid #ffffff;
+      outline-offset: 2px;
+    }
+
+    /* Fallback default hero styling */
+    .hero-default-fallback.hidden {
+      display: none !important;
+    }
+
+    /* Reduced Motion Accessibility */
+    @media (prefers-reduced-motion: reduce) {
+      .carousel-track,
+      .carousel-slide,
+      .carousel-bg-img,
+      .carousel-content {
+        transition: none !important;
+        animation: none !important;
+      }
+    }
+
     /* ---- Value Props ---- */
     .value-props {
       background: var(--white);
@@ -834,13 +1209,45 @@
       color: var(--gray-700);
       transition: all var(--transition-base);
       white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
     }
 
-    .brand-item:hover {
+    .brand-item-clickable {
+      cursor: pointer;
+      flex-direction: column;
+      gap: var(--sp-2);
+      padding: var(--sp-4) var(--sp-5);
+      text-align: center;
+      min-width: 90px;
+    }
+
+    .brand-item:hover, .brand-item-clickable:hover {
       box-shadow: var(--shadow-md);
       transform: translateY(-2px);
       color: var(--primary-dark);
       border-color: var(--primary-light);
+    }
+
+    .brand-logo-emoji {
+      font-size: 2rem;
+      line-height: 1;
+      display: block;
+    }
+
+    .brand-logo-img {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+      border-radius: 8px;
+      display: block;
+    }
+
+    .brand-item-name {
+      font-size: var(--text-sm);
+      font-weight: var(--fw-semi);
+      color: var(--gray-700);
     }
 
     /* ---- Testimonials ---- */
@@ -1390,14 +1797,17 @@
             <div data-auth style="display:none">
               <a class="dropdown-item" href="#" onclick="MathuraQuickMart.goToDashboard(event)">📊 Dashboard</a>
               <a class="dropdown-item" href="/customer/my-orders.html">📦 My Orders</a>
+              <a class="dropdown-item" href="/customer/returns.html">🔄 Returns & Refunds</a>
               <a class="dropdown-item" href="/customer/profile.html">👤 Profile</a>
               <a class="dropdown-item" href="/customer/wishlist.html">❤️ Wishlist</a>
+              <a class="dropdown-item" href="#" onclick="MathuraQuickMart.openWhatsApp('Hello Mathura Quick Mart Support 👋');return false;" style="color:#16a34a;font-weight:600;">💬 WhatsApp Support</a>
               <div class="dropdown-divider"></div>
               <div class="dropdown-item" onclick="MathuraQuickMart.logout()">🚪 Logout</div>
             </div>
             <div data-guest>
               <a class="dropdown-item" href="/customer/login.html">🔑 Login</a>
               <a class="dropdown-item" href="/customer/register.html">📝 Register</a>
+              <a class="dropdown-item" href="#" onclick="MathuraQuickMart.openWhatsApp('Hello Mathura Quick Mart Support 👋');return false;" style="color:#16a34a;font-weight:600;">💬 WhatsApp Support</a>
             </div>
           </div>
         </div>
@@ -1446,81 +1856,100 @@
     </div>
   </nav>
 
-  <!-- ===== HERO SECTION ===== -->
-  <section class="hero">
-    <div class="hero-grid-pattern"></div>
-    <div class="hero-inner container">
-      <div class="hero-content">
-        <div class="hero-tagline">
-          <span>⚡</span> Express Delivery in 60 Minutes
-        </div>
-        <h1 class="hero-title">
-          Fresh Groceries<br>
-          <span class="accent">Delivered</span> to<br>
-          Your Doorstep
-        </h1>
-        <p class="hero-sub">
-          Shop from 10,000+ products across all categories. Get farm-fresh vegetables, organic products, and daily
-          essentials — all at unbeatable prices.
-        </p>
-
-        <!-- Search -->
-        <div class="hero-search-bar">
-          <input type="text" id="hero-search-input" placeholder="Search for tomatoes, milk, bread..." data-search-input>
-          <button class="hero-search-btn"
-            onclick="window.location.href='/customer/products.html?q='+document.getElementById('hero-search-input').value">
-            🔍 Search
-          </button>
-        </div>
-
-        <!-- Popular searches -->
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:var(--sp-8);">
-          <span style="font-size:12px;color:rgba(255,255,255,0.6);">Popular:</span>
-          <a href="/customer/products.html?q=tomato"
-            style="font-size:12px;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.1);padding:2px 10px;border-radius:20px;">Tomatoes</a>
-          <a href="/customer/products.html?q=milk"
-            style="font-size:12px;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.1);padding:2px 10px;border-radius:20px;">Milk</a>
-          <a href="/customer/products.html?q=bread"
-            style="font-size:12px;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.1);padding:2px 10px;border-radius:20px;">Bread</a>
-          <a href="/customer/products.html?q=rice"
-            style="font-size:12px;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.1);padding:2px 10px;border-radius:20px;">Rice</a>
-        </div>
-
-        <!-- Stats -->
-        <div class="hero-stats">
-          <div class="hero-stat-item">
-            <div class="hero-stat-num">100+</div>
-            <div class="hero-stat-label">Products</div>
-          </div>
-          <div class="hero-stat-item" style="border-left:1px solid rgba(255,255,255,0.15);padding-left:var(--sp-8);">
-            <div class="hero-stat-num">5000+</div>
-            <div class="hero-stat-label">Happy Customers</div>
-          </div>
-          <div class="hero-stat-item" style="border-left:1px solid rgba(255,255,255,0.15);padding-left:var(--sp-8);">
-            <div class="hero-stat-num">60 min</div>
-            <div class="hero-stat-label">Delivery</div>
-          </div>
-        </div>
+  <!-- ===== HERO PROMOTIONAL CAROUSEL SECTION ===== -->
+  <section class="hero-carousel-wrapper" id="hero-carousel-section" aria-roledescription="carousel" aria-label="Promotional Banners">
+    <!-- Dynamic Carousel (Visible when valid promotional banners exist) -->
+    <div class="hero-carousel" id="hero-carousel" tabindex="0" aria-live="polite">
+      <div class="carousel-track" id="carousel-track">
+        <!-- Slides will be rendered dynamically by JS -->
       </div>
 
-      <!-- Hero Visual -->
-      <div class="hero-visual">
-        <div class="hero-img-main">
-          <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=600" alt="Fresh Groceries"
-            loading="eager">
-        </div>
-        <div class="hero-float-card hero-float-left">
-          <div class="float-icon">🚚</div>
-          <div class="float-text">
-            <strong>Free Delivery</strong>
-            <span>On all orders</span>
+      <!-- Navigation Arrows -->
+      <button class="carousel-arrow carousel-arrow-prev" id="carousel-prev" aria-label="Previous promotional banner">‹</button>
+      <button class="carousel-arrow carousel-arrow-next" id="carousel-next" aria-label="Next promotional banner">›</button>
+
+      <!-- Clickable Indicator Dots -->
+      <div class="carousel-indicators" id="carousel-indicators" role="tablist" aria-label="Banner slide indicators">
+        <!-- Dots rendered dynamically by JS -->
+      </div>
+    </div>
+
+    <!-- Polished Default Hero Section (Shown if no active scheduled banners are available) -->
+    <div class="hero hero-default-fallback hidden" id="hero-default-fallback">
+      <div class="hero-grid-pattern"></div>
+      <div class="hero-inner container">
+        <div class="hero-content">
+          <div class="hero-tagline">
+            <span>⚡</span> Express Delivery in 60 Minutes
+          </div>
+          <h1 class="hero-title">
+            Fresh Groceries<br>
+            <span class="accent">Delivered</span> to<br>
+            Your Doorstep
+          </h1>
+          <p class="hero-sub">
+            Shop from 10,000+ products across all categories. Get farm-fresh vegetables, organic products, and daily
+            essentials — all at unbeatable prices.
+          </p>
+
+          <!-- Search -->
+          <div class="hero-search-bar">
+            <input type="text" id="hero-search-input" placeholder="Search for tomatoes, milk, bread..." data-search-input>
+            <button class="hero-search-btn"
+              onclick="window.location.href='/customer/products.html?q='+document.getElementById('hero-search-input').value">
+              🔍 Search
+            </button>
+          </div>
+
+          <!-- Popular searches -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:var(--sp-8);">
+            <span style="font-size:12px;color:rgba(255,255,255,0.6);">Popular:</span>
+            <a href="/customer/products.html?q=tomato"
+              style="font-size:12px;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.1);padding:2px 10px;border-radius:20px;">Tomatoes</a>
+            <a href="/customer/products.html?q=milk"
+              style="font-size:12px;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.1);padding:2px 10px;border-radius:20px;">Milk</a>
+            <a href="/customer/products.html?q=bread"
+              style="font-size:12px;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.1);padding:2px 10px;border-radius:20px;">Bread</a>
+            <a href="/customer/products.html?q=rice"
+              style="font-size:12px;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.1);padding:2px 10px;border-radius:20px;">Rice</a>
+          </div>
+
+          <!-- Stats -->
+          <div class="hero-stats">
+            <div class="hero-stat-item">
+              <div class="hero-stat-num">100+</div>
+              <div class="hero-stat-label">Products</div>
+            </div>
+            <div class="hero-stat-item" style="border-left:1px solid rgba(255,255,255,0.15);padding-left:var(--sp-8);">
+              <div class="hero-stat-num">5000+</div>
+              <div class="hero-stat-label">Happy Customers</div>
+            </div>
+            <div class="hero-stat-item" style="border-left:1px solid rgba(255,255,255,0.15);padding-left:var(--sp-8);">
+              <div class="hero-stat-num">60 min</div>
+              <div class="hero-stat-label">Delivery</div>
+            </div>
           </div>
         </div>
-        <div class="hero-float-card hero-float-right">
-          <div class="float-icon">⭐</div>
-          <div class="float-text">
-            <strong>4.9 / 5 Rating</strong>
-            <span>5000+ Reviews</span>
+
+        <!-- Hero Visual -->
+        <div class="hero-visual">
+          <div class="hero-img-main">
+            <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=600" alt="Fresh Groceries"
+              loading="eager">
+          </div>
+          <div class="hero-float-card hero-float-left">
+            <div class="float-icon">🚚</div>
+            <div class="float-text">
+              <strong>Free Delivery</strong>
+              <span>On all orders</span>
+            </div>
+          </div>
+          <div class="hero-float-card hero-float-right">
+            <div class="float-icon">⭐</div>
+            <div class="float-text">
+              <strong>4.9 / 5 Rating</strong>
+              <span>5000+ Reviews</span>
+            </div>
           </div>
         </div>
       </div>
@@ -1564,13 +1993,36 @@
   </section>
 
   <!-- ===== CATEGORIES ===== -->
-  <section class="section-sm" style="background:var(--gray-50);">
+  <section class="section-sm" style="background:var(--gray-50);padding-bottom:var(--sp-5);">
     <div class="container">
       <div class="section-header">
         <h2 class="section-title">Shop by Category</h2>
         <a href="/customer/products.html" class="btn btn-outline">View All →</a>
       </div>
-      <div class="grid grid-5" id="categories-grid" style="gap:var(--sp-4);"></div>
+      <div class="grid grid-5" id="categories-grid" style="gap:var(--sp-3);"></div>
+    </div>
+  </section>
+
+  <!-- ===== PERSONALIZED SECTION ===== -->
+  <section class="personalized-section" id="personalized-section" style="display:none;">
+    <div class="container">
+      <div class="section-header" style="margin-bottom:var(--sp-4);">
+        <div>
+          <h2 class="section-title" id="personalized-title" style="margin-bottom:4px;">Recommended For You</h2>
+          <p id="personalized-subtitle" style="color:var(--gray-500);font-size:var(--text-sm);margin:0;">Popular picks you may like</p>
+        </div>
+        <a href="/customer/products.html" class="btn btn-outline" id="personalized-see-all">See All →</a>
+      </div>
+      <!-- Skeleton loader -->
+      <div class="personalized-skeleton" id="personalized-skeleton">
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+      </div>
+      <!-- Carousel -->
+      <div class="personalized-carousel" id="personalized-carousel" style="display:none;"></div>
     </div>
   </section>
 
@@ -1660,22 +2112,14 @@
   </section>
 
   <!-- ===== BRANDS ===== -->
-  <section class="brands-section">
+  <section class="brands-section" id="brands-section">
     <div class="container">
       <div class="section-header">
         <h2 class="section-title">Top Brands</h2>
+        <a href="/customer/products.html" class="btn btn-outline">All Products →</a>
       </div>
-      <div class="brands-row">
-        <div class="brand-item">🥛 Amul</div>
-        <div class="brand-item">🍪 Britannia</div>
-        <div class="brand-item">🌾 India Gate</div>
-        <div class="brand-item">🍫 Nestlé</div>
-        <div class="brand-item">🧃 Tropicana</div>
-        <div class="brand-item">🫒 Dabur</div>
-        <div class="brand-item">☕ Lipton</div>
-        <div class="brand-item">🍫 Lindt</div>
-        <div class="brand-item">🧴 Dove</div>
-        <div class="brand-item">🌿 Patanjali</div>
+      <div class="brands-row" id="brands-row">
+        <!-- Populated dynamically -->
       </div>
     </div>
   </section>
@@ -1828,12 +2272,12 @@
           <h4>Customer Service</h4>
           <div class="footer-links">
             <a href="/customer/my-orders.html">Track Order</a>
+            <a href="/customer/returns.html">Returns & Refunds</a>
             <a href="/customer/faq.html">FAQ</a>
             <a href="/customer/contact.html">Contact Us</a>
             <a href="/customer/about.html">About Us</a>
             <a href="/customer/privacy.html">Privacy Policy</a>
             <a href="/customer/terms.html">Terms & Conditions</a>
-            <a href="/index.html">Home</a>
           </div>
         </div>
 
@@ -1853,8 +2297,17 @@
             <span>mathurasupermrkt@gmail.com</span>
           </div>
           <div class="footer-contact-item">
+            <span class="footer-contact-icon">💬</span>
+            <span>WhatsApp: +91 98765 43210</span>
+          </div>
+          <div class="footer-contact-item">
             <span class="footer-contact-icon">🕐</span>
             <span>Mon–Sun: 7 AM – 10 PM</span>
+          </div>
+          <div style="margin-top:10px;">
+            <button onclick="MathuraQuickMart.openWhatsApp('Hello Mathura Quick Mart 👋 I have a question regarding grocery orders.')" class="btn btn-whatsapp btn-sm" style="font-size:12px;padding:6px 14px;">
+              💬 Chat on WhatsApp
+            </button>
           </div>
         </div>
       </div>
@@ -1904,7 +2357,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+
   <script src="/js/app.js"></script>
   <script src="/js/seed-db.js" defer></script>
   <script>
@@ -2044,10 +2497,533 @@ document.addEventListener("DOMContentLoaded", () => {
       if (msgEl) msgEl.value = '';
     }
 
+    function renderBrands() {
+      const row = document.getElementById('brands-row');
+      if (!row) return;
+      const brands = (API.brands || []).filter(b => b.isActive !== false);
+      if (brands.length === 0) {
+        row.innerHTML = '<div style="color:var(--gray-400);padding:1rem;">No brands configured yet.</div>';
+        return;
+      }
+      row.innerHTML = brands.map(b => {
+        const isEmoji = b.logo && b.logo.length <= 4 && !/^https?:/.test(b.logo);
+        const logoHtml = isEmoji
+          ? `<span class="brand-logo-emoji">${b.logo}</span>`
+          : b.logo
+            ? `<img src="${b.logo}" alt="${b.name}" class="brand-logo-img" loading="lazy">`
+            : `<span class="brand-logo-emoji">🏷️</span>`;
+        return `
+          <div class="brand-item brand-item-clickable" onclick="window.location.href='/customer/products.html?brand=${encodeURIComponent(b.id)}'" title="Shop ${b.name} products">
+            ${logoHtml}
+            <span class="brand-item-name">${b.name}</span>
+          </div>`;
+      }).join('');
+    }
+
+    // ---- Personalized Recommendations ----
+    let _personalized_rendering = false;
+    async function renderPersonalized() {
+      if (_personalized_rendering) return;
+      _personalized_rendering = true;
+
+      const section = document.getElementById('personalized-section');
+      const skeleton = document.getElementById('personalized-skeleton');
+      const carousel = document.getElementById('personalized-carousel');
+      const titleEl = document.getElementById('personalized-title');
+      const subtitleEl = document.getElementById('personalized-subtitle');
+      const seeAllEl = document.getElementById('personalized-see-all');
+      if (!section || !skeleton || !carousel) { _personalized_rendering = false; return; }
+
+      // Show section with skeleton
+      section.style.display = '';
+      skeleton.style.display = 'flex';
+      carousel.style.display = 'none';
+
+      try {
+        const user = MathuraQuickMart.state.user;
+        let productsToShow = [];
+        let mode = 'recommended'; // 'recent' | 'recommended'
+
+        if (user && user.uid) {
+          // ---- Try to fetch customer's order history from Firestore ----
+          if (window.FirebaseDB && window.Firestore) {
+            try {
+              const fs = window.Firestore;
+              const db = window.FirebaseDB;
+              const VALID_STATUSES = ['delivered', 'completed', 'out-delivery', 'out_for_delivery'];
+
+              // Query by userId field (try both field names)
+              let ordersSnap = null;
+              try {
+                ordersSnap = await fs.getDocs(
+                  fs.query(
+                    fs.collection(db, 'orders'),
+                    fs.where('userId', '==', user.uid),
+                    fs.orderBy('createdAt', 'desc'),
+                    fs.limit(15)
+                  )
+                );
+              } catch(e) {
+                // Fallback: try without orderBy (index may not exist)
+                try {
+                  ordersSnap = await fs.getDocs(
+                    fs.query(
+                      fs.collection(db, 'orders'),
+                      fs.where('userId', '==', user.uid),
+                      fs.limit(20)
+                    )
+                  );
+                } catch(e2) {
+                  // Also try customerId field
+                  try {
+                    ordersSnap = await fs.getDocs(
+                      fs.query(
+                        fs.collection(db, 'orders'),
+                        fs.where('customerId', '==', user.uid),
+                        fs.limit(20)
+                      )
+                    );
+                  } catch(e3) { ordersSnap = null; }
+                }
+              }
+
+              if (ordersSnap && !ordersSnap.empty) {
+                // Collect all product IDs from qualifying orders (most recent first)
+                const seenIds = new Set();
+                const orderedProductIds = [];
+
+                // Sort by createdAt desc if possible
+                const orderDocs = [];
+                ordersSnap.forEach(doc => orderDocs.push({ id: doc.id, ...doc.data() }));
+                orderDocs.sort((a, b) => {
+                  const ta = a.createdAt || a.date || a.id || '';
+                  const tb = b.createdAt || b.date || b.id || '';
+                  return String(tb).localeCompare(String(ta));
+                });
+
+                for (const order of orderDocs) {
+                  const status = (order.status || '').toLowerCase().replace(/[^a-z]/g, '');
+                  const isValid = VALID_STATUSES.some(s => s.replace(/[^a-z]/g, '') === status);
+                  if (!isValid) continue;
+
+                  // Try multiple item array field names
+                  const items = order.items || order.products || order.cartItems || order.orderItems || [];
+                  for (const item of items) {
+                    const pid = item.productId || item.id;
+                    if (pid == null) continue;
+                    const key = String(pid);
+                    if (!seenIds.has(key)) {
+                      seenIds.add(key);
+                      orderedProductIds.push(pid);
+                    }
+                    if (orderedProductIds.length >= 12) break;
+                  }
+                  if (orderedProductIds.length >= 12) break;
+                }
+
+                if (orderedProductIds.length > 0) {
+                  // Look up products from local API cache
+                  for (const pid of orderedProductIds) {
+                    const p = API.getProduct(pid) || API.products.find(pr => String(pr.id) === String(pid));
+                    if (p && p.stock > 0) productsToShow.push(p);
+                    if (productsToShow.length >= 8) break;
+                  }
+                  if (productsToShow.length > 0) mode = 'recent';
+                }
+              }
+            } catch (firestoreErr) {
+              console.warn('Personalized: Firestore order fetch error:', firestoreErr);
+              // Will fall through to recommended
+            }
+          } else {
+            // No Firestore — try local state orders
+            const localOrders = (MathuraQuickMart.state.orders || []).filter(o => {
+              const s = (o.status || '').toLowerCase();
+              return s === 'delivered' || s === 'completed';
+            });
+            if (localOrders.length > 0) {
+              const seenIds = new Set();
+              for (const order of localOrders) {
+                const items = order.items || order.products || [];
+                for (const item of items) {
+                  const pid = item.productId || item.id;
+                  if (!pid) continue;
+                  const key = String(pid);
+                  if (!seenIds.has(key)) {
+                    seenIds.add(key);
+                    const p = API.getProduct(pid) || API.products.find(pr => String(pr.id) === String(pid));
+                    if (p && p.stock > 0) productsToShow.push(p);
+                  }
+                }
+              }
+              if (productsToShow.length > 0) mode = 'recent';
+            }
+          }
+        }
+
+        // ---- Fallback: Recommended products ----
+        if (productsToShow.length === 0) {
+          mode = 'recommended';
+          const allProducts = API.getProducts();
+          // Score products: bestSeller + featured + rating + discount
+          const scored = allProducts.map(p => ({
+            ...p,
+            _score: (p.bestSeller ? 3 : 0) + (p.featured ? 2 : 0) + ((p.rating || 0) / 5) + ((p.discount || 0) / 100)
+          }));
+          scored.sort((a, b) => b._score - a._score);
+          productsToShow = scored.slice(0, 8);
+        }
+
+        // ---- Update heading ----
+        if (mode === 'recent') {
+          titleEl.textContent = '🛒 Recently Bought';
+          subtitleEl.textContent = 'Buy your favorites again';
+          if (seeAllEl) { seeAllEl.href = '/customer/my-orders.html'; seeAllEl.textContent = 'View Orders →'; }
+        } else {
+          titleEl.textContent = '✨ Recommended For You';
+          subtitleEl.textContent = 'Popular picks you may like';
+          if (seeAllEl) { seeAllEl.href = '/customer/products.html'; seeAllEl.textContent = 'See All →'; }
+        }
+
+        // ---- Render carousel ----
+        if (productsToShow.length === 0) {
+          section.style.display = 'none';
+        } else {
+          carousel.innerHTML = productsToShow.map(p => renderProductCard(p)).join('');
+          skeleton.style.display = 'none';
+          carousel.style.display = 'flex';
+        }
+
+      } catch (err) {
+        console.warn('renderPersonalized error:', err);
+        // Graceful fallback
+        try {
+          const fallback = API.getProducts({ bestSeller: true }).slice(0, 6);
+          if (fallback.length > 0) {
+            titleEl.textContent = '✨ Recommended For You';
+            subtitleEl.textContent = 'Popular picks you may like';
+            carousel.innerHTML = fallback.map(p => renderProductCard(p)).join('');
+            skeleton.style.display = 'none';
+            carousel.style.display = 'flex';
+          } else {
+            section.style.display = 'none';
+          }
+        } catch(e2) { section.style.display = 'none'; }
+      } finally {
+        _personalized_rendering = false;
+      }
+    }
+
+    // ============ HERO PROMOTIONAL BANNER CAROUSEL ============
+    let _bannerCarouselState = {
+      currentIndex: 0,
+      timer: null,
+      banners: [],
+      isHovered: false,
+      isFocused: false,
+      touchStartX: 0,
+      touchEndX: 0
+    };
+
+    function sanitizeBannerUrl(url) {
+      if (!url || typeof url !== 'string') return '/customer/products.html';
+      const trimmed = url.trim();
+      if (/^(javascript|data|vbscript):/i.test(trimmed)) {
+        return '/customer/products.html';
+      }
+      if (trimmed.startsWith('/') || trimmed.startsWith('#') || /^https?:\/\//i.test(trimmed)) {
+        return trimmed;
+      }
+      if (/^[a-zA-Z0-9_\-\/?&=%#.]+$/.test(trimmed)) {
+        return '/' + trimmed;
+      }
+      return '/customer/products.html';
+    }
+
+    window.copyBannerCoupon = function(code, e) {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      if (!code) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(() => {
+          MathuraQuickMart.toast(`Coupon code "${code}" copied to clipboard! 🎉`, 'success');
+        }).catch(() => {
+          MathuraQuickMart.toast(`Use coupon code: ${code}`, 'info');
+        });
+      } else {
+        MathuraQuickMart.toast(`Coupon code: ${code}`, 'info');
+      }
+    };
+
+    window.goToBannerSlide = function(index) {
+      const len = _bannerCarouselState.banners.length;
+      if (len === 0) return;
+      _bannerCarouselState.currentIndex = (index + len) % len;
+      updateBannerSlidePosition();
+    };
+
+    function updateBannerSlidePosition() {
+      const track = document.getElementById('carousel-track');
+      if (!track) return;
+      const idx = _bannerCarouselState.currentIndex;
+      track.style.transform = `translateX(-${idx * 100}%)`;
+
+      // Update active classes on slides
+      document.querySelectorAll('#carousel-track .carousel-slide').forEach((slide, i) => {
+        slide.classList.toggle('active', i === idx);
+      });
+
+      // Update indicators
+      document.querySelectorAll('#carousel-indicators .carousel-dot').forEach((dot, i) => {
+        dot.classList.toggle('active', i === idx);
+        dot.setAttribute('aria-selected', i === idx ? 'true' : 'false');
+      });
+    }
+
+    function nextBannerSlide() {
+      window.goToBannerSlide(_bannerCarouselState.currentIndex + 1);
+    }
+
+    function prevBannerSlide() {
+      window.goToBannerSlide(_bannerCarouselState.currentIndex - 1);
+    }
+
+    function startBannerAutoSlide() {
+      if (_bannerCarouselState.timer) {
+        clearInterval(_bannerCarouselState.timer);
+        _bannerCarouselState.timer = null;
+      }
+      if (_bannerCarouselState.banners.length <= 1) return;
+
+      // Check user reduced motion preference
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (prefersReducedMotion) return; // Respect reduced motion
+
+      _bannerCarouselState.timer = setInterval(() => {
+        if (!_bannerCarouselState.isHovered && !_bannerCarouselState.isFocused) {
+          nextBannerSlide();
+        }
+      }, 5000);
+    }
+
+    function renderHeroCarousel() {
+      const carouselEl = document.getElementById('hero-carousel');
+      const fallbackEl = document.getElementById('hero-default-fallback');
+      const track = document.getElementById('carousel-track');
+      const indicators = document.getElementById('carousel-indicators');
+      const prevBtn = document.getElementById('carousel-prev');
+      const nextBtn = document.getElementById('carousel-next');
+
+      if (!carouselEl || !track) return;
+
+      const banners = (API && typeof API.getBanners === 'function') 
+        ? API.getBanners({ onlyActive: true }) 
+        : (API && API.banners ? API.banners.filter(b => b.isActive !== false) : []);
+      _bannerCarouselState.banners = banners;
+
+      if (!banners || banners.length === 0) {
+        // Show polished default hero fallback
+        carouselEl.style.display = 'none';
+        if (fallbackEl) fallbackEl.classList.remove('hidden');
+        if (_bannerCarouselState.timer) {
+          clearInterval(_bannerCarouselState.timer);
+          _bannerCarouselState.timer = null;
+        }
+        return;
+      }
+
+      // Valid active scheduled banners exist!
+      carouselEl.style.display = 'block';
+      if (fallbackEl) fallbackEl.classList.add('hidden');
+
+      if (_bannerCarouselState.currentIndex >= banners.length) {
+        _bannerCarouselState.currentIndex = 0;
+      }
+
+      // Render Slides
+      track.innerHTML = banners.map((b, idx) => {
+        const destUrl = sanitizeBannerUrl(b.buttonUrl || '/customer/products.html');
+        const btnText = b.buttonText ? b.buttonText.trim() : 'Shop Now';
+        const desktopImg = b.desktopImage || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=1200';
+        const mobileImg = b.mobileImage || desktopImg;
+
+        const badgeHtml = b.badge ? `<span class="carousel-badge">${b.badge}</span>` : '';
+        const discountHtml = b.discountText ? `<span class="carousel-discount-pill">${b.discountText}</span>` : '';
+        const couponHtml = b.couponCode ? `
+          <div class="carousel-coupon-chip" onclick="copyBannerCoupon('${b.couponCode.replace(/'/g, "\\'")}', event)" title="Click to copy coupon code">
+            <span>🏷️ Code:</span>
+            <strong>${b.couponCode}</strong>
+            <span style="font-size:11px;opacity:0.8;">(Tap to copy)</span>
+          </div>` : '';
+
+        return `
+          <div class="carousel-slide ${idx === _bannerCarouselState.currentIndex ? 'active' : ''}" 
+               data-slide-index="${idx}"
+               role="group" 
+               aria-roledescription="slide" 
+               aria-label="${idx + 1} of ${banners.length}: ${b.title || 'Special Promotion'}">
+            <div class="carousel-bg-wrap">
+              <picture>
+                <source media="(max-width: 640px)" srcset="${mobileImg}">
+                <img class="carousel-bg-img" src="${desktopImg}" alt="${b.title || 'Promotion Banner'}" loading="${idx === 0 ? 'eager' : 'lazy'}">
+              </picture>
+            </div>
+            <div class="carousel-overlay"></div>
+            <div class="carousel-glow"></div>
+            <div class="carousel-content-container">
+              <div class="carousel-content">
+                ${(badgeHtml || discountHtml) ? `<div class="carousel-badge-row">${badgeHtml}${discountHtml}</div>` : ''}
+                <h2 class="carousel-title">${b.title || 'Special Grocery Offer'}</h2>
+                <p class="carousel-desc">${b.description || 'Order fresh groceries, staples, and essentials delivered fast to your door.'}</p>
+                <div class="carousel-action-row">
+                  <a href="${destUrl}" class="carousel-btn">${btnText} <span>→</span></a>
+                  ${couponHtml}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Render Indicators
+      if (indicators) {
+        if (banners.length <= 1) {
+          indicators.style.display = 'none';
+        } else {
+          indicators.style.display = 'flex';
+          indicators.innerHTML = banners.map((b, idx) => `
+            <button class="carousel-dot ${idx === _bannerCarouselState.currentIndex ? 'active' : ''}"
+                    data-dot-index="${idx}"
+                    role="tab"
+                    aria-selected="${idx === _bannerCarouselState.currentIndex ? 'true' : 'false'}"
+                    aria-label="Go to banner ${idx + 1}: ${b.title || ''}"
+                    onclick="goToBannerSlide(${idx})">
+            </button>
+          `).join('');
+        }
+      }
+
+      // Hide arrows if only 1 banner
+      if (prevBtn && nextBtn) {
+        const showControls = banners.length > 1;
+        prevBtn.style.display = showControls ? 'flex' : 'none';
+        nextBtn.style.display = showControls ? 'flex' : 'none';
+      }
+
+      updateBannerSlidePosition();
+      startBannerAutoSlide();
+    }
+
+    function initHeroBannerCarousel() {
+      renderHeroCarousel();
+
+      const carouselEl = document.getElementById('hero-carousel');
+      const prevBtn = document.getElementById('carousel-prev');
+      const nextBtn = document.getElementById('carousel-next');
+
+      if (!carouselEl) return;
+
+      // Previous / Next buttons
+      if (prevBtn) {
+        prevBtn.onclick = (e) => {
+          e.preventDefault();
+          prevBannerSlide();
+        };
+      }
+      if (nextBtn) {
+        nextBtn.onclick = (e) => {
+          e.preventDefault();
+          nextBannerSlide();
+        };
+      }
+
+      // Keyboard arrow navigation
+      carouselEl.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          prevBannerSlide();
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          nextBannerSlide();
+        }
+      });
+
+      // Pause on Hover
+      carouselEl.addEventListener('mouseenter', () => {
+        _bannerCarouselState.isHovered = true;
+      });
+      carouselEl.addEventListener('mouseleave', () => {
+        _bannerCarouselState.isHovered = false;
+      });
+
+      // Pause on Focus
+      carouselEl.addEventListener('focusin', () => {
+        _bannerCarouselState.isFocused = true;
+      });
+      carouselEl.addEventListener('focusout', () => {
+        _bannerCarouselState.isFocused = false;
+      });
+
+      // Touch Swiping on mobile
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let isSwiping = false;
+
+      carouselEl.addEventListener('touchstart', (e) => {
+        if (e.touches && e.touches.length > 0) {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+          isSwiping = true;
+        }
+      }, { passive: true });
+
+      carouselEl.addEventListener('touchmove', (e) => {
+        if (!isSwiping || !e.touches || e.touches.length === 0) return;
+        const diffX = e.touches[0].clientX - touchStartX;
+        const diffY = e.touches[0].clientY - touchStartY;
+      }, { passive: true });
+
+      carouselEl.addEventListener('touchend', (e) => {
+        if (!isSwiping || !e.changedTouches || e.changedTouches.length === 0) return;
+        isSwiping = false;
+        const touchEndX = e.changedTouches[0].clientX;
+        const diffX = touchEndX - touchStartX;
+        const threshold = 40; // 40px swipe threshold
+        if (Math.abs(diffX) >= threshold) {
+          if (diffX < 0) {
+            nextBannerSlide();
+          } else {
+            prevBannerSlide();
+          }
+        }
+      }, { passive: true });
+
+      // Listen for reduced motion preference changes
+      try {
+        const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+        motionQuery.addEventListener('change', (e) => {
+          if (e.matches && _bannerCarouselState.timer) {
+            clearInterval(_bannerCarouselState.timer);
+            _bannerCarouselState.timer = null;
+          } else if (!e.matches) {
+            startBannerAutoSlide();
+          }
+        });
+      } catch (err) {}
+    }
+
     // ---- Render Page ----
     function renderStorefront() {
+      // Render promotional banner carousel
+      renderHeroCarousel();
+
       // Render categories
       renderCategories('categories-grid');
+
+      // Render brands
+      renderBrands();
 
       // Render products
       const featuredEl = document.getElementById('featured-products');
@@ -2075,31 +3051,70 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ---- On Load ----
     document.addEventListener('DOMContentLoaded', () => {
+      initHeroBannerCarousel();
       renderStorefront();
       updateNavCart();
       startCountdown();
 
-      // Initialize Map
-      if (document.getElementById('map') && typeof L !== 'undefined') {
-        const map = L.map('map').setView([9.3754, 78.8691], 15); // Madakottan, Ramanathapuram
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
-        L.marker([9.3754, 78.8691])
-          .addTo(map)
-          .bindPopup("<b>Mathura Quick Mart</b><br>Madakottan, Ramanathapuram")
-          .openPopup();
+      // Show personalized section immediately for non-logged-in users (fast path)
+      renderPersonalized();
+
+      // Initialize Google Map
+      if (document.getElementById('map') && typeof google !== 'undefined' && google.maps) {
+        const storeLatLng = { lat: 9.3754, lng: 78.8691 }; // Madakottan, Ramanathapuram
+        const map = new google.maps.Map(document.getElementById('map'), {
+          center: storeLatLng,
+          zoom: 15,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+          mapTypeId: 'satellite'
+        });
+        const marker = new google.maps.Marker({
+          position: storeLatLng,
+          map: map,
+          title: 'Mathura Quick Mart'
+        });
+        const infoWindow = new google.maps.InfoWindow({
+          content: '<b>Mathura Quick Mart</b><br>Madakottan, Ramanathapuram'
+        });
+        infoWindow.open(map, marker);
+        marker.addListener('click', () => infoWindow.open(map, marker));
       }
 
       // Re-render when database is ready
-      if (window.dbReady) {
+      const onDbReady = () => {
         renderStorefront();
         updateNavCart();
+        // Reset flag so we re-fetch with fresh product data
+        _personalized_rendering = false;
+        renderPersonalized();
+      };
+
+      if (window.dbReady) {
+        onDbReady();
       } else {
-        window.addEventListener('db-ready', () => {
-          renderStorefront();
-          updateNavCart();
-        });
+        window.addEventListener('db-ready', onDbReady);
+      }
+
+      // Re-render personalized section when auth state changes (login/logout)
+      const setupPersonalizedAuth = () => {
+        const auth = window.FirebaseAuth;
+        const authFns = window.FirebaseAuthFns;
+        if (auth && authFns) {
+          authFns.onAuthStateChanged(auth, () => {
+            // Small delay to let MathuraQuickMart.state.user get updated first
+            setTimeout(() => {
+              _personalized_rendering = false;
+              renderPersonalized();
+            }, 300);
+          });
+        }
+      };
+      if (window.FirebaseAuth && window.FirebaseAuthFns) {
+        setupPersonalizedAuth();
+      } else {
+        window.addEventListener('firebase-ready', setupPersonalizedAuth, { once: true });
       }
     });
 </script>

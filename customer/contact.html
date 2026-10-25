@@ -99,14 +99,14 @@
       <div class="card-flat p-6">
         <h3 class="filter-title mb-4">Mathura Quick Mart Support Desk</h3>
         <div style="font-size:var(--text-sm);color:var(--gray-600);line-height:1.8;">
-          <div style="margin-bottom:12px;"><strong>📍 Headquarters:</strong> 123 Market Street, Green Park, New Delhi - 110016</div>
+          <div style="margin-bottom:12px;"><strong>📍 Store Location:</strong> Madakottan, Ramanathapuram, Tamil Nadu - 623504</div>
           <div style="margin-bottom:12px;"><strong>📞 Customer Care:</strong> +91 1800-XXX-XXXX (Toll Free)</div>
           <div style="margin-bottom:12px;"><strong>📧 Support Email:</strong> support@mathuraquickmart.in</div>
           <div style="margin-bottom:12px;"><strong>💬 WhatsApp Support:</strong> +91 98765 43210 (Mon–Sun)</div>
           <div><strong>🕐 Operating Hours:</strong> 7:00 AM – 10:00 PM (Monday to Sunday)</div>
-          <a href="https://wa.me/919876543210?text=Hello%20Mathura%20QuickMart%20Support%2C%20I%20have%20a%20question%20regarding%20my%20order." target="_blank" class="btn btn-sm w-full mt-4" style="background:#25d366;color:#000;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;text-decoration:none;">
-            💬 Chat with Us on WhatsApp
-          </a>
+          <button onclick="openContactWhatsApp()" class="btn btn-whatsapp w-full mt-4" style="width:100%;">
+            💬 Chat on WhatsApp
+          </button>
         </div>
       </div>
 
@@ -114,8 +114,8 @@
       <div style="width:100%;height:220px;border-radius:var(--radius-xl);overflow:hidden;border:1px solid var(--gray-200);position:relative;background:#e2e8f0;">
         <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle, #edf1f7 10%, #e2e8f0 100%);">
           <span style="font-size:2rem;">📍</span>
-          <strong style="margin-top:8px;font-size:var(--text-sm);">Mathura Quick Mart Delhi Outlet</strong>
-          <span style="font-size:11px;color:var(--gray-500);margin-top:4px;">123 Market Street, Delhi</span>
+          <strong style="margin-top:8px;font-size:var(--text-sm);">Mathura Quick Mart Supermarket</strong>
+          <span style="font-size:11px;color:var(--gray-500);margin-top:4px;">Madakottan, Ramanathapuram - 623504</span>
         </div>
       </div>
     </div>
@@ -142,6 +142,11 @@
     document.getElementById('msg-email').value = '';
     document.getElementById('msg-subject').value = '';
     document.getElementById('msg-body').value = '';
+  }
+
+  function openContactWhatsApp() {
+    const msg = "Hello Mathura Quick Mart Support 👋\n\nI would like to inquire about grocery ordering and store services.";
+    MathuraQuickMart.openWhatsApp(msg);
   }
 </script>
 </body>

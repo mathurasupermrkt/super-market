@@ -116,7 +116,7 @@
       <div class="dash-sidebar-item" onclick="switchSection('feedback')">💬 Feedback</div>
       <a class="dash-sidebar-item" href="profile.html" style="text-decoration:none;">👤 My Profile</a>
       <a class="dash-sidebar-item" href="notifications.html" style="text-decoration:none;">🔔 Notifications</a>
-      <a class="dash-sidebar-item" href="/index.html" style="text-decoration:none;">🔄 Returns & Refunds</a>
+      <a class="dash-sidebar-item" href="returns.html" style="text-decoration:none;">🔄 Returns & Refunds</a>
       <div class="dash-sidebar-item" onclick="MathuraQuickMart.logout()">🚪 Logout</div>
     </aside>
 
@@ -143,10 +143,10 @@
           </div>
           <div class="stat-card">
             <div class="stat-info">
-              <span class="stat-label">Total Saved</span>
-              <span class="stat-value">₹450</span>
+              <span class="stat-label">Reward Points</span>
+              <span class="stat-value" id="stats-rewards" style="color:var(--secondary);">0 pts</span>
             </div>
-            <div class="stat-icon" style="background:var(--secondary-pale);color:var(--secondary);">🏷️</div>
+            <div class="stat-icon" style="background:var(--secondary-pale);color:var(--secondary);">🎁</div>
           </div>
         </div>
 
@@ -233,15 +233,24 @@
   }
 
   function renderDashboardData() {
-    const user = MathuraQuickMart.state.user || { name: 'Mathura Quick Mart User', email: 'user@mathuraquickmart.in' };
-    document.getElementById('sidebar-user-name').textContent = user.name;
+    const user = MathuraQuickMart.state.user || { name: 'Customer', email: '' };
+    document.getElementById('sidebar-user-name').textContent = user.name || user.email || 'Customer';
 
-    const orders = MathuraQuickMart.state.orders.length > 0 ? MathuraQuickMart.state.orders : API.orders;
+    // Get strictly this customer's deduplicated orders
+    const orders = MathuraQuickMart.getUserOrders();
 
     document.getElementById('stats-orders').textContent = orders.length;
 
     const activeOrders = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled');
     document.getElementById('stats-active').textContent = activeOrders.length;
+
+    // Calculate Reward Points: 1 point for every ₹100 spent
+    const totalSpent = orders
+      .filter(o => o.status !== 'cancelled')
+      .reduce((sum, o) => sum + (Number(o.total) || Number(o.subtotal) || 0), 0);
+    const rewardPts = Math.floor(totalSpent / 100);
+    const rewardEl = document.getElementById('stats-rewards');
+    if (rewardEl) rewardEl.textContent = `${rewardPts.toLocaleString('en-IN')} pts`;
 
     // Render Recent Orders List
     const recentList = document.getElementById('recent-orders-list');
@@ -253,8 +262,8 @@
           <div class="card-flat p-4 mb-3 flex items-center justify-between gap-4">
             <div>
               <strong style="color:var(--gray-900);font-size:var(--text-sm);">${order.id || 'SM' + order.date}</strong>
-              <div style="font-size:11px;color:var(--gray-400);margin-top:2px;">Placed: ${MathuraQuickMart.formatDate(order.date)}</div>
-              <div style="font-size:12px;color:var(--gray-700);margin-top:4px;">Items: ${order.items ? order.items.length : 3} &middot; Total: <strong>₹${order.total || order.subtotal}</strong></div>
+              <div style="font-size:11px;color:var(--gray-400);margin-top:2px;">Placed: ${MathuraQuickMart.formatDate(order.date || order.createdAt)}</div>
+              <div style="font-size:12px;color:var(--gray-700);margin-top:4px;">Items: ${order.items ? order.items.length : 1} &middot; Total: <strong>₹${order.total || order.subtotal}</strong></div>
             </div>
             <div class="flex items-center gap-3">
               <span class="status status-${order.status}">${order.status}</span>
@@ -268,73 +277,76 @@
     // Render All Orders list
     const ordList = document.getElementById('orders-list');
     if (ordList) {
-      ordList.innerHTML = orders.map(order => `
-        <div class="card-flat p-6 mb-4">
-          <div class="flex justify-between items-center mb-4">
-            <div>
-              <strong style="font-size:var(--text-base);color:var(--gray-800);">${order.id}</strong>
-              <div style="font-size:12px;color:var(--gray-400);margin-top:2px;">Placed on ${MathuraQuickMart.formatDate(order.date)}</div>
-            </div>
-            <div class="flex items-center gap-3">
-              <span class="status status-${order.status}">${order.status}</span>
-              ${order.status !== 'delivered' && order.status !== 'cancelled' ? `<a href="/customer/order-tracking.html" class="btn btn-primary btn-sm">Track</a>` : ''}
-            </div>
-          </div>
-          <div class="divider"></div>
-          <div class="mb-4">
-            ${order.items ? order.items.map(item => `
-              <div class="flex items-center justify-between py-1" style="font-size:var(--text-sm);">
-                <span style="color:var(--gray-600);">${item.name} (x${item.qty})</span>
-                <span style="color:var(--gray-900);font-weight:bold;">₹${item.price * item.qty}</span>
+      if (orders.length === 0) {
+        ordList.innerHTML = `<div style="text-align:center;padding:40px;color:var(--gray-400)">No orders found.</div>`;
+      } else {
+        ordList.innerHTML = orders.map(order => `
+          <div class="card-flat p-6 mb-4">
+            <div class="flex justify-between items-center mb-4">
+              <div>
+                <strong style="font-size:var(--text-base);color:var(--gray-800);">${order.id}</strong>
+                <div style="font-size:12px;color:var(--gray-400);margin-top:2px;">Placed on ${MathuraQuickMart.formatDate(order.date || order.createdAt)}</div>
               </div>
-            `).join('') : `
-              <div style="font-size:var(--text-sm);color:var(--gray-500)">Fresh Organic Apple, Dairy Milk, Britannia Brown Bread</div>
-            `}
+              <div class="flex items-center gap-3">
+                <span class="status status-${order.status}">${order.status}</span>
+                ${order.status !== 'delivered' && order.status !== 'cancelled' ? `<a href="/customer/order-tracking.html" class="btn btn-primary btn-sm">Track</a>` : ''}
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div class="mb-4">
+              ${order.items && order.items.length > 0 ? order.items.map(item => `
+                <div class="flex items-center justify-between py-1" style="font-size:var(--text-sm);">
+                  <span style="color:var(--gray-600);">${item.name} (x${item.qty || 1})</span>
+                  <span style="color:var(--gray-900);font-weight:bold;">₹${(item.price || 0) * (item.qty || 1)}</span>
+                </div>
+              `).join('') : `
+                <div style="font-size:var(--text-sm);color:var(--gray-500)">Order Items (${order.id})</div>
+              `}
+            </div>
+            <div class="divider"></div>
+            <div class="flex justify-between items-center">
+              <span style="font-size:var(--text-sm);color:var(--gray-500);">Paid with ${order.paymentMethod || 'Online'}</span>
+              <strong style="font-size:var(--text-lg);color:var(--primary-dark);">₹${order.total || order.subtotal || 0}</strong>
+            </div>
           </div>
-          <div class="divider"></div>
-          <div class="flex justify-between items-center">
-            <span style="font-size:var(--text-sm);color:var(--gray-500);">Paid with ${order.paymentMethod || 'UPI'}</span>
-            <strong style="font-size:var(--text-lg);color:var(--primary-dark);">₹${order.total || order.subtotal}</strong>
-          </div>
-        </div>
-      `).join('');
+        `).join('');
+      }
     }
 
-    // Render Saved Addresses
+    // Render Saved Addresses with customer's location
     const addrGrid = document.getElementById('addresses-grid');
     if (addrGrid) {
+      let custAddress = user.address || '';
+      if (!custAddress && orders.length > 0) {
+        const withAddr = orders.find(o => o.address || o.deliveryAddress);
+        if (withAddr) custAddress = withAddr.address || withAddr.deliveryAddress;
+      }
+      if (!custAddress) custAddress = 'Madakottan, Ramanathapuram, Tamil Nadu - 623504';
+
       addrGrid.innerHTML = `
         <div class="address-card selected">
-          <div class="address-card-badge"><span class="badge badge-green">Home</span></div>
-          <strong style="color:var(--gray-800);font-size:var(--text-sm);">Default Address</strong>
-          <p style="font-size:var(--text-xs);color:var(--gray-500);margin-top:8px;line-height:1.5;">Flat B-204, Royal Residency, 42, Green Park Main, New Delhi - 110016</p>
-        </div>
-        <div class="address-card">
-          <div class="address-card-badge"><span class="badge badge-orange">Office</span></div>
-          <strong style="color:var(--gray-800);font-size:var(--text-sm);">Office</strong>
-          <p style="font-size:var(--text-xs);color:var(--gray-500);margin-top:8px;line-height:1.5;">Tower B, Tech Park Sector 62, Noida - 201301</p>
+          <div class="address-card-badge"><span class="badge badge-green">Default</span></div>
+          <strong style="color:var(--gray-800);font-size:var(--text-sm);">${user.name || 'Primary Delivery Address'}</strong>
+          <p style="font-size:var(--text-xs);color:var(--gray-500);margin-top:8px;line-height:1.5;">${custAddress}</p>
         </div>
       `;
     }
   }
 
   function reorderItems(orderId) {
-    const orders = MathuraQuickMart.state.orders.length > 0 ? MathuraQuickMart.state.orders : API.orders;
+    const orders = MathuraQuickMart.getUserOrders();
     const order = orders.find(o => o.id === orderId);
-    if (order && order.items) {
+    if (order && order.items && order.items.length > 0) {
       order.items.forEach(item => {
-        MathuraQuickMart.addToCart(item, item.qty);
+        MathuraQuickMart.addToCart(item, item.qty || 1);
       });
       MathuraQuickMart.toast('🛒 All items from past order added to cart!', 'success');
       setTimeout(() => {
         window.location.href = '/customer/cart.html';
       }, 1000);
     } else {
-      // Add standard items as fallback
-      const sample = API.getProduct(1);
-      const sample2 = API.getProduct(2);
-      MathuraQuickMart.addToCart(sample, 1);
-      MathuraQuickMart.addToCart(sample2, 1);
+      const sample = API.getProduct(1) || API.products[0];
+      if (sample) MathuraQuickMart.addToCart(sample, 1);
       MathuraQuickMart.toast('🛒 Sample items added to cart!', 'success');
       setTimeout(() => {
         window.location.href = '/customer/cart.html';
@@ -356,7 +368,6 @@
   });
 
   async function submitFeedback() {
-    // Your existing code...
     const comment = document.getElementById('feedback-comment').value.trim();
     if (feedbackRating === 0) {
       MathuraQuickMart.toast('⭐ Please select a rating.', 'error');
@@ -373,10 +384,13 @@
   }
   window.submitFeedback = submitFeedback;
 
-
   document.addEventListener('DOMContentLoaded', () => {
     MathuraQuickMart.requireAuth();
     renderDashboardData();
+
+    // Re-render when user-specific Firestore data or db-ready arrives
+    window.addEventListener('user-data-ready', renderDashboardData);
+    window.addEventListener('db-ready', renderDashboardData);
   });
 </script>
 </body>

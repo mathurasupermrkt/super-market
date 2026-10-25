@@ -7,6 +7,14 @@
 
 // ============ STATE MANAGEMENT ============
 const MathuraQuickMart = {
+  // Centralized Store Configuration
+  config: {
+    whatsappNumber: "919876543210", // Default store WhatsApp number in international format (no +, no spaces, no dashes)
+    storeName: "Mathura Quick Mart",
+    supportEmail: "support@mathuraquickmart.in",
+    storeLocation: "Madakottan, Ramanathapuram, Tamil Nadu - 623504"
+  },
+
   // Store state
   state: {
     user: null,
@@ -17,6 +25,133 @@ const MathuraQuickMart = {
     notifications: [],
     recentlyViewed: [],
     searchHistory: [],
+  },
+
+  // ============ WHATSAPP UTILITIES (CLICK-TO-CHAT WA.ME) ============
+  getWhatsAppNumber() {
+    try {
+      const saved = localStorage.getItem('mathuraquickmart_whatsapp_number');
+      if (saved) return this.cleanPhoneNumber(saved);
+      if (this.storeSettings && this.storeSettings.whatsappNumber) {
+        return this.cleanPhoneNumber(this.storeSettings.whatsappNumber);
+      }
+    } catch (e) {}
+    return this.cleanPhoneNumber(this.config.whatsappNumber);
+  },
+
+  setWhatsAppNumber(num) {
+    const cleaned = this.cleanPhoneNumber(num);
+    try {
+      localStorage.setItem('mathuraquickmart_whatsapp_number', cleaned);
+    } catch (e) {}
+    this.config.whatsappNumber = cleaned;
+    return cleaned;
+  },
+
+  cleanPhoneNumber(phone) {
+    if (!phone) return "919876543210";
+    let cleaned = String(phone).trim().replace(/\D/g, '');
+    if (cleaned.length === 10) {
+      cleaned = '91' + cleaned;
+    } else if (cleaned.length === 11 && cleaned.startsWith('0')) {
+      cleaned = '91' + cleaned.substring(1);
+    }
+    return cleaned || "919876543210";
+  },
+
+  openWhatsApp(message, targetPhone) {
+    const phone = targetPhone ? this.cleanPhoneNumber(targetPhone) : this.getWhatsAppNumber();
+    const encoded = encodeURIComponent(message || '');
+    const url = `https://wa.me/${phone}?text=${encoded}`;
+    window.open(url, '_blank');
+    return url;
+  },
+
+  // WhatsApp Message Builders
+  buildCartWhatsAppMessage(cartItems, summary = {}) {
+    const items = cartItems || this.getCart() || [];
+    if (items.length === 0) return '';
+    
+    let itemsText = items.map((item, idx) => {
+      const unit = item.weight || item.unit || '';
+      const name = item.name + (unit ? ` ${unit}` : '');
+      const price = item.price || 0;
+      const qty = item.qty || 1;
+      return `${idx + 1}. ${name}\n   Quantity: ${qty}\n   Price: ₹${price * qty}`;
+    }).join('\n\n');
+
+    const subtotal = summary.subtotal !== undefined ? summary.subtotal : this.getCartTotal();
+    const delivery = summary.deliveryFee !== undefined ? (summary.deliveryFee === 0 ? 'FREE' : `₹${summary.deliveryFee}`) : 'FREE';
+    const discount = summary.discount ? `\nDiscount: -₹${Math.round(summary.discount)}` : '';
+    const total = summary.total !== undefined ? summary.total : (subtotal - (summary.discount || 0));
+
+    return `Hello Mathura Quick Mart 👋\n\nI would like to order these products:\n\n🛒 Cart Items\n\n${itemsText}\n\n--------------------------------\n\nSubtotal: ₹${Math.round(subtotal)}${discount}\nDelivery: ${delivery}\nTotal: ₹${Math.round(total)}\n\nPlease confirm my order.\n\nThank you!\nMathura Quick Mart`;
+  },
+
+  buildProductWhatsAppMessage(product) {
+    if (!product) return 'Hello Mathura Quick Mart 👋\n\nI have an enquiry about your grocery products.';
+    const name = product.name || 'Product';
+    const weight = product.weight || product.unit || '1 unit';
+    const price = product.price || 0;
+    return `Hello Mathura Quick Mart 👋\n\nI am interested in:\n\nProduct: ${name}\nQuantity: ${weight}\nPrice: ₹${price}\n\nIs this product available?`;
+  },
+
+  buildCheckoutWhatsAppMessage(orderData) {
+    const data = orderData || {};
+    const items = data.items || this.getCart() || [];
+    let itemsText = items.map(item => {
+      const unit = item.weight || item.unit || '';
+      const name = item.name + (unit ? ` ${unit}` : '');
+      const price = item.price || 0;
+      const qty = item.qty || 1;
+      return `🛒 ${name} × ${qty}\n₹${price * qty}`;
+    }).join('\n\n');
+
+    const subtotal = Math.round(data.subtotal || this.getCartTotal());
+    const delivery = data.deliveryFee ? `₹${data.deliveryFee}` : 'FREE';
+    const discount = data.discount ? `\nDiscount: ₹${Math.round(data.discount)}` : '';
+    const total = Math.round(data.total || (subtotal - (data.discount || 0)));
+    const address = data.address || 'Madakottan, Ramanathapuram, Tamil Nadu - 623504';
+
+    return `Hello Mathura Quick Mart 👋\n\nMy order details:\n\nOrder Items:\n--------------------------------\n${itemsText}\n--------------------------------\n\nSubtotal: ₹${subtotal}\nDelivery: ${delivery}${discount}\n\nTOTAL: ₹${total}\n\nDelivery Address:\n${address}\n\nThank you!`;
+  },
+
+  buildOrderPlacedWhatsAppMessage(order) {
+    if (!order) return '';
+    const items = order.items || [];
+    let itemsText = items.map(item => {
+      const unit = item.weight || item.unit || '';
+      const name = item.name + (unit ? ` ${unit}` : '');
+      const qty = item.qty || 1;
+      return `🛒 ${name} × ${qty}`;
+    }).join('\n');
+
+    const total = Math.round(order.total || order.subtotal || 0);
+    const address = order.address || order.customerAddress || 'Customer registered address';
+
+    return `Hello Mathura Quick Mart 👋\n\nI have placed an order.\n\nOrder ID: #${order.id}\n\nItems:\n${itemsText || 'Order Items'}\n\nTotal: ₹${total}\n\nDelivery Address:\n${address}\n\nPlease confirm my order.`;
+  },
+
+  buildOrderSupportWhatsAppMessage(order) {
+    if (!order) return 'Hello Mathura Quick Mart 👋\n\nI need help regarding my order.';
+    const total = Math.round(order.total || order.subtotal || 0);
+    const status = (order.status || 'Confirmed').replace(/[-_]/g, ' ');
+    const formattedStatus = status.charAt(0).toUpperCase() + status.slice(1);
+    return `Hello Mathura Quick Mart 👋\n\nI need help regarding my order.\n\nOrder ID: #${order.id}\n\nOrder Total: ₹${total}\n\nOrder Status: ${formattedStatus}\n\nPlease assist me.`;
+  },
+
+  buildDeliverySupportWhatsAppMessage(orderId) {
+    const id = orderId || 'N/A';
+    return `Hello Mathura Quick Mart 👋\n\nI need help regarding my active delivery.\n\nOrder ID: #${id}\n\nPlease assist me with delivery status.`;
+  },
+
+  buildAdminCustomerWhatsAppMessage(order) {
+    if (!order) return '';
+    const custName = order.customerName || order.customer || 'Customer';
+    const status = (order.status || 'Confirmed').replace(/[-_]/g, ' ');
+    const formattedStatus = status.charAt(0).toUpperCase() + status.slice(1);
+    const total = Math.round(order.total || order.subtotal || 0);
+    return `Hello ${custName} 👋\n\nThis is Mathura Quick Mart regarding your order.\n\nOrder ID: #${order.id}\n\nOrder Status: ${formattedStatus}\n\nTotal Amount: ₹${total}\n\nThank you for shopping with us!`;
   },
 
   // Initialize from localStorage
@@ -133,6 +268,53 @@ const MathuraQuickMart = {
     } catch(e) { console.warn('State load error:', e); }
   },
 
+  // Get strictly the logged-in customer's orders (deduplicated & sorted)
+  getUserOrders() {
+    const user = this.state.user;
+    
+    // Source orders from local user state first, then API.orders
+    const sourceOrders = (this.state.orders && this.state.orders.length > 0)
+      ? this.state.orders 
+      : (API.orders || []);
+
+    // 1. Deduplicate by order.id
+    const ordMap = new Map();
+    sourceOrders.forEach(o => {
+      if (!o || !o.id) return;
+      const key = String(o.id).trim();
+      if (!ordMap.has(key)) ordMap.set(key, o);
+    });
+    const allUnique = Array.from(ordMap.values());
+
+    // If not logged in, return empty (guests have no order history yet)
+    if (!user) return [];
+
+    // Admin & Delivery roles can see all unique orders
+    if (user.role === 'admin' || user.role === 'delivery') {
+      return allUnique.sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0));
+    }
+
+    // Strict customer filtering by UID, Email, or Phone
+    const userUid = String(user.uid || '').trim();
+    const userEmail = (user.email || '').toLowerCase().trim();
+    const userPhone = (user.phone || '').replace(/[^0-9]/g, '');
+
+    const filtered = allUnique.filter(o => {
+      const oUid = String(o.userId || o.customerId || '').trim();
+      if (userUid && oUid && oUid === userUid) return true;
+
+      const oEmail = (o.customerEmail || o.email || '').toLowerCase().trim();
+      if (userEmail && oEmail && oEmail === userEmail) return true;
+
+      const oPhone = (o.customerPhone || o.phone || '').replace(/[^0-9]/g, '');
+      if (userPhone && oPhone && (userPhone === oPhone || userPhone.endsWith(oPhone) || oPhone.endsWith(userPhone))) return true;
+
+      return false;
+    });
+
+    return filtered.sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0));
+  },
+
   // Save state to localStorage
   saveState() {
     try {
@@ -231,17 +413,34 @@ const MathuraQuickMart = {
   },
 
   // ============ CART ============
-  getCart() { return this.state.cart; },
+  getCart() {
+    if (!this.state.cart || !this.state.cart.length) {
+      this.loadState();
+    }
+    return this.state.cart || [];
+  },
 
   getCartCount() {
-    return this.state.cart.reduce((sum, item) => sum + item.qty, 0);
+    if (!this.state.cart || !this.state.cart.length) {
+      this.loadState();
+    }
+    return (this.state.cart || []).reduce((sum, item) => sum + (item.qty || 1), 0);
   },
 
   getCartTotal() {
-    return this.state.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+    if (!this.state.cart || !this.state.cart.length) {
+      this.loadState();
+    }
+    return (this.state.cart || []).reduce((sum, item) => sum + ((item.price || 0) * (item.qty || 1)), 0);
   },
 
+
   addToCart(product, qty = 1) {
+    // Guard: do not add out-of-stock items
+    if (product.stock !== undefined && product.stock !== null && product.stock <= 0) {
+      this.toast(`${product.name} is out of stock`, 'warning');
+      return;
+    }
     const prodId = String(product.id);
     const existing = this.state.cart.find(i => String(i.id) === prodId);
     if (existing) {
@@ -644,29 +843,51 @@ const MathuraQuickMart = {
           this.renderWishlistBadge();
         }
 
-        // 3. Load this user's orders (filtered by userId)
+        // 3. Load this user's orders (filtered by userId / customerId / email)
         try {
-          const ordersQuery = fs.query(
-            fs.collection(db, 'orders'),
-            fs.where('userId', '==', uid)
-          );
-          const ordersSnap = await fs.getDocs(ordersQuery);
-          if (!ordersSnap.empty) {
+          let ordersSnap = null;
+          try {
+            ordersSnap = await fs.getDocs(fs.query(fs.collection(db, 'orders'), fs.where('userId', '==', uid)));
+          } catch (e1) {
+            try {
+              ordersSnap = await fs.getDocs(fs.query(fs.collection(db, 'orders'), fs.where('customerId', '==', uid)));
+            } catch (e2) {
+              ordersSnap = await fs.getDocs(fs.collection(db, 'orders'));
+            }
+          }
+
+          if (ordersSnap && !ordersSnap.empty) {
             const orderMap = new Map();
+            const userEmail = (this.state.user?.email || '').toLowerCase().trim();
+            const userPhone = (this.state.user?.phone || '').replace(/[^0-9]/g, '');
+
             ordersSnap.forEach(d => {
-              const order = d.data();
+              const order = { id: d.id, ...d.data() };
               if (!order || !order.id) return;
-              const key = String(order.id);
-              if (!orderMap.has(key)) {
-                orderMap.set(key, order);
+              
+              // Filter to this user
+              const oUid = String(order.userId || order.customerId || '').trim();
+              const oEmail = (order.customerEmail || order.email || '').toLowerCase().trim();
+              const oPhone = (order.customerPhone || order.phone || '').replace(/[^0-9]/g, '');
+              
+              const isMatch = (oUid && oUid === uid) || 
+                              (userEmail && oEmail && oEmail === userEmail) ||
+                              (userPhone && oPhone && (userPhone === oPhone || userPhone.endsWith(oPhone) || oPhone.endsWith(userPhone)));
+
+              if (isMatch) {
+                const key = String(order.id);
+                if (!orderMap.has(key)) {
+                  orderMap.set(key, order);
+                }
               }
             });
+
             const orders = Array.from(orderMap.values());
-            orders.sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+            orders.sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0));
             this.state.orders = orders;
             this.saveState();
           }
-        } catch (e) { console.warn('Orders query failed (index may be needed):', e); }
+        } catch (e) { console.warn('Orders query failed:', e); }
 
         // 4. Load returns from users/{uid}/returns
         try {
@@ -724,6 +945,9 @@ const MathuraQuickMart = {
               message: data.message || "Store is temporarily closed. We're currently not accepting orders. Please try again later.",
               updatedAt: data.updatedAt || null
             };
+            if (data.whatsappNumber) {
+              this.setWhatsAppNumber(data.whatsappNumber);
+            }
           } else {
             this.storeStatus = {
               isOpen: true,
@@ -869,6 +1093,94 @@ const API = {
     { id: 10, name: 'Household', icon: '🧹', count: 112, color: '#6366f1' },
   ],
 
+  brands: [
+    { id: 'amul',       name: 'Amul',       logo: '🥛', description: 'India\'s largest dairy brand', isActive: true, displayOrder: 1, createdAt: new Date().toISOString() },
+    { id: 'britannia',  name: 'Britannia',  logo: '🍪', description: 'Biscuits, bread & dairy', isActive: true, displayOrder: 2, createdAt: new Date().toISOString() },
+    { id: 'india-gate', name: 'India Gate', logo: '🌾', description: 'Premium basmati rice',      isActive: true, displayOrder: 3, createdAt: new Date().toISOString() },
+    { id: 'nestle',     name: 'Nestlé',     logo: '🍫', description: 'Chocolates & nutrition',   isActive: true, displayOrder: 4, createdAt: new Date().toISOString() },
+    { id: 'tropicana',  name: 'Tropicana',  logo: '🧃', description: 'Fresh fruit juices',        isActive: true, displayOrder: 5, createdAt: new Date().toISOString() },
+    { id: 'dabur',      name: 'Dabur',      logo: '🫒', description: 'Natural health & care',    isActive: true, displayOrder: 6, createdAt: new Date().toISOString() },
+    { id: 'lipton',     name: 'Lipton',     logo: '☕', description: 'Quality teas & beverages',  isActive: true, displayOrder: 7, createdAt: new Date().toISOString() },
+    { id: 'lindt',      name: 'Lindt',      logo: '🍫', description: 'Swiss premium chocolate',   isActive: true, displayOrder: 8, createdAt: new Date().toISOString() },
+    { id: 'patanjali',  name: 'Patanjali',  logo: '🌿', description: 'Ayurvedic & natural',      isActive: true, displayOrder: 9, createdAt: new Date().toISOString() },
+    { id: 'fortune',    name: 'Fortune',    logo: '🧴', description: 'Edible oils & staples',     isActive: true, displayOrder: 10, createdAt: new Date().toISOString() },
+  ],
+
+  banners: [
+    {
+      id: 'banner_farm_fresh',
+      title: 'Farm-Fresh Harvest Delivered Daily',
+      description: 'Handpicked organic fruits and crisp vegetables directly from local orchards to your doorstep in 60 minutes.',
+      desktopImage: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1400&q=80',
+      mobileImage: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80',
+      badge: '🌿 Farm Fresh Pick',
+      discountText: 'Flat 25% OFF',
+      couponCode: 'FRESH25',
+      buttonText: 'Shop Fresh Produce',
+      buttonUrl: '/customer/products.html?category=Fruits+%26+Vegetables',
+      displayOrder: 1,
+      isActive: true,
+      startDate: '2024-01-01T00:00',
+      endDate: '2030-12-31T23:59',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: 'banner_dairy_bakery',
+      title: 'Morning Dairy & Bakery Essentials',
+      description: 'Start your morning with fresh cow milk, farm eggs, golden butter, and freshly baked artisanal bread.',
+      desktopImage: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=1400&q=80',
+      mobileImage: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=800&q=80',
+      badge: '🥛 Morning Express',
+      discountText: 'Special Combo Deals',
+      couponCode: 'DAIRY50',
+      buttonText: 'Explore Dairy & Bakery',
+      buttonUrl: '/customer/products.html?category=Dairy+%26+Eggs',
+      displayOrder: 2,
+      isActive: true,
+      startDate: '2024-01-01T00:00',
+      endDate: '2030-12-31T23:59',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: 'banner_pantry_staples',
+      title: 'Super Pantry & Cooking Staples',
+      description: 'Premium basmati rice, cold-pressed cooking oils, authentic spices, and pulses at unbeatable everyday prices.',
+      desktopImage: 'https://images.unsplash.com/photo-1506368249639-73a05d6f6488?auto=format&fit=crop&w=1400&q=80',
+      mobileImage: 'https://images.unsplash.com/photo-1506368249639-73a05d6f6488?auto=format&fit=crop&w=800&q=80',
+      badge: '🔥 Wholesale Savings',
+      discountText: 'Save up to ₹200',
+      couponCode: 'SAVE20',
+      buttonText: 'Shop Pantry Staples',
+      buttonUrl: '/customer/products.html?category=Cooking+Essentials',
+      displayOrder: 3,
+      isActive: true,
+      startDate: '2024-01-01T00:00',
+      endDate: '2030-12-31T23:59',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: 'banner_snacks_drinks',
+      title: 'Snacks, Refreshing Drinks & Treats',
+      description: 'Satisfy evening cravings with artisanal teas, fresh fruit juices, gourmet cookies, and family treat packs.',
+      desktopImage: 'https://images.unsplash.com/photo-1579113800032-c38bd7635818?auto=format&fit=crop&w=1400&q=80',
+      mobileImage: 'https://images.unsplash.com/photo-1579113800032-c38bd7635818?auto=format&fit=crop&w=800&q=80',
+      badge: '✨ Quick Bites & Sips',
+      discountText: 'Buy 2 Get 1 Free',
+      couponCode: 'MART100',
+      buttonText: 'Order Snacks Now',
+      buttonUrl: '/customer/products.html?category=Snacks+%26+Beverages',
+      displayOrder: 4,
+      isActive: true,
+      startDate: '2024-01-01T00:00',
+      endDate: '2030-12-31T23:59',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: new Date().toISOString()
+    }
+  ],
+
   coupons: [
     { code: 'FRESH10', discount: 10, type: 'percent', minOrder: 200, description: '10% off on all orders' },
     { code: 'NEWUSER50', discount: 50, type: 'flat', minOrder: 299, description: '₹50 off for new users' },
@@ -888,13 +1200,18 @@ const API = {
     { id: 3, productId: 1, user: 'Anita K.', rating: 5, date: '2024-12-08', comment: 'Best apples I have ever had from an online store. Packaging was excellent.', verified: false },
   ],
 
-  // Search products
+  // Search products (name, category, weight, brand, badge, description)
   searchProducts(query) {
     if (!query) return [];
     const q = query.toLowerCase();
     return this.products.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      p.category.toLowerCase().includes(q)
+      (p.name        && p.name.toLowerCase().includes(q))        ||
+      (p.category    && p.category.toLowerCase().includes(q))    ||
+      (p.weight      && p.weight.toLowerCase().includes(q))      ||
+      (p.brandName   && p.brandName.toLowerCase().includes(q))   ||
+      (p.brand       && p.brand.toLowerCase().includes(q))       ||
+      (p.badge       && p.badge.toLowerCase().includes(q))       ||
+      (p.description && p.description.toLowerCase().includes(q))
     );
   },
 
@@ -908,13 +1225,26 @@ const API = {
     }
 
     if (filter.category) products = products.filter(p => p.category === filter.category);
+    if (filter.brand) {
+      const brandQ = String(filter.brand).toLowerCase();
+      products = products.filter(p =>
+        (p.brandId   && String(p.brandId).toLowerCase()   === brandQ) ||
+        (p.brandName && String(p.brandName).toLowerCase().includes(brandQ)) ||
+        (p.brand     && String(p.brand).toLowerCase().includes(brandQ))
+      );
+    }
     if (filter.featured) products = products.filter(p => p.featured);
     if (filter.bestSeller) products = products.filter(p => p.bestSeller);
     if (filter.isNew) products = products.filter(p => p.isNew);
     if (filter.query) {
       const q = filter.query.toLowerCase();
       products = products.filter(p =>
-        p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)
+        (p.name        && p.name.toLowerCase().includes(q))        ||
+        (p.category    && p.category.toLowerCase().includes(q))    ||
+        (p.weight      && p.weight.toLowerCase().includes(q))      ||
+        (p.brandName   && p.brandName.toLowerCase().includes(q))   ||
+        (p.brand       && p.brand.toLowerCase().includes(q))       ||
+        (p.badge       && p.badge.toLowerCase().includes(q))
       );
     }
     if (filter.minPrice) products = products.filter(p => p.price >= filter.minPrice);
@@ -1146,13 +1476,15 @@ const API = {
     const t0 = performance.now();
 
     // Fire ALL reads in parallel — single network round-trip
-    const [productsSnap, categoriesSnap, couponsSnap, ordersSnap, reviewsSnap] =
+    const [productsSnap, categoriesSnap, couponsSnap, ordersSnap, reviewsSnap, brandsSnap, bannersSnap] =
       await Promise.all([
         getDocs(collection(db, 'products')).catch(e => { console.warn("products sync:", e.message); return null; }),
         getDocs(collection(db, 'categories')).catch(e => { console.warn("categories sync:", e.message); return null; }),
         getDocs(collection(db, 'coupons')).catch(e => { console.warn("coupons sync:", e.message); return null; }),
         getDocs(collection(db, 'orders')).catch(e => { console.warn("orders sync:", e.message); return null; }),
         getDocs(collection(db, 'reviews')).catch(e => { console.warn("reviews sync:", e.message); return null; }),
+        getDocs(collection(db, 'brands')).catch(e => { console.warn("brands sync:", e.message); return null; }),
+        getDocs(collection(db, 'banners')).catch(e => { console.warn("banners sync:", e.message); return null; }),
       ]);
 
     // Process results with deduplication
@@ -1193,16 +1525,38 @@ const API = {
     if (ordersSnap && !ordersSnap.empty) {
       const ordMap = new Map();
       ordersSnap.forEach(doc => {
-        const o = doc.data();
+        const o = { id: doc.id, ...doc.data() };
         if (!o || !o.id) return;
-        const key = String(o.id);
+        const key = String(o.id).trim();
         if (!ordMap.has(key)) ordMap.set(key, o);
       });
       const ords = Array.from(ordMap.values());
-      ords.sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+      ords.sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0));
       this.orders = ords;
-      MathuraQuickMart.state.orders = ords;
-      MathuraQuickMart.saveState();
+
+      // Only update state.orders if user is admin/delivery, or if customer filter their own
+      const currentUser = MathuraQuickMart.state?.user;
+      if (currentUser && currentUser.uid) {
+        if (currentUser.role === 'admin' || currentUser.role === 'delivery') {
+          MathuraQuickMart.state.orders = ords;
+        } else {
+          // Filter to logged in customer only
+          const uid = String(currentUser.uid);
+          const userEmail = (currentUser.email || '').toLowerCase().trim();
+          const userPhone = (currentUser.phone || '').replace(/[^0-9]/g, '');
+          
+          MathuraQuickMart.state.orders = ords.filter(o => {
+            const oUid = String(o.userId || o.customerId || '');
+            if (oUid && oUid === uid) return true;
+            const oEmail = (o.customerEmail || o.email || '').toLowerCase().trim();
+            if (userEmail && oEmail && oEmail === userEmail) return true;
+            const oPhone = (o.customerPhone || o.phone || '').replace(/[^0-9]/g, '');
+            if (userPhone && oPhone && (userPhone === oPhone || userPhone.endsWith(oPhone) || oPhone.endsWith(userPhone))) return true;
+            return false;
+          });
+        }
+        MathuraQuickMart.saveState();
+      }
       console.log(`Synced ${ords.length} orders.`);
     }
 
@@ -1215,6 +1569,30 @@ const API = {
       });
       this.reviews = Array.from(revMap.values());
       console.log(`Synced ${this.reviews.length} reviews.`);
+    }
+
+    if (brandsSnap && !brandsSnap.empty) {
+      const brandMap = new Map();
+      brandsSnap.forEach(doc => {
+        const b = doc.data();
+        const key = String(b.id || b.name);
+        if (!brandMap.has(key)) brandMap.set(key, b);
+      });
+      const sorted = Array.from(brandMap.values()).sort((a, b) => (a.displayOrder || 99) - (b.displayOrder || 99));
+      this.brands = sorted;
+      console.log(`Synced ${this.brands.length} brands.`);
+    }
+
+    if (bannersSnap && !bannersSnap.empty) {
+      const bannerMap = new Map();
+      bannersSnap.forEach(doc => {
+        const b = { id: doc.id, ...doc.data() };
+        if (!b || !b.id) return;
+        bannerMap.set(String(b.id), b);
+      });
+      const sortedBanners = Array.from(bannerMap.values()).sort((a, b) => (Number(a.displayOrder) || 99) - (Number(b.displayOrder) || 99));
+      this.banners = sortedBanners;
+      console.log(`Synced ${this.banners.length} banners.`);
     }
 
     console.log(`🔄 Data sync complete in ${Math.round(performance.now() - t0)}ms`);
@@ -1339,6 +1717,150 @@ const API = {
         console.log(`Coupon ${code} deleted from Firestore.`);
       } catch (error) {
         console.error("Error deleting coupon from Firestore:", error);
+      }
+    }
+  },
+
+  async saveBrand(brand) {
+    const idx = this.brands.findIndex(b => b.id === brand.id);
+    if (idx >= 0) {
+      this.brands[idx] = brand;
+    } else {
+      this.brands.push(brand);
+    }
+    this.brands.sort((a, b) => (a.displayOrder || 99) - (b.displayOrder || 99));
+
+    if (window.FirebaseDB && window.Firestore) {
+      const db = window.FirebaseDB;
+      const { doc, setDoc } = window.Firestore;
+      try {
+        await setDoc(doc(db, 'brands', brand.id), brand);
+        console.log(`Brand ${brand.id} saved to Firestore.`);
+      } catch (error) {
+        console.error("Error saving brand to Firestore:", error);
+        throw error;
+      }
+    }
+  },
+
+  async deleteBrand(brandId) {
+    this.brands = this.brands.filter(b => b.id !== brandId);
+
+    if (window.FirebaseDB && window.Firestore) {
+      const db = window.FirebaseDB;
+      const { doc, deleteDoc } = window.Firestore;
+      try {
+        await deleteDoc(doc(db, 'brands', brandId));
+        console.log(`Brand ${brandId} deleted from Firestore.`);
+      } catch (error) {
+        console.error("Error deleting brand from Firestore:", error);
+      }
+    }
+  },
+
+  // ---- Promotional Banners Methods ----
+  getBanners(options = {}) {
+    let list = [...(this.banners || [])];
+    const onlyActive = options.onlyActive !== false;
+
+    if (onlyActive) {
+      const now = Date.now();
+      list = list.filter(b => {
+        if (b.isActive === false) return false;
+        if (b.startDate) {
+          const start = new Date(b.startDate).getTime();
+          if (!isNaN(start) && start > now) return false;
+        }
+        if (b.endDate) {
+          const end = new Date(b.endDate).getTime();
+          if (!isNaN(end) && end < now) return false;
+        }
+        return true;
+      });
+    }
+
+    list.sort((a, b) => (Number(a.displayOrder) || 99) - (Number(b.displayOrder) || 99));
+    return list;
+  },
+
+  async saveBanner(banner) {
+    if (!banner.id) {
+      banner.id = 'banner_' + Date.now();
+    }
+    banner.updatedAt = new Date().toISOString();
+    if (!banner.createdAt) banner.createdAt = banner.updatedAt;
+    banner.displayOrder = Number(banner.displayOrder) || 1;
+    banner.isActive = banner.isActive !== false;
+
+    if (!this.banners) this.banners = [];
+    const idx = this.banners.findIndex(b => b.id === banner.id);
+    if (idx >= 0) {
+      this.banners[idx] = { ...this.banners[idx], ...banner };
+    } else {
+      this.banners.push(banner);
+    }
+    this.banners.sort((a, b) => (Number(a.displayOrder) || 99) - (Number(b.displayOrder) || 99));
+
+    if (window.FirebaseDB && window.Firestore) {
+      const db = window.FirebaseDB;
+      const { doc, setDoc } = window.Firestore;
+      try {
+        await setDoc(doc(db, 'banners', banner.id), banner, { merge: true });
+        console.log(`Banner ${banner.id} saved to Firestore.`);
+      } catch (error) {
+        console.error("Error saving banner to Firestore:", error);
+        throw error;
+      }
+    }
+    return banner;
+  },
+
+  async deleteBanner(bannerId) {
+    this.banners = (this.banners || []).filter(b => b.id !== bannerId);
+
+    if (window.FirebaseDB && window.Firestore) {
+      const db = window.FirebaseDB;
+      const { doc, deleteDoc } = window.Firestore;
+      try {
+        await deleteDoc(doc(db, 'banners', bannerId));
+        console.log(`Banner ${bannerId} deleted from Firestore.`);
+      } catch (error) {
+        console.error("Error deleting banner from Firestore:", error);
+        throw error;
+      }
+    }
+  },
+
+  async reorderBanners(orderedIds) {
+    if (!Array.isArray(orderedIds)) return;
+    if (!this.banners) this.banners = [];
+
+    const updates = [];
+    orderedIds.forEach((id, index) => {
+      const order = index + 1;
+      const b = this.banners.find(item => item.id === id);
+      if (b) {
+        b.displayOrder = order;
+        b.updatedAt = new Date().toISOString();
+        if (window.FirebaseDB && window.Firestore) {
+          const db = window.FirebaseDB;
+          const { doc, setDoc } = window.Firestore;
+          updates.push(
+            setDoc(doc(db, 'banners', id), { displayOrder: order, updatedAt: b.updatedAt }, { merge: true })
+          );
+        }
+      }
+    });
+
+    this.banners.sort((a, b) => (Number(a.displayOrder) || 99) - (Number(b.displayOrder) || 99));
+
+    if (updates.length > 0) {
+      try {
+        await Promise.all(updates);
+        console.log("Banners reordered in Firestore.");
+      } catch (error) {
+        console.error("Error updating banner order in Firestore:", error);
+        throw error;
       }
     }
   },
@@ -1608,35 +2130,6 @@ const WhatsAppService = {
       } catch (err) {
         console.warn('Could not save WhatsApp message record:', err);
       }
-    }
-
-    // ── Automated Serverless Backend Dispatch to Meta WhatsApp Cloud API ──
-    try {
-      fetch('/api/whatsapp/send-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: order.id,
-          eventType: messageType,
-          customerName,
-          customerPhone: phoneData.formattedPhone || phoneData.rawPhone,
-          total: order.total || order.subtotal || 0,
-          driverName: order.driverName || order.assignedDriver || null,
-          customerId: order.userId || null
-        })
-      }).then(res => res.json()).then(data => {
-        if (data.success) {
-          console.log(`✅ [Meta WhatsApp Cloud API] Notification delivered for order ${order.id} (WAMID: ${data.whatsappMessageId})`);
-        } else if (data.skipped) {
-          console.log(`ℹ️ [WhatsApp Notification] Skipped: ${data.reason || data.message}`);
-        } else {
-          console.warn(`⚠️ [WhatsApp Notification] API note: ${data.error || 'Check server logs'}`);
-        }
-      }).catch(err => {
-        console.warn('[WhatsApp Notification Dispatch] Backend API unavailable or offline:', err.message);
-      });
-    } catch (e) {
-      console.warn('Background WhatsApp dispatch error:', e);
     }
 
     return msgPayload;

@@ -2,10 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="My Wishlist – Save your favourite products and add them to cart anytime at Mathura Quick Mart.">
   <title>My Wishlist – Mathura Quick Mart</title>
   <link rel="stylesheet" href="../styles/main.css">
   <style>
+    /* ── Navbar ── */
     .navbar {
       position: sticky;
       top: 0;
@@ -28,6 +30,49 @@
     .navbar-logo { display: flex; align-items: center; gap: var(--sp-2); text-decoration: none; }
     .logo-icon { width: 38px; height: 38px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
     .logo-text { font-family: var(--font-display); font-weight: var(--fw-black); font-size: var(--text-xl); background: linear-gradient(135deg, var(--primary-dark), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    /* ── Page Container ── */
+    .wishlist-container {
+      max-width: var(--container-max);
+      margin: 0 auto;
+      padding: var(--sp-6) var(--sp-6) 90px var(--sp-6);
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* ── Products Grid ── */
+    .wishlist-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: var(--sp-4);
+    }
+
+    /* ── Empty State ── */
+    .wishlist-empty {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--white);
+      border-radius: 24px;
+      border: 1px solid var(--gray-200);
+      margin: 20px auto;
+      max-width: 480px;
+    }
+    .wishlist-empty-icon { font-size: 64px; margin-bottom: 16px; }
+    .wishlist-empty-title { font-size: 20px; font-weight: 800; color: var(--gray-900); margin-bottom: 8px; }
+    .wishlist-empty-desc { font-size: 14px; color: var(--gray-500); max-width: 300px; line-height: 1.5; margin-bottom: 24px; }
+
+    /* ── Mobile Responsive ── */
+    @media (max-width: 768px) {
+      .wishlist-container { padding: 16px 12px 90px 12px; }
+      .wishlist-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    }
+    @media (max-width: 375px) {
+      .wishlist-container { padding: 12px 10px 90px 10px; }
+    }
   </style>
 
   <script type='module' src='/js/firebase-init.js'></script>
@@ -36,29 +81,33 @@
 
 <nav class="navbar">
   <div class="navbar-inner">
-    <a href="../index.html" class="navbar-logo">
+    <a href="/index.html" class="navbar-logo">
       <div class="logo-icon">🛒</div>
       <div>
         <div class="logo-text">Mathura Quick Mart</div>
       </div>
     </a>
-    <a href="/customer/products.html" class="btn btn-ghost">🏪 Shop Products</a>
+    <a href="/customer/products.html" class="btn btn-ghost btn-sm">🏪 Shop Products</a>
   </div>
 </nav>
 
-<div class="container section-sm">
-  <h1 class="section-title mb-8">My Wishlist</h1>
-
-  <div class="products-grid" id="wishlist-grid">
-    <!-- Rendered dynamically -->
+<div class="wishlist-container">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-6);flex-wrap:wrap;gap:var(--sp-2);">
+    <h1 style="font-size:var(--text-2xl);font-weight:var(--fw-black);color:var(--gray-900);margin:0;display:flex;align-items:center;gap:10px;">
+      ❤️ My Wishlist
+      <span id="wishlist-count-badge" style="font-size:12px;font-weight:700;background:var(--primary-pale);color:var(--primary-dark);padding:3px 10px;border-radius:99px;border:1px solid rgba(22,163,74,0.2);display:none;"></span>
+    </h1>
   </div>
 
+  <!-- Wishlist Grid -->
+  <div class="wishlist-grid" id="wishlist-grid"></div>
+
   <!-- Empty State -->
-  <div class="empty-state hidden" id="wishlist-empty" style="display:none;">
-    <div class="empty-icon">❤️</div>
-    <div class="empty-title">Your wishlist is empty</div>
-    <div class="empty-desc">Tap the heart icon on any product card to save it for later!</div>
-    <a href="/customer/products.html" class="btn btn-primary">Browse Products</a>
+  <div class="wishlist-empty" id="wishlist-empty">
+    <div class="wishlist-empty-icon">💔</div>
+    <div class="wishlist-empty-title">Your wishlist is empty</div>
+    <div class="wishlist-empty-desc">Tap the ❤️ icon on any product card to save your favourites for later!</div>
+    <a href="/customer/products.html" class="btn btn-primary">🛍️ Browse Products</a>
   </div>
 </div>
 
@@ -67,36 +116,66 @@
 <script src="../js/app.js"></script>
 <script>
   function loadWishlist() {
-    const list = MathuraQuickMart.getWishlist();
+    if (typeof MathuraQuickMart !== 'undefined') MathuraQuickMart.loadState();
+    const list = (typeof MathuraQuickMart !== 'undefined') ? MathuraQuickMart.getWishlist() : [];
     const grid = document.getElementById('wishlist-grid');
     const emptyState = document.getElementById('wishlist-empty');
+    const countBadge = document.getElementById('wishlist-count-badge');
 
     if (!list || list.length === 0) {
       if (grid) grid.innerHTML = '';
-      if (emptyState) {
-        emptyState.style.display = 'flex';
-        emptyState.classList.remove('hidden');
-      }
+      if (emptyState) emptyState.style.display = 'flex';
+      if (countBadge) countBadge.style.display = 'none';
       return;
     }
 
-    if (emptyState) {
-      emptyState.style.display = 'none';
-      emptyState.classList.add('hidden');
+    if (emptyState) emptyState.style.display = 'none';
+    if (countBadge) {
+      countBadge.textContent = `${list.length} item${list.length !== 1 ? 's' : ''}`;
+      countBadge.style.display = '';
     }
-    if (grid) grid.innerHTML = list.map(product => renderProductCard(product)).join('');
+    if (grid && typeof renderProductCard === 'function') {
+      grid.innerHTML = list.map(product => renderProductCard(product)).join('');
+    }
   }
 
   // Override standard toggleWishlist to reload current page list
-  const originToggle = toggleWishlist;
-  toggleWishlist = function(productId) {
-    originToggle(productId);
+  const _origToggleWishlist = window.toggleWishlist;
+  window.toggleWishlist = function(productId) {
+    if (typeof _origToggleWishlist === 'function') _origToggleWishlist(productId);
     loadWishlist();
   };
 
-  document.addEventListener('DOMContentLoaded', () => {
-    loadWishlist();
-  });
+  document.addEventListener('DOMContentLoaded', loadWishlist);
+  window.addEventListener('user-data-ready', loadWishlist);
+  window.addEventListener('db-ready', loadWishlist);
 </script>
+
+<!-- Mobile Bottom Navigation Bar -->
+<nav class="mobile-bottom-nav">
+  <a href="/index.html" class="mobile-nav-item">
+    <span class="nav-icon">🏠</span>
+    <span>Home</span>
+  </a>
+  <a href="/customer/products.html" class="mobile-nav-item">
+    <span class="nav-icon">📂</span>
+    <span>Categories</span>
+  </a>
+  <a href="/customer/cart.html" class="mobile-nav-item">
+    <span class="nav-icon">🛒</span>
+    <span>Cart</span>
+    <span class="mobile-nav-badge" data-cart-count style="display:none">0</span>
+  </a>
+  <a href="/customer/my-orders.html" class="mobile-nav-item">
+    <span class="nav-icon">📦</span>
+    <span>Orders</span>
+  </a>
+  <a href="/customer/profile.html" class="mobile-nav-item">
+    <span class="nav-icon">👤</span>
+    <span>Profile</span>
+  </a>
+</nav>
+
 </body>
 </html>
+

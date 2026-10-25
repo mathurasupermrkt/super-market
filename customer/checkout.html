@@ -6,7 +6,7 @@
   <meta name="description" content="Secure checkout at MathuraQuickMart. Confirm delivery details, select address via map, choose payment method, and complete order.">
   <title>Checkout – Mathura Quick Mart</title>
   <link rel="stylesheet" href="../styles/main.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCrhrfd6_Hxh29dNJFRIbFatHbNrseHYEU&libraries=places" defer></script>
 
   <style>
     /* ── Navbar ── */
@@ -129,7 +129,13 @@
     #autocomplete-suggestions div:hover { background: var(--primary-pale); }
 
     /* ── Responsive ── */
-    @media (max-width: 768px) { .checkout-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) {
+      .checkout-grid {
+        grid-template-columns: 1fr;
+        padding-bottom: 90px;
+        gap: var(--sp-4);
+      }
+    }
 
 
     /* ══════════════════════════════════════════════
@@ -252,10 +258,7 @@
     .loc-confirm-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(34,197,94,0.45); }
     .loc-confirm-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
-    /* ── Leaflet custom icon colours ── */
-    .loc-pin-green .loc-pin-svg path { fill: #16a34a; }
-    .loc-pin-blue  .loc-pin-svg path { fill: #2563eb; }
-    .loc-pin-red   .loc-pin-svg path { fill: #dc2626; }
+
   </style>
 
   <script type='module' src='/js/firebase-init.js'></script>
@@ -327,7 +330,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">Street / Area</label>
-            <input type="text" class="form-input" id="street-address" placeholder="42, Green Park Main">
+            <input type="text" class="form-input" id="street-address" placeholder="Madakottan Main Road">
           </div>
         </div>
 
@@ -440,6 +443,10 @@
       <button class="btn btn-primary btn-lg w-full" id="place-order-btn" onclick="placeOrder()">
         🔒 Place Order &amp; Pay
       </button>
+
+      <button class="btn-whatsapp w-full" id="btn-checkout-whatsapp" onclick="sendCheckoutToWhatsApp()" style="width:100%;min-height:48px;font-size:15px;margin-top:8px;">
+        <span>💬 Send Order Details to WhatsApp</span>
+      </button>
     </aside>
   </div>
 </div>
@@ -507,7 +514,7 @@
 <!-- ══════════════════════════════════════════════
      SCRIPTS
 ══════════════════════════════════════════════ -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script src="../js/app.js"></script>
 <script>
 'use strict';
@@ -527,36 +534,30 @@ let paymentMethod     = 'upi';
 let activeCoupon      = null;
 let confirmedLocation = null;  // { latitude, longitude, formattedAddress }
 
-// Leaflet instances (created once, reused)
+// Google Maps instances
 let locMap         = null;
 let customerMarker = null;
 let shopMarker     = null;
 let routePolyline  = null;
+let geocoder       = null;
+let placesService  = null;
 let autocompleteTimeout;
 
 /* ─────────────────────────────────────────────────
-   CUSTOM LEAFLET ICONS
-   DivIcons let us use coloured SVG pins without
-   hosting image files.
+   GOOGLE MAPS PIN ICON HELPER
 ───────────────────────────────────────────────── */
-function makePinIcon(color) {
+function createPinIcon(color) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 28 38">
     <path d="M14 0C6.27 0 0 6.27 0 14c0 9.14 14 24 14 24S28 23.14 28 14C28 6.27 21.73 0 14 0z"
           fill="${color}" stroke="#fff" stroke-width="2"/>
     <circle cx="14" cy="14" r="5" fill="#fff" opacity="0.9"/>
   </svg>`;
-  return L.divIcon({
-    html: svg,
-    className: '',
-    iconSize: [28, 38],
-    iconAnchor: [14, 38],
-    popupAnchor: [0, -38]
-  });
+  return {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    scaledSize: new google.maps.Size(28, 38),
+    anchor: new google.maps.Point(14, 38)
+  };
 }
-
-const ICON_GREEN = makePinIcon('#16a34a');  // customer
-const ICON_BLUE  = makePinIcon('#2563eb');  // shop
-const ICON_RED   = makePinIcon('#dc2626');  // delivery partner (future use)
 
 /* ─────────────────────────────────────────────────
    MODAL CONTROL
@@ -602,27 +603,40 @@ function handleOverlayClick(e) {
    MAP INITIALISATION
 ───────────────────────────────────────────────── */
 /**
- * initializeMap — creates the Leaflet map and shop marker once.
- * On subsequent calls it just invalidates the map size (needed
+ * initializeMap — creates the Google Map and shop marker once.
+ * On subsequent calls it just triggers a resize event (needed
  * because the map was hidden inside a modal).
  */
 function initializeMap() {
   if (!locMap) {
-    locMap = L.map('loc-map', { zoomControl: true }).setView([SHOP_LAT, SHOP_LNG], 14);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 19
-    }).addTo(locMap);
+    geocoder = new google.maps.Geocoder();
+    locMap = new google.maps.Map(document.getElementById('loc-map'), {
+      center: { lat: SHOP_LAT, lng: SHOP_LNG },
+      zoom: 14,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+      mapTypeId: 'satellite'
+    });
 
     // Fixed blue shop marker
-    shopMarker = L.marker([SHOP_LAT, SHOP_LNG], { icon: ICON_BLUE, draggable: false })
-      .addTo(locMap)
-      .bindPopup(`<b>${SHOP_NAME}</b><br>Madakottan, Ramanathapuram`, { closeButton: false });
+    const shopInfoWindow = new google.maps.InfoWindow({
+      content: `<b>${SHOP_NAME}</b><br>Madakottan, Ramanathapuram`
+    });
+    shopMarker = new google.maps.Marker({
+      position: { lat: SHOP_LAT, lng: SHOP_LNG },
+      map: locMap,
+      icon: createPinIcon('#2563eb'),
+      title: SHOP_NAME
+    });
+    shopMarker.addListener('click', () => shopInfoWindow.open(locMap, shopMarker));
+
+    // Init Places Autocomplete on the address search input
+    initPlacesAutocomplete();
   }
 
   // Re-trigger layout calculation (critical after display:none → flex transition)
-  setTimeout(() => locMap.invalidateSize(), 120);
+  setTimeout(() => google.maps.event.trigger(locMap, 'resize'), 120);
 }
 
 /* ─────────────────────────────────────────────────
@@ -668,35 +682,36 @@ async function getCurrentLocation() {
  * updateMarker — moves the draggable customer marker to (lat, lng),
  * recentres the map, draws the shop→customer polyline,
  * and triggers reverse geocoding.
- * @param {number} lat
- * @param {number} lng
  */
 async function updateMarker(lat, lng) {
   if (!locMap) return;
 
+  const pos = { lat, lng };
+
   // Move or create the draggable green customer marker
   if (customerMarker) {
-    customerMarker.setLatLng([lat, lng]);
+    customerMarker.setPosition(pos);
   } else {
-    customerMarker = L.marker([lat, lng], {
-      icon: ICON_GREEN,
+    customerMarker = new google.maps.Marker({
+      position: pos,
+      map: locMap,
+      icon: createPinIcon('#16a34a'),
       draggable: true,
-      autoPan: true
-    }).addTo(locMap);
-
-    // On drag end: reverse geocode new position
-    customerMarker.on('dragend', async () => {
-      const pos = customerMarker.getLatLng();
-      showLoading('Updating address…');
-      await reverseGeocodeAndFill(pos.lat, pos.lng);
-      hideLoading();
-      drawPolyline(pos.lat, pos.lng);
+      title: 'Your delivery location'
     });
 
-    customerMarker.bindPopup('📍 Your delivery location<br><small>Drag to adjust</small>');
+    // On drag end: reverse geocode new position
+    customerMarker.addListener('dragend', async () => {
+      const p = customerMarker.getPosition();
+      showLoading('Updating address…');
+      await reverseGeocodeAndFill(p.lat(), p.lng());
+      hideLoading();
+      drawPolyline(p.lat(), p.lng());
+    });
   }
 
-  locMap.setView([lat, lng], 16);
+  locMap.setCenter(pos);
+  locMap.setZoom(16);
 
   // Draw route line
   drawPolyline(lat, lng);
@@ -712,34 +727,41 @@ async function updateMarker(lat, lng) {
  */
 function drawPolyline(customerLat, customerLng) {
   if (routePolyline) {
-    locMap.removeLayer(routePolyline);
+    routePolyline.setMap(null);
   }
-  routePolyline = L.polyline(
-    [[SHOP_LAT, SHOP_LNG], [customerLat, customerLng]],
-    { color: '#22c55e', weight: 3, dashArray: '8, 6', opacity: 0.8 }
-  ).addTo(locMap);
+  routePolyline = new google.maps.Polyline({
+    path: [
+      { lat: SHOP_LAT, lng: SHOP_LNG },
+      { lat: customerLat, lng: customerLng }
+    ],
+    geodesic: false,
+    strokeColor: '#22c55e',
+    strokeOpacity: 0.8,
+    strokeWeight: 3,
+    icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 4 }, offset: '0', repeat: '16px' }]
+  });
+  routePolyline.setMap(locMap);
 }
 
 /* ─────────────────────────────────────────────────
-   REVERSE GEOCODING
+   REVERSE GEOCODING (Google Maps Geocoder)
 ───────────────────────────────────────────────── */
 /**
- * reverseGeocode — calls Nominatim and returns a structured address object.
- * Returns null on network failure.
- * @param {number} lat
- * @param {number} lng
- * @returns {Promise<object|null>}
+ * reverseGeocode — calls Google Maps Geocoder and returns address data.
+ * Returns null on failure.
  */
-async function reverseGeocode(lat, lng) {
-  try {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&addressdetails=1`;
-    const res  = await fetch(url, { headers: { 'Accept-Language': 'en' } });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
-  } catch (e) {
-    console.warn('Reverse geocode failed:', e);
-    return null;
-  }
+function reverseGeocode(lat, lng) {
+  return new Promise((resolve) => {
+    if (!geocoder) geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+      if (status === 'OK' && results && results.length > 0) {
+        resolve(results[0]);
+      } else {
+        console.warn('Reverse geocode failed:', status);
+        resolve(null);
+      }
+    });
+  });
 }
 
 /**
@@ -748,51 +770,50 @@ async function reverseGeocode(lat, lng) {
  * Also enables the Confirm button.
  */
 async function reverseGeocodeAndFill(lat, lng) {
-  const data = await reverseGeocode(lat, lng);
+  const result = await reverseGeocode(lat, lng);
 
   // Update coordinate display
   document.getElementById('loc-addr-preview-coords').textContent =
     `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 
-  if (!data || !data.address) {
+  if (!result) {
     document.getElementById('loc-addr-preview-text').textContent =
       'Address details unavailable. You can still confirm this location.';
     document.getElementById('loc-confirm-btn').disabled = false;
-    // Store minimal location
     if (customerMarker) {
       customerMarker._pendingCoords = { lat, lng, formattedAddress: `${lat.toFixed(5)}, ${lng.toFixed(5)}` };
     }
     return;
   }
 
-  fillAddressFields(data, lat, lng);
+  fillAddressFromGeocodeResult(result, lat, lng);
 }
 
 /* ─────────────────────────────────────────────────
-   FILL ADDRESS FIELDS
+   FILL ADDRESS FIELDS (from Google Geocoder result)
 ───────────────────────────────────────────────── */
 /**
- * fillAddressFields — populates both the modal preview and the checkout
- * form inputs from a Nominatim response object.
- * @param {object} data  — full Nominatim JSON response
- * @param {number} lat
- * @param {number} lng
+ * fillAddressFromGeocodeResult — populates both the modal preview and the
+ * checkout form inputs from a Google Maps Geocoder result.
  */
-function fillAddressFields(data, lat, lng) {
-  const addr = data.address || {};
+function fillAddressFromGeocodeResult(result, lat, lng) {
+  const components = result.address_components || [];
 
-  // Extract parts
-  const houseNum   = addr.house_number || '';
-  const road       = addr.road || addr.pedestrian || addr.footway || '';
-  const area       = addr.suburb || addr.neighbourhood || addr.quarter || addr.village || '';
-  const city       = addr.city || addr.town || addr.municipality || addr.county || addr.state_district || '';
-  const state      = addr.state || '';
-  const postcode   = addr.postcode || '';
-  const country    = addr.country || '';
+  const get = (types) => {
+    const c = components.find(c => types.some(t => c.types.includes(t)));
+    return c ? c.long_name : '';
+  };
 
-  // Build readable street string
+  const houseNum  = get(['street_number']);
+  const road      = get(['route']);
+  const area      = get(['sublocality_level_1', 'sublocality', 'neighborhood']);
+  const city      = get(['locality', 'administrative_area_level_2']);
+  const state     = get(['administrative_area_level_1']);
+  const postcode  = get(['postal_code']);
+
   let streetStr = [houseNum, road, area].filter(Boolean).join(', ');
-  const formattedAddress = data.display_name || [streetStr, city, state, postcode, country].filter(Boolean).join(', ');
+  const formattedAddress = result.formatted_address ||
+    [streetStr, city, state, postcode].filter(Boolean).join(', ');
 
   // ── Update modal address preview ──
   document.getElementById('loc-addr-preview-text').textContent = formattedAddress || '—';
@@ -829,14 +850,14 @@ function fillAddressFields(data, lat, lng) {
 function confirmLocation() {
   if (!customerMarker) return;
 
-  const pos     = customerMarker.getLatLng();
+  const pos     = customerMarker.getPosition();
   const pending = customerMarker._pendingCoords || {};
 
   // Persist confirmed location
   confirmedLocation = {
-    latitude:         pos.lat,
-    longitude:        pos.lng,
-    formattedAddress: pending.formattedAddress || `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`
+    latitude:         pos.lat(),
+    longitude:        pos.lng(),
+    formattedAddress: pending.formattedAddress || `${pos.lat().toFixed(5)}, ${pos.lng().toFixed(5)}`
   };
 
   // Show status bar in the checkout form
@@ -946,43 +967,65 @@ function loadOrderSummary() {
 }
 
 /* ─────────────────────────────────────────────────
-   ADDRESS SEARCH AUTOCOMPLETE (Nominatim Search API)
+   ADDRESS SEARCH (Google Places Autocomplete)
 ───────────────────────────────────────────────── */
-function simulateAutocomplete(val) {
-  const list = document.getElementById('autocomplete-suggestions');
-  if (!val || val.length < 3) { list.style.display = 'none'; return; }
-  clearTimeout(autocompleteTimeout);
-  autocompleteTimeout = setTimeout(async () => {
-    try {
-      const res  = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5&countrycodes=in`);
-      const data = await res.json();
-      if (data && data.length > 0) {
-        list.style.display = 'block';
-        list.innerHTML = data.map(item =>
-          `<div onclick="selectSearchSuggestion('${item.display_name.replace(/'/g, "\\'")}',${item.lat},${item.lon})">
-             📍 ${item.display_name}
-           </div>`
-        ).join('');
-      } else {
-        list.style.display = 'none';
-      }
-    } catch (e) { console.warn('Autocomplete error', e); }
-  }, 500);
+let _placesAutocomplete = null;
+
+function initPlacesAutocomplete() {
+  const input = document.getElementById('address-search');
+  if (!input || _placesAutocomplete) return;
+
+  _placesAutocomplete = new google.maps.places.Autocomplete(input, {
+    componentRestrictions: { country: 'in' },
+    fields: ['geometry', 'formatted_address', 'address_components']
+  });
+
+  // Prevent form submit on Enter
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
+
+  _placesAutocomplete.addListener('place_changed', async () => {
+    const place = _placesAutocomplete.getPlace();
+    if (!place.geometry) return;
+
+    const lat = place.geometry.location.lat();
+    const lng = place.geometry.location.lng();
+
+    // Move map marker to the selected place
+    await updateMarker(lat, lng);
+
+    // Auto-confirm without requiring manual map interaction
+    confirmedLocation = {
+      latitude:         lat,
+      longitude:        lng,
+      formattedAddress: place.formatted_address || `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+      isManualEntry:    false
+    };
+
+    const bar  = document.getElementById('loc-status-bar');
+    const addr = document.getElementById('loc-status-addr');
+    if (addr) addr.textContent = place.formatted_address;
+    if (bar)  bar.classList.add('visible');
+
+    const trigBtn = document.getElementById('loc-trigger-btn');
+    if (trigBtn) {
+      trigBtn.innerHTML = '<span class="btn-icon">📍</span> Change Delivery Location';
+      trigBtn.style.background = 'linear-gradient(135deg,#065f46,#16a34a)';
+    }
+  });
 }
 
-/** selectSearchSuggestion — user picked an autocomplete result */
-async function selectSearchSuggestion(address, lat, lon) {
-  document.getElementById('address-search').value = address;
-  document.getElementById('autocomplete-suggestions').style.display = 'none';
+/** simulateAutocomplete — kept for backward compat; Places Autocomplete now handles suggestions natively */
+function simulateAutocomplete(val) {
+  // No-op: Google Places Autocomplete widget handles suggestions automatically
+}
 
+/** selectSearchSuggestion — kept for backward compat; no longer used with Places Autocomplete */
+async function selectSearchSuggestion(address, lat, lon) {
   const parsedLat = parseFloat(lat);
   const parsedLon = parseFloat(lon);
 
-  // Auto-populate form fields via reverse geocode
-  const fillRes = await reverseGeocode(parsedLat, parsedLon);
-  if (fillRes) fillAddressFields(fillRes, parsedLat, parsedLon);
+  await updateMarker(parsedLat, parsedLon);
 
-  // Auto-confirm location without requiring the user to open the map modal
   confirmedLocation = {
     latitude:         parsedLat,
     longitude:        parsedLon,
@@ -990,13 +1033,11 @@ async function selectSearchSuggestion(address, lat, lon) {
     isManualEntry:    false
   };
 
-  // Update the status bar so the user sees the confirmed address
   const bar  = document.getElementById('loc-status-bar');
   const addr = document.getElementById('loc-status-addr');
   if (addr) addr.textContent = address;
   if (bar)  bar.classList.add('visible');
 
-  // Update trigger button to show location is confirmed
   const trigBtn = document.getElementById('loc-trigger-btn');
   if (trigBtn) {
     trigBtn.innerHTML = '<span class="btn-icon">📍</span> Change Delivery Location';
@@ -1161,6 +1202,39 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Escape') closeLocationModal();
   });
 });
+
+function sendCheckoutToWhatsApp() {
+  const items = MathuraQuickMart.getCart();
+  if (!items || items.length === 0) {
+    MathuraQuickMart.toast('Your cart is empty', 'warning');
+    return;
+  }
+  const subtotal = MathuraQuickMart.getCartTotal();
+  const discount = activeCoupon ? activeCoupon.discount : 0;
+  const delivery = (subtotal < 499 && subtotal > 0) ? 40 : 0;
+  const total = Math.max(0, subtotal + delivery - discount);
+  
+  let address = 'Madakottan, Ramanathapuram, Tamil Nadu - 623504';
+  const streetInput = document.getElementById('addr-street');
+  const fullAddrEl = document.getElementById('loc-status-addr');
+  if (streetInput && streetInput.value.trim()) {
+    address = streetInput.value.trim();
+  } else if (fullAddrEl && fullAddrEl.textContent.trim()) {
+    address = fullAddrEl.textContent.trim();
+  }
+
+  const orderData = {
+    items,
+    subtotal,
+    deliveryFee: delivery,
+    discount,
+    total,
+    address
+  };
+
+  const msg = MathuraQuickMart.buildCheckoutWhatsAppMessage(orderData);
+  MathuraQuickMart.openWhatsApp(msg);
+}
 </script>
 </body>
 </html>

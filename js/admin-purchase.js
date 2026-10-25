@@ -194,8 +194,13 @@ export function initPurchaseModule() {
     const db = window.FirebaseDB;
     try {
       const snap = await fs.getDocs(fs.query(fs.collection(db, 'purchaseBills'), fs.orderBy('createdAt', 'desc')));
-      const bills = [];
-      snap.forEach(doc => bills.push({ id: doc.id, ...doc.data() }));
+      const billMap = new Map();
+      snap.forEach(doc => {
+        const b = { id: doc.id, ...doc.data() };
+        const key = String(b.id || b.billNumber || doc.id);
+        if (!billMap.has(key)) billMap.set(key, b);
+      });
+      const bills = Array.from(billMap.values());
 
       const tbody = document.getElementById('admin-pb-tbody');
       if (bills.length === 0) {

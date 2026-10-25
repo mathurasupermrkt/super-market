@@ -11,24 +11,23 @@ let currentIncomingOrderId = null;
 let incomingOrderTimer = null;
 
 
-// Initialize Leaflet map
+// Initialize Google Map
 export function initMap() {
     if (document.getElementById('delivery-map') && !map) {
-        map = L.map('delivery-map').setView(
-            [13.0850, 80.0178],
-            15
-        );
+        map = new google.maps.Map(document.getElementById('delivery-map'), {
+            center: { lat: 13.0850, lng: 80.0178 },
+            zoom: 15,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false,
+            mapTypeId: 'satellite'
+        });
 
-        L.tileLayer(
-            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            {
-                attribution: '© OpenStreetMap contributors'
-            }
-        ).addTo(map);
-
-        marker = L.marker(
-            [13.0850, 80.0178]
-        ).addTo(map);
+        marker = new google.maps.Marker({
+            position: { lat: 13.0850, lng: 80.0178 },
+            map: map,
+            title: 'Your Location'
+        });
     }
 }
 

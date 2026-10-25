@@ -117,24 +117,24 @@
 
 <nav class="navbar">
   <div class="navbar-inner">
-    <a href="../index.html" class="navbar-logo">
+    <a href="/index.html" class="navbar-logo">
       <div class="logo-icon">🛒</div>
       <div>
         <div class="logo-text">Mathura Quick Mart</div>
       </div>
     </a>
     <div class="flex items-center gap-3">
-      <a href="dashboard.html" class="btn btn-ghost btn-sm">📊 Dashboard</a>
-      <a href="../index.html" class="btn btn-outline btn-sm">Shop Store</a>
+      <a href="/customer/dashboard.html" class="btn btn-ghost btn-sm">📊 Dashboard</a>
+      <a href="/index.html" class="btn btn-outline btn-sm">Shop Store</a>
     </div>
   </div>
 </nav>
 
 <div class="container section-sm orders-container">
   <div class="breadcrumb mb-6">
-    <a href="../index.html">Home</a>
+    <a href="/index.html">Home</a>
     <span class="breadcrumb-sep">/</span>
-    <a href="dashboard.html">Dashboard</a>
+    <a href="/customer/dashboard.html">Dashboard</a>
     <span class="breadcrumb-sep">/</span>
     <span class="breadcrumb-current">My Orders</span>
   </div>
@@ -171,7 +171,7 @@
   }
 
   function renderOrders() {
-    const allOrders = MathuraQuickMart.state.orders.length > 0 ? MathuraQuickMart.state.orders : API.orders;
+    const allOrders = MathuraQuickMart.getUserOrders();
     const filtered = currentFilter === 'all' ? allOrders : allOrders.filter(o => o.status === currentFilter);
     const container = document.getElementById('orders-list');
 
@@ -193,18 +193,20 @@
         shipped: 'badge-blue',
         delivered: 'badge-green',
         cancelled: 'badge-red',
-        'out-for-delivery': 'badge-blue'
+        'out-for-delivery': 'badge-blue',
+        'out-delivery': 'badge-blue',
+        confirmed: 'badge-green'
       };
       const statusBadge = statusColors[order.status] || 'badge-orange';
 
-      const itemsHTML = order.items ? order.items.map(item => `
+      const itemsHTML = (order.items && order.items.length > 0) ? order.items.map(item => `
         <div class="order-item-row">
-          <span style="color:var(--gray-700);">${item.name} <span style="color:var(--gray-400);">×${item.qty}</span></span>
-          <span style="color:var(--gray-900);font-weight:var(--fw-bold);">₹${item.price * item.qty}</span>
+          <span style="color:var(--gray-700);">${item.name} <span style="color:var(--gray-400);">×${item.qty || 1}</span></span>
+          <span style="color:var(--gray-900);font-weight:var(--fw-bold);">₹${(item.price || 0) * (item.qty || 1)}</span>
         </div>
       `).join('') : `
         <div class="order-item-row">
-          <span style="color:var(--gray-500);">Fresh Organic Apple, Dairy Milk, Brown Bread</span>
+          <span style="color:var(--gray-500);">Order Items (${order.id})</span>
           <span></span>
         </div>
       `;
@@ -218,10 +220,10 @@
           <div class="order-header">
             <div>
               <strong style="font-size:var(--text-base);color:var(--gray-900);">${order.id}</strong>
-              <div style="font-size:12px;color:var(--gray-400);margin-top:4px;">Placed on ${MathuraQuickMart.formatDate(order.date)}</div>
+              <div style="font-size:12px;color:var(--gray-400);margin-top:4px;">Placed on ${MathuraQuickMart.formatDate(order.date || order.createdAt)}</div>
             </div>
             <div class="flex items-center gap-3">
-              <span class="badge ${statusBadge}">${order.status.replace('-', ' ')}</span>
+              <span class="badge ${statusBadge}">${(order.status || 'confirmed').replace('-', ' ')}</span>
               ${trackBtn}
             </div>
           </div>
@@ -229,9 +231,10 @@
           <div class="order-items-list">${itemsHTML}</div>
 
           <div class="order-footer">
-            <span style="font-size:var(--text-sm);color:var(--gray-500);">Paid via ${order.paymentMethod || 'UPI'}</span>
-            <div class="flex items-center gap-4">
-              <strong style="font-size:var(--text-lg);color:var(--primary-dark);">₹${order.total || order.subtotal}</strong>
+            <span style="font-size:var(--text-sm);color:var(--gray-500);">Paid via ${order.paymentMethod || 'Online'}</span>
+            <div class="flex items-center gap-3 flex-wrap">
+              <strong style="font-size:var(--text-lg);color:var(--primary-dark);">₹${order.total || order.subtotal || 0}</strong>
+              <button class="btn btn-whatsapp btn-sm" onclick="openOrderSupportWhatsApp('${order.id}')" title="Chat on WhatsApp about this order">💬 WhatsApp Support</button>
               <button class="btn btn-outline btn-sm" onclick="reorderItems('${order.id}')">🔄 Reorder</button>
             </div>
           </div>
@@ -240,52 +243,60 @@
     }).join('');
   }
 
+  function openOrderSupportWhatsApp(orderId) {
+    const orders = MathuraQuickMart.getUserOrders();
+    const order = orders.find(o => String(o.id) === String(orderId)) || { id: orderId, total: 0, status: 'Confirmed' };
+    const msg = MathuraQuickMart.buildOrderSupportWhatsAppMessage(order);
+    MathuraQuickMart.openWhatsApp(msg);
+  }
+
   function reorderItems(orderId) {
-    const orders = MathuraQuickMart.state.orders.length > 0 ? MathuraQuickMart.state.orders : API.orders;
+    const orders = MathuraQuickMart.getUserOrders();
     const order = orders.find(o => o.id === orderId);
-    if (order && order.items) {
-      order.items.forEach(item => MathuraQuickMart.addToCart(item, item.qty));
+    if (order && order.items && order.items.length > 0) {
+      order.items.forEach(item => MathuraQuickMart.addToCart(item, item.qty || 1));
       MathuraQuickMart.toast('🛒 All items added to cart!', 'success');
       setTimeout(() => { window.location.href = '/customer/cart.html'; }, 1000);
     } else {
-      const sample = API.getProduct(1);
-      const sample2 = API.getProduct(2);
-      MathuraQuickMart.addToCart(sample, 1);
-      MathuraQuickMart.addToCart(sample2, 1);
+      const sample = API.getProduct(1) || API.products[0];
+      if (sample) MathuraQuickMart.addToCart(sample, 1);
       MathuraQuickMart.toast('🛒 Sample items added to cart!', 'success');
       setTimeout(() => { window.location.href = '/customer/cart.html'; }, 1000);
     }
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    MathuraQuickMart.requireAuth();
+    if (!MathuraQuickMart.requireAuth()) return;
     renderOrders();
     window.addEventListener('user-data-ready', renderOrders);
+    window.addEventListener('db-ready', renderOrders);
   });
-  <!-- Mobile Bottom Navigation Bar -->
-  <nav class="mobile-bottom-nav">
-    <a href="/index.html" class="mobile-nav-item">
-      <span class="nav-icon">🏠</span>
-      <span>Home</span>
-    </a>
-    <a href="/customer/products.html" class="mobile-nav-item">
-      <span class="nav-icon">📂</span>
-      <span>Categories</span>
-    </a>
-    <a href="/customer/cart.html" class="mobile-nav-item">
-      <span class="nav-icon">🛒</span>
-      <span>Cart</span>
-      <span class="mobile-nav-badge" data-cart-count style="display:none">0</span>
-    </a>
-    <a href="/customer/my-orders.html" class="mobile-nav-item active">
-      <span class="nav-icon">📦</span>
-      <span>Orders</span>
-    </a>
-    <a href="/customer/profile.html" class="mobile-nav-item">
-      <span class="nav-icon">👤</span>
-      <span>Profile</span>
-    </a>
-  </nav>
+</script>
+
+<!-- Mobile Bottom Navigation Bar -->
+<nav class="mobile-bottom-nav">
+  <a href="/index.html" class="mobile-nav-item">
+    <span class="nav-icon">🏠</span>
+    <span>Home</span>
+  </a>
+  <a href="/customer/products.html" class="mobile-nav-item">
+    <span class="nav-icon">📂</span>
+    <span>Categories</span>
+  </a>
+  <a href="/customer/cart.html" class="mobile-nav-item">
+    <span class="nav-icon">🛒</span>
+    <span>Cart</span>
+    <span class="mobile-nav-badge" data-cart-count style="display:none">0</span>
+  </a>
+  <a href="/customer/my-orders.html" class="mobile-nav-item active">
+    <span class="nav-icon">📦</span>
+    <span>Orders</span>
+  </a>
+  <a href="/customer/profile.html" class="mobile-nav-item">
+    <span class="nav-icon">👤</span>
+    <span>Profile</span>
+  </a>
+</nav>
 
 </body>
 </html>

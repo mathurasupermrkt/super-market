@@ -95,33 +95,53 @@
     </div>
 
     <div class="flex flex-col gap-3">
+      <button class="btn btn-whatsapp btn-lg w-full" id="btn-confirm-whatsapp" onclick="sendConfirmedOrderToWhatsApp()" style="width:100%;">
+        💬 Send Order Details on WhatsApp
+      </button>
       <a href="/customer/order-tracking.html" class="btn btn-primary btn-lg">
         🚚 Live Order Tracking
       </a>
       <a href="#" onclick="MathuraQuickMart.goToDashboard(event)" class="btn btn-outline btn-lg">
         📊 View My Dashboard
       </a>
-      <a href="../index.html" class="btn btn-ghost">
+      <a href="/index.html" class="btn btn-ghost">
         🏪 Back to Home
       </a>
     </div>
   </div>
 </div>
 
+<div class="toast-container" id="toast-container"></div>
+
 <script src="../js/app.js"></script>
 <script>
+  let confirmedOrderData = null;
+
   document.addEventListener('DOMContentLoaded', () => {
     const lastOrder = localStorage.getItem('mathuraquickmart_last_order');
     if (lastOrder) {
-      const order = JSON.parse(lastOrder);
-      const deliveryFee = order.deliveryFee || 0;
-      const totalAmt = order.subtotal + deliveryFee - (order.discount || 0);
+      try {
+        confirmedOrderData = JSON.parse(lastOrder);
+        const deliveryFee = confirmedOrderData.deliveryFee || 0;
+        const totalAmt = (confirmedOrderData.subtotal || 0) + deliveryFee - (confirmedOrderData.discount || 0);
 
-      document.getElementById('conf-order-id').textContent = order.id;
-      document.getElementById('conf-total').textContent = `₹${Math.round(totalAmt)}`;
-      document.getElementById('conf-pay-method').textContent = order.paymentMethod;
+        document.getElementById('conf-order-id').textContent = confirmedOrderData.id || 'N/A';
+        document.getElementById('conf-total').textContent = `₹${Math.round(totalAmt)}`;
+        document.getElementById('conf-pay-method').textContent = confirmedOrderData.paymentMethod || 'Online';
+      } catch (e) {
+        console.warn('Error parsing last order:', e);
+      }
     }
   });
+
+  function sendConfirmedOrderToWhatsApp() {
+    if (!confirmedOrderData) {
+      MathuraQuickMart.toast('Order details not found', 'warning');
+      return;
+    }
+    const msg = MathuraQuickMart.buildOrderPlacedWhatsAppMessage(confirmedOrderData);
+    MathuraQuickMart.openWhatsApp(msg);
+  }
 </script>
 </body>
 </html>

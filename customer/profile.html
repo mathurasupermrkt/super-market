@@ -227,6 +227,9 @@
         <option value="other">Other</option>
         <option value="prefer-not">Prefer not to say</option>
       </select>
+    <div class="form-group mb-4">
+      <label class="form-label">Delivery Address</label>
+      <input type="text" class="form-input" id="edit-address" placeholder="e.g. Madakottan, Ramanathapuram - 623504">
     </div>
     <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
   </div>
@@ -340,7 +343,7 @@
     <h2 class="profile-section-title">📋 Account Summary</h2>
     <div class="profile-row">
       <span class="profile-row-label">Member Since</span>
-      <span class="profile-row-value">January 2024</span>
+      <span class="profile-row-value" id="summary-member-since">Recently Joined</span>
     </div>
     <div class="profile-row">
       <span class="profile-row-label">Total Orders</span>
@@ -348,11 +351,11 @@
     </div>
     <div class="profile-row">
       <span class="profile-row-label">Rewards Points</span>
-      <span class="profile-row-value" style="color:var(--secondary);font-weight:bold;">1,250 pts</span>
+      <span class="profile-row-value" id="summary-rewards" style="color:var(--secondary);font-weight:bold;">0 pts</span>
     </div>
     <div class="profile-row">
       <span class="profile-row-label">Default Address</span>
-      <span class="profile-row-value">Green Park, New Delhi</span>
+      <span class="profile-row-value" id="summary-address">Madakottan, Ramanathapuram - 623504</span>
     </div>
   </div>
 
@@ -379,7 +382,39 @@
     document.getElementById('edit-name').value           = user.name  || '';
     document.getElementById('edit-email').value          = user.email || '';
     document.getElementById('profile-avatar').textContent = (user.name || 'U').charAt(0).toUpperCase();
-    document.getElementById('summary-orders').textContent = MathuraQuickMart.state.orders.length;
+    if (document.getElementById('summary-wishlist')) {
+      document.getElementById('summary-wishlist').textContent = MathuraQuickMart.state.wishlist.length;
+    }
+
+    const userOrders = MathuraQuickMart.getUserOrders();
+    document.getElementById('summary-orders').textContent = userOrders.length;
+
+    // Calculate Reward Points: 1 Reward Point per ₹100 spent
+    const totalSpent = userOrders
+      .filter(o => o.status !== 'cancelled')
+      .reduce((sum, o) => sum + (Number(o.total) || Number(o.subtotal) || 0), 0);
+    const rewardPts = Math.floor(totalSpent / 100);
+    document.getElementById('summary-rewards').textContent = `${rewardPts.toLocaleString('en-IN')} pts`;
+
+    // Customer Location / Address
+    let custAddress = user.address || '';
+    if (!custAddress && userOrders.length > 0) {
+      const withAddr = userOrders.find(o => o.address || o.deliveryAddress);
+      if (withAddr) custAddress = withAddr.address || withAddr.deliveryAddress;
+    }
+    if (!custAddress) custAddress = 'Madakottan, Ramanathapuram - 623504';
+    document.getElementById('summary-address').textContent = custAddress;
+    if (document.getElementById('edit-address')) {
+      document.getElementById('edit-address').value = user.address || (custAddress !== 'Madakottan, Ramanathapuram - 623504' ? custAddress : '');
+    }
+
+    // Member Since
+    if (user.createdAt) {
+      const joined = new Date(user.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+      document.getElementById('summary-member-since').textContent = joined;
+      const memberEl = document.querySelector('.member-badge');
+      if (memberEl) memberEl.textContent = `⭐ Member since ${joined}`;
+    }
 
     // Enrich from Firestore
     const doFetch = async () => {
@@ -395,6 +430,10 @@
           document.getElementById('edit-phone').value = data.phone || '';
           document.getElementById('edit-dob').value   = data.dob   || '';
           if (data.gender) document.getElementById('edit-gender').value = data.gender;
+          if (data.address && document.getElementById('edit-address')) {
+            document.getElementById('edit-address').value = data.address;
+            document.getElementById('summary-address').textContent = data.address;
+          }
 
           document.getElementById('profile-name').textContent  = data.name  || user.name;
           document.getElementById('profile-email').textContent = data.email || user.email;
@@ -409,8 +448,14 @@
           // Member since badge
           if (data.createdAt) {
             const joined = new Date(data.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+            document.getElementById('summary-member-since').textContent = joined;
             const memberEl = document.querySelector('.member-badge');
             if (memberEl) memberEl.textContent = `⭐ Member since ${joined}`;
+          }
+
+          // Custom points if stored on profile
+          if (data.rewardPoints != null) {
+            document.getElementById('summary-rewards').textContent = `${Number(data.rewardPoints).toLocaleString('en-IN')} pts`;
           }
         }
 
@@ -438,11 +483,12 @@
     const user   = MathuraQuickMart.state.user;
     if (!user) { MathuraQuickMart.toast('Please log in first', 'error'); return; }
 
-    const name   = document.getElementById('edit-name').value.trim();
-    const email  = document.getElementById('edit-email').value.trim();
-    const phone  = document.getElementById('edit-phone').value.trim();
-    const dob    = document.getElementById('edit-dob').value;
-    const gender = document.getElementById('edit-gender').value;
+    const name    = document.getElementById('edit-name').value.trim();
+    const email   = document.getElementById('edit-email').value.trim();
+    const phone   = document.getElementById('edit-phone').value.trim();
+    const dob     = document.getElementById('edit-dob').value;
+    const gender  = document.getElementById('edit-gender').value;
+    const address = document.getElementById('edit-address') ? document.getElementById('edit-address').value.trim() : '';
 
     if (!name || !email) {
       MathuraQuickMart.toast('Name and email are required', 'error');
@@ -453,10 +499,10 @@
     if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
 
     // Update localStorage state
-    MathuraQuickMart.state.user = { ...MathuraQuickMart.state.user, name, email };
+    MathuraQuickMart.state.user = { ...MathuraQuickMart.state.user, name, email, phone, address };
     MathuraQuickMart.saveState();
 
-    const profileData = { name, email, phone, dob, gender, updatedAt: new Date().toISOString() };
+    const profileData = { name, email, phone, dob, gender, address, updatedAt: new Date().toISOString() };
 
     const doSave = async () => {
       if (!window.FirebaseDB || !window.Firestore) return;
@@ -467,6 +513,7 @@
         document.getElementById('profile-name').textContent  = name;
         document.getElementById('profile-email').textContent = email;
         document.getElementById('profile-avatar').textContent = name.charAt(0).toUpperCase();
+        if (address) document.getElementById('summary-address').textContent = address;
         MathuraQuickMart.toast('✅ Profile updated successfully!', 'success');
       } catch (e) {
         MathuraQuickMart.toast('Save failed. Please try again.', 'error');

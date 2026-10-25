@@ -19,6 +19,14 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  uploadBytesResumable,
+  getDownloadURL,
+  deleteObject
+} from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCy-euC1CaVTejDj_cCQNgzyJ6uIZHJ0jM",
@@ -74,8 +82,24 @@ try {
     signInWithPopup,
   };
 
-  // ✅ Fire 'firebase-ready' immediately — Auth & Firestore are available NOW
-  console.log("🔥 Firebase, Firestore & Auth Initialized Successfully!");
+  // Expose Storage instance and helper functions to window
+  try {
+    const storage = getStorage(app);
+    window.FirebaseStorage = storage;
+    window.FirebaseStorageFns = {
+      ref,
+      uploadBytes,
+      uploadBytesResumable,
+      getDownloadURL,
+      deleteObject,
+    };
+    console.log("📦 Firebase Storage Initialized Successfully!");
+  } catch (storageErr) {
+    console.warn("Storage initialization notice:", storageErr);
+  }
+
+  // ✅ Fire 'firebase-ready' immediately — Auth, Firestore & Storage are available NOW
+  console.log("🔥 Firebase, Firestore, Auth & Storage Initialized Successfully!");
   window.firebaseIsReady = true;
   window.dispatchEvent(new CustomEvent('firebase-ready'));
 

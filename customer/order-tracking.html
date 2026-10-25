@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Live Order Tracking – Mathura Quick Mart</title>
   <link rel="stylesheet" href="../styles/main.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCrhrfd6_Hxh29dNJFRIbFatHbNrseHYEU" defer></script>
   <style>
     .navbar {
       position: sticky;
@@ -168,17 +168,23 @@
           <span class="status status-processing">Processing</span>
         </div>
         <div class="divider"></div>
-        <div style="font-size:var(--text-sm);">
-          <div style="font-weight:var(--fw-bold);color:var(--gray-800);">Delivery Partner</div>
-          <div style="display:flex;align-items:center;gap:12px;margin-top:8px;">
-            <div style="width:36px;height:36px;border-radius:50%;background:var(--secondary-pale);display:flex;align-items:center;justify-content:center;font-size:1.2rem;">🛵</div>
-            <div>
-              <div style="font-weight:var(--fw-bold);" id="driver-name">Awaiting Assignment</div>
-              <div style="font-size:11px;color:var(--gray-500);" id="driver-phone">Driver will be assigned by store staff</div>
+          <div style="font-size:var(--text-sm);">
+            <div style="font-weight:var(--fw-bold);color:var(--gray-800);">Delivery Partner</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:8px;">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--secondary-pale);display:flex;align-items:center;justify-content:center;font-size:1.2rem;">🛵</div>
+              <div>
+                <div style="font-weight:var(--fw-bold);" id="driver-name">Awaiting Assignment</div>
+                <div style="font-size:11px;color:var(--gray-500);" id="driver-phone">Driver will be assigned by store staff</div>
+              </div>
             </div>
           </div>
+
+          <div style="margin-top:14px;">
+            <button class="btn btn-whatsapp w-full" id="btn-delivery-whatsapp" onclick="contactDeliverySupportWhatsApp()" style="width:100%;font-size:13px;padding:8px 14px;">
+              💬 Contact Delivery Support
+            </button>
+          </div>
         </div>
-      </div>
 
       <!-- Timeline -->
       <div class="tracking-card">
@@ -216,7 +222,7 @@
 
 <div class="toast-container" id="toast-container"></div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script type="module" src="../js/firebase-init.js"></script>
 <script src="../js/app.js"></script>
 <script type="module">
@@ -231,13 +237,24 @@
   // or read it dynamically from the order document.
   const RIDER_DOC_ID = localStorage.getItem('assignedPartnerUid') || 'delivery1';
 
-  // ---- Leaflet map setup (matches your code) ----
-  const map = L.map('map').setView([DEFAULT_LAT, DEFAULT_LNG], 13);
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  // ---- Google Map setup ----
+  const mapEl = document.getElementById('map');
+  const map = new google.maps.Map(mapEl, {
+    center: { lat: DEFAULT_LAT, lng: DEFAULT_LNG },
+    zoom: 13,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+    mapTypeId: 'satellite'
+  });
 
   // Rider marker
-  const marker = L.marker([DEFAULT_LAT, DEFAULT_LNG]).addTo(map);
+  const marker = new google.maps.Marker({
+    position: { lat: DEFAULT_LAT, lng: DEFAULT_LNG },
+    map: map,
+    title: 'Delivery Partner'
+  });
+  const riderInfoWindow = new google.maps.InfoWindow();
 
   // ---- onSnapshot: listen for real-time rider location updates ----
   function startLiveMap() {
@@ -268,9 +285,9 @@
 
       // Only move map if coordinates are available and partner is tracking
       if (data.latitude && data.longitude) {
-        const newLatLng = [data.latitude, data.longitude];
+        const newLatLng = { lat: data.latitude, lng: data.longitude };
 
-        marker.setLatLng(newLatLng);
+        marker.setPosition(newLatLng);
         map.panTo(newLatLng);
 
         const time = data.timestamp
@@ -280,11 +297,12 @@
         const trackingBadge = data.isTracking ? '🟢 Live' : '🔴 Offline';
         const statusLabel = data.status || 'unknown';
 
-        marker.bindPopup(
+        riderInfoWindow.setContent(
           `🛵 ${data.name || 'Delivery Partner'}<br>` +
           `<small>Status: ${statusLabel} | ${trackingBadge}</small><br>` +
           `<small>Updated: ${time}</small>`
         );
+        riderInfoWindow.open(map, marker);
 
         console.log(`📍 Rider location update: ${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}`);
       }
@@ -400,6 +418,12 @@
       window.addEventListener('firebase-ready', startLiveMap, { once: true });
     }
   });
+
+  function contactDeliverySupportWhatsApp() {
+    const orderId = document.getElementById('track-id')?.textContent?.trim() || 'Active Order';
+    const msg = MathuraQuickMart.buildDeliverySupportWhatsAppMessage(orderId);
+    MathuraQuickMart.openWhatsApp(msg);
+  }
 </script>
 </body>
 </html>

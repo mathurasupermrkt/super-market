@@ -1,0 +1,26 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper function to verify admin role
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.email == 'vikramsenthilkumar164@gmail.com' ||
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    // Promotional Banners folder:
+    // Anyone can read banner images; only authorized admins can upload, edit, or delete them
+    match /banners/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Default fallback for other storage files
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
