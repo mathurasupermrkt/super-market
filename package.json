@@ -8,8 +8,10 @@
     "start": "serve .",
     "dev": "vercel dev"
   },
-  "dependencies": {},
-  "devDependencies": {},
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase": "^13.1.0"
+  },
   "engines": {
     "node": ">=18.0.0"
   }
