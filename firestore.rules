@@ -1,381 +1,294 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --------------------------------------------------
+    // =========================================================================
     // AUTHENTICATION AND ROLE HELPERS
-    // --------------------------------------------------
+    // =========================================================================
 
     function isAuthenticated() {
       return request.auth != null;
     }
 
     function isOwner(userId) {
-      return isAuthenticated() &&
-        request.auth.uid == userId;
+      return isAuthenticated() && request.auth.uid == userId;
     }
 
     function userExists(userId) {
-      return exists(
-        /databases/$(database)/documents/users/$(userId)
-      );
+      return exists(/databases/$(database)/documents/users/$(userId));
     }
 
-    function userRole() {
-      return get(
-        /databases/$(database)/documents/users/$(request.auth.uid)
-      ).data.role;
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
     }
 
     function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.uid == '7SBL73wlj7OxKBsMExoJNhdrDTU2' ||
+        (
+          'email' in request.auth.token &&
+          request.auth.token.email == 'mathurasupermrkt@gmail.com' &&
+          request.auth.token.email_verified == true
+        ) ||
+        (
+          userExists(request.auth.uid) &&
+          getUserData(request.auth.uid).role == 'admin'
+        )
+      );
+    }
+
+    // Strictly requires delivery role AND approved status
+    function isApprovedDelivery() {
       return isAuthenticated() &&
+        userExists(request.auth.uid) &&
+        getUserData(request.auth.uid).role == 'delivery' &&
+        getUserData(request.auth.uid).approvalStatus == 'approved';
+    }
+
+    // =========================================================================
+    // STORE CONFIGURATION HELPERS
+    // =========================================================================
+
+    function isStoreOpen() {
+      return !exists(/databases/$(database)/documents/settings/store) ||
+        get(/databases/$(database)/documents/settings/store).data.isOpen != false;
+    }
+
+    function isMinimumOrderMet() {
+      return !exists(/databases/$(database)/documents/settings/orderRules) ||
+        get(/databases/$(database)/documents/settings/orderRules).data.minimumOrderEnabled != true ||
         (
           (
-            'email' in request.auth.token &&
-            request.auth.token.email ==
-              'vikramsenthilkumar164@gmail.com'
+            'subtotal' in request.resource.data &&
+            request.resource.data.subtotal is number &&
+            request.resource.data.subtotal >= get(/databases/$(database)/documents/settings/orderRules).data.minimumOrderAmount
           ) ||
           (
-            userExists(request.auth.uid) &&
-            userRole() == 'admin'
+            !('subtotal' in request.resource.data) &&
+            request.resource.data.total is number &&
+            request.resource.data.total >= get(/databases/$(database)/documents/settings/orderRules).data.minimumOrderAmount
           )
         );
     }
 
-    function isDelivery() {
-      return isAuthenticated() &&
-        userExists(request.auth.uid) &&
-        userRole() == 'delivery';
-    }
-
-    // --------------------------------------------------
-    // STORE SETTINGS
-    // --------------------------------------------------
-
-    function isStoreOpen() {
-      return !exists(
-        /databases/$(database)/documents/settings/store
-      ) ||
-      get(
-        /databases/$(database)/documents/settings/store
-      ).data.isOpen != false;
-    }
-
-    function isValidCustomerLocation(loc) {
+    function isValidLocation(loc) {
       return loc is map &&
         loc.keys().hasAll(['latitude', 'longitude']) &&
-        loc.latitude is number &&
-        loc.longitude is number &&
-        loc.latitude >= -90 &&
-        loc.latitude <= 90 &&
-        loc.longitude >= -180 &&
-        loc.longitude <= 180 &&
-        (
-          !('formattedAddress' in loc) ||
-          loc.formattedAddress == null ||
-          loc.formattedAddress is string
-        );
+        loc.latitude is number && loc.latitude >= -90 && loc.latitude <= 90 &&
+        loc.longitude is number && loc.longitude >= -180 && loc.longitude <= 180 &&
+        (!('formattedAddress' in loc) || loc.formattedAddress == null || loc.formattedAddress is string);
     }
 
-    // --------------------------------------------------
-    // PRODUCTS, CATEGORIES, BRANDS AND COUPONS
-    // --------------------------------------------------
+    // =========================================================================
+    // 1. PRODUCTS, CATEGORIES, BRANDS, COUPONS, BANNERS
+    // =========================================================================
 
     match /products/{productId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow write: if isAdmin();
     }
 
     match /categories/{categoryId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow write: if isAdmin();
     }
 
     match /brands/{brandId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow write: if isAdmin();
     }
 
     match /coupons/{couponId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow write: if isAdmin();
     }
 
-    // Customers should query banners with isActive == true.
     match /banners/{bannerId} {
-      allow read: if isAdmin() ||
-        resource.data.isActive == true;
-
-      allow create, update, delete: if isAdmin();
+      allow read: if isAdmin() || resource.data.isActive == true;
+      allow write: if isAdmin();
     }
 
-    // --------------------------------------------------
-    // USER PROFILES
-    // --------------------------------------------------
+    // =========================================================================
+    // 2. USER PROFILES & USER SUBCOLLECTIONS
+    // =========================================================================
 
     match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin() || isApprovedDelivery();
 
-      allow read: if isOwner(userId) ||
-        isAdmin() ||
-        isDelivery();
-
-      // A customer can create only their own basic profile.
-      // Admin and delivery roles must be assigned through
-      // a trusted administrative process.
-      allow create: if isAdmin() ||
-        (
-          isOwner(userId) &&
+      // Customer self-registration or delivery partner application (forced pending)
+      allow create: if isAdmin() || (
+        isOwner(userId) && (
+          (!('role' in request.resource.data) || request.resource.data.role == 'customer') ||
           (
-            !('role' in request.resource.data) ||
-            request.resource.data.role == 'customer'
+            request.resource.data.role == 'delivery' &&
+            request.resource.data.approvalStatus == 'pending'
           )
-        );
+        )
+      );
 
-      // A user cannot change their own role.
-      allow update: if isAdmin() ||
-        (
-          isOwner(userId) &&
-          !request.resource.data.diff(resource.data)
-            .affectedKeys()
-            .hasAny(['role'])
-        );
+      // Self-update prevents role or approval status alteration
+      allow update: if isAdmin() || (
+        isOwner(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'approvalStatus'])
+      );
 
       allow delete: if isAdmin();
 
+      // --- Subcollection: Cart ---
       match /cart/{productId} {
-        allow read, write: if isOwner(userId) ||
-          isAdmin();
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if (isOwner(userId) || isAdmin()) && (
+          request.resource == null ||
+          (
+            request.resource.data.keys().hasAll(['id', 'name', 'price', 'qty']) &&
+            request.resource.data.price is number && request.resource.data.price >= 0 &&
+            request.resource.data.qty is number && request.resource.data.qty > 0
+          )
+        );
       }
 
+      // --- Subcollection: Wishlist ---
       match /wishlist/{productId} {
-        allow read, write: if isOwner(userId) ||
-          isAdmin();
+        allow read, write: if isOwner(userId) || isAdmin();
       }
 
+      // --- Subcollection: Returns ---
       match /returns/{returnId} {
-        allow read, write: if isOwner(userId) ||
-          isAdmin();
+        allow read: if isOwner(userId) || isAdmin();
+
+        // Customer can only submit return request with status 'requested'
+        allow create: if (isOwner(userId) || isAdmin()) &&
+          request.resource.data.keys().hasAll(['orderId', 'amount', 'status']) &&
+          request.resource.data.amount is number && request.resource.data.amount >= 0 &&
+          request.resource.data.status == 'requested';
+
+        // Only Admin can update return progress (processing, completed, rejected)
+        allow update, delete: if isAdmin();
       }
     }
 
-    // --------------------------------------------------
-    // ORDERS
-    // --------------------------------------------------
+    // =========================================================================
+    // 3. ORDERS (SECURE ORDER-BASED TRACKING & ACCESS)
+    // =========================================================================
 
     match /orders/{orderId} {
-
-      // Customers can create only their own orders.
-      // Prices and item details must ALSO be validated
-      // by trusted checkout/backend code.
-      allow create: if isAuthenticated() &&
-        (
-          isAdmin() ||
-          (
-            isStoreOpen() &&
-            request.resource.data.userId ==
-              request.auth.uid &&
-            request.resource.data.status in [
-              'pending',
-              'confirmed'
-            ] &&
-            request.resource.data.driverId == null &&
-            request.resource.data.total is number &&
-            request.resource.data.total >= 0
-          )
-        );
-
+      // Customer: own orders; Rider: strictly assigned orders; Admin: all
       allow read: if isAdmin() ||
-        isDelivery() ||
-        (
-          isAuthenticated() &&
-          resource.data.userId == request.auth.uid
-        );
+        (isAuthenticated() && resource.data.userId == request.auth.uid) ||
+        (isApprovedDelivery() && resource.data.driverId == request.auth.uid);
 
-      allow update: if isAdmin() ||
+      // Customer order creation: direct client creation is denied.
+      // Orders must be placed through the trusted Cloud Function verifyAndPlaceOrder (Admin SDK).
+      // Only authorized administrators may create orders directly in Firestore (for manual/phone orders).
+      allow create: if isAdmin();
 
-        // Delivery partner accepts an assigned request.
+      // Order updates (strictly controlled per role)
+      allow update: if isAdmin() || (
+        // A. Approved Delivery Partner updating assigned order status
+        isApprovedDelivery() &&
+        resource.data.driverId == request.auth.uid &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.total == resource.data.total &&
+        request.resource.data.driverId == resource.data.driverId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'proofOfDelivery']) &&
         (
-          isDelivery() &&
-          request.resource.data.userId ==
-            resource.data.userId &&
-          request.resource.data.total ==
-            resource.data.total &&
-          request.resource.data.diff(resource.data)
-            .affectedKeys()
-            .hasOnly([
-              'status',
-              'updatedAt',
-              'driverId',
-              'driverName',
-              'deliveryRequestStatus',
-              'declinedDrivers'
-            ]) &&
           (
-            // Accept an unassigned delivery request.
-            (
-              request.resource.data.diff(resource.data)
-                .affectedKeys()
-                .hasAny(['driverId']) &&
-              request.resource.data.driverId ==
-                request.auth.uid &&
-              resource.data.driverId == null &&
-              resource.data.deliveryRequestStatus ==
-                'pending' &&
-              request.resource.data.deliveryRequestStatus ==
-                'accepted' &&
-              request.resource.data.status == 'assigned' &&
-              (
-                !('declinedDrivers' in resource.data) ||
-                !resource.data.declinedDrivers
-                  .hasAny([request.auth.uid])
-              )
-            ) ||
-
-            // Update the delivery status.
-            (
-              request.resource.data.diff(resource.data)
-                .affectedKeys()
-                .hasOnly(['status', 'updatedAt']) &&
-              resource.data.driverId == request.auth.uid &&
-              (
-                (
-                  resource.data.status in [
-                    'assigned',
-                    'confirmed',
-                    'processing',
-                    'packed'
-                  ] &&
-                  request.resource.data.status in [
-                    'out-delivery',
-                    'cancelled'
-                  ]
-                ) ||
-                (
-                  resource.data.status == 'out-delivery' &&
-                  request.resource.data.status in [
-                    'delivered',
-                    'cancelled'
-                  ]
-                )
-              )
-            ) ||
-
-            // Decline a delivery request.
-            (
-              request.resource.data.diff(resource.data)
-                .affectedKeys()
-                .hasOnly(['declinedDrivers']) &&
-              resource.data.driverId == null &&
-              request.resource.data.declinedDrivers is list &&
-              request.resource.data.declinedDrivers
-                .hasAll([request.auth.uid]) &&
-              (
-                !('declinedDrivers' in resource.data) ||
-                request.resource.data.declinedDrivers
-                  .hasAll(resource.data.declinedDrivers)
-              ) &&
-              request.resource.data.declinedDrivers.size() ==
-                (
-                  (
-                    'declinedDrivers' in resource.data
-                  )
-                  ? resource.data.declinedDrivers.size() + 1
-                  : 1
-                )
-            )
+            resource.data.status in ['assigned', 'confirmed', 'processing', 'packed'] &&
+            request.resource.data.status in ['out-delivery', 'cancelled']
+          ) ||
+          (
+            resource.data.status == 'out-delivery' &&
+            request.resource.data.status in ['delivered', 'cancelled']
           )
-        ) ||
-
-        // Customer can update only their delivery location.
-        (
-          isAuthenticated() &&
-          resource.data.userId == request.auth.uid &&
-          request.resource.data.userId ==
-            resource.data.userId &&
-          request.resource.data.total ==
-            resource.data.total &&
-          request.resource.data.diff(resource.data)
-            .affectedKeys()
-            .hasOnly(['customerLocation']) &&
-          isValidCustomerLocation(
-            request.resource.data.customerLocation
-          )
-        ) ||
-
-        // Customer can cancel a pending or confirmed order.
-        (
-          isAuthenticated() &&
-          resource.data.userId == request.auth.uid &&
-          request.resource.data.userId ==
-            resource.data.userId &&
-          request.resource.data.total ==
-            resource.data.total &&
-          request.resource.data.diff(resource.data)
-            .affectedKeys()
-            .hasOnly(['status', 'updatedAt']) &&
-          request.resource.data.status == 'cancelled' &&
-          resource.data.status in [
-            'pending',
-            'confirmed'
-          ]
-        );
+        )
+      ) || (
+        // B. Customer updating delivery location
+        isAuthenticated() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.total == resource.data.total &&
+        request.resource.data.driverId == resource.data.driverId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['customerLocation']) &&
+        isValidLocation(request.resource.data.customerLocation)
+      ) || (
+        // C. Customer cancelling an early-stage order
+        isAuthenticated() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.total == resource.data.total &&
+        request.resource.data.driverId == resource.data.driverId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+        request.resource.data.status == 'cancelled' &&
+        resource.data.status in ['pending', 'confirmed']
+      );
 
       allow delete: if isAdmin();
     }
 
-    // --------------------------------------------------
-    // REVIEWS
-    // --------------------------------------------------
+    // =========================================================================
+    // 4. REVIEWS
+    // =========================================================================
 
     match /reviews/{reviewId} {
       allow read: if true;
 
-      // A user may create a review only for themselves.
       allow create: if isAuthenticated() &&
-        request.resource.data.userId == request.auth.uid;
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.keys().hasAll(['productId', 'userId', 'rating', 'comment']) &&
+        request.resource.data.keys().hasOnly(['id', 'productId', 'userId', 'user', 'rating', 'date', 'comment', 'verified']) &&
+        request.resource.data.rating is int &&
+        request.resource.data.rating >= 1 &&
+        request.resource.data.rating <= 5 &&
+        request.resource.data.comment is string &&
+        request.resource.data.comment.size() >= 3 &&
+        request.resource.data.comment.size() <= 1000 &&
+        (!('user' in request.resource.data) || (request.resource.data.user is string && request.resource.data.user.size() <= 100));
 
-      // Only the review owner or admin can edit/delete.
-      // The owner cannot transfer the review to another user.
-      allow update: if isAdmin() ||
-        (
-          isAuthenticated() &&
-          resource.data.userId == request.auth.uid &&
-          request.resource.data.userId ==
-            resource.data.userId
-        );
+      allow update: if isAdmin() || (
+        isAuthenticated() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.rating is int &&
+        request.resource.data.rating >= 1 &&
+        request.resource.data.rating <= 5 &&
+        request.resource.data.comment is string &&
+        request.resource.data.comment.size() >= 3 &&
+        request.resource.data.comment.size() <= 1000
+      );
 
-      allow delete: if isAdmin() ||
-        (
-          isAuthenticated() &&
-          resource.data.userId == request.auth.uid
-        );
+      allow delete: if isAdmin() || (
+        isAuthenticated() &&
+        resource.data.userId == request.auth.uid
+      );
     }
 
-    // --------------------------------------------------
-    // DELIVERY PARTNERS
-    // --------------------------------------------------
+    // =========================================================================
+    // 5. DELIVERY PARTNERS (TELEMETRY RESTRICTED TO RIDER & ADMIN ONLY)
+    // =========================================================================
 
     match /deliveryPartners/{partnerId} {
+      // Customers NEVER read this collection; tracking is strictly order-based
+      allow read: if isAdmin() || (isApprovedDelivery() && isOwner(partnerId));
 
-      // Only the delivery partner and admins can read partner details.
-      allow read: if isAdmin() ||
-        isOwner(partnerId);
-
-      // Only verified delivery partners can manage their own data; admins can manage all.
-      allow create, update: if isAdmin() ||
-        (
-          isDelivery() &&
-          isOwner(partnerId)
-        );
+      allow create, update: if isAdmin() || (
+        isApprovedDelivery() &&
+        isOwner(partnerId) &&
+        request.resource.data.keys().hasOnly([
+          'uid', 'name', 'email', 'phone', 'latitude', 'longitude',
+          'accuracy', 'status', 'isTracking', 'online', 'timestamp', 'updatedAt'
+        ]) &&
+        (!('latitude' in request.resource.data) || (request.resource.data.latitude is number && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90)) &&
+        (!('longitude' in request.resource.data) || (request.resource.data.longitude is number && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180)) &&
+        (!('isTracking' in request.resource.data) || request.resource.data.isTracking is bool)
+      );
 
       allow delete: if isAdmin();
     }
 
-    // --------------------------------------------------
-    // INVENTORY AND PURCHASE MANAGEMENT
-    // --------------------------------------------------
+    // =========================================================================
+    // 6. INVENTORY, PURCHASES, SUPPLIERS, SETTINGS
+    // =========================================================================
 
     match /inventory/{itemId} {
       allow read, write: if isAdmin();
@@ -389,52 +302,64 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // --------------------------------------------------
-    // SETTINGS
-    // --------------------------------------------------
-
-    // Existing settings remain public-readable for compatibility.
-    // Do not store secrets or private configuration here.
     match /settings/{settingId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // --------------------------------------------------
-    // WHATSAPP MESSAGES
-    // --------------------------------------------------
+    match /storeSettings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // =========================================================================
+    // 7. WHATSAPP NOTIFICATIONS & CAMPAIGNS
+    // =========================================================================
 
     match /whatsappMessages/{messageId} {
+      allow read: if isAdmin() || (
+        isAuthenticated() &&
+        resource.data.customerId == request.auth.uid
+      );
 
-      allow read: if isAdmin() ||
-        (
-          isAuthenticated() &&
-          resource.data.customerId == request.auth.uid
-        );
-
-      // Restrict creation to the customer's own message.
-      // Adjust allowed fields to match the actual message schema.
       allow create: if isAuthenticated() &&
-        request.resource.data.customerId ==
-          request.auth.uid &&
-        request.resource.data.keys().hasAll([
-          'customerId'
-        ]) &&
+        request.resource.data.customerId == request.auth.uid &&
+        request.resource.data.keys().hasAll(['customerId', 'orderId', 'messageType']) &&
         request.resource.data.keys().hasOnly([
-          'customerId',
-          'message',
-          'messageType',
-          'createdAt',
-          'orderId'
-        ]);
+          'messageId', 'customerId', 'customerName', 'customerPhone', 'rawPhone',
+          'orderId', 'campaignId', 'messageType', 'message', 'status',
+          'isValidPhone', 'createdAt', 'openedAt', 'sentAt'
+        ]) &&
+        request.resource.data.status == 'pending';
 
-      // Provider status and delivery results should be written
-      // by trusted backend code, not customers.
       allow update, delete: if isAdmin();
     }
 
     match /whatsappCampaigns/{campaignId} {
       allow read, write: if isAdmin();
+    }
+
+    // =========================================================================
+    // 8. CONTACT SUPPORT MESSAGES
+    // =========================================================================
+
+    match /contactMessages/{messageId} {
+      allow read, update, delete: if isAdmin();
+
+      allow create: if request.resource.data.keys().hasAll(['name', 'email', 'body']) &&
+        request.resource.data.keys().hasOnly(['name', 'email', 'subject', 'body', 'submittedAt', 'status', 'userId']) &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 100 &&
+        request.resource.data.email is string &&
+        request.resource.data.email.size() >= 3 &&
+        request.resource.data.email.size() <= 150 &&
+        request.resource.data.body is string &&
+        request.resource.data.body.size() >= 3 &&
+        request.resource.data.body.size() <= 2000 &&
+        (!('subject' in request.resource.data) || (request.resource.data.subject is string && request.resource.data.subject.size() <= 200)) &&
+        (!('status' in request.resource.data) || request.resource.data.status == 'unread') &&
+        (!('userId' in request.resource.data) || request.resource.data.userId == null || (isAuthenticated() && request.resource.data.userId == request.auth.uid));
     }
   }
 }

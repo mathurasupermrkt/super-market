@@ -116,6 +116,9 @@
     <a class="sidebar-item" onclick="switchTab('settings')">
       <span class="sidebar-item-icon">⚙️</span> Settings
     </a>
+    <a class="sidebar-item" onclick="switchTab('contacts')">
+      <span class="sidebar-item-icon">✉️</span> Contact Messages
+    </a>
 
     <div class="divider" style="background:rgba(255,255,255,0.1);margin:20px 0;"></div>
     <a href="../index.html" class="sidebar-item">
@@ -140,7 +143,7 @@
           <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#16a34a;box-shadow:0 0 6px #16a34a;"></span>
           <span id="admin-topbar-store-status-text">🟢 Store Open</span>
         </div>
-        <button class="btn btn-outline btn-sm" onclick="openStoreStatusModal()" style="font-size:11px;padding:3px 10px;border-radius:14px;">
+        <button id="admin-store-status-change-btn" class="btn btn-outline btn-sm" onclick="openStoreStatusModal()" style="font-size:11px;padding:3px 10px;border-radius:14px;" title="Change Store Status">
           ⚙️ Change
         </button>
       </div>
@@ -177,7 +180,7 @@
             <input type="checkbox" id="admin-store-toggle-input" onchange="handleStoreToggleChange(this.checked)">
             <span class="toggle-slider"></span>
           </label>
-          <button class="btn btn-outline btn-sm" onclick="openStoreStatusModal()">Edit Message</button>
+          <button id="admin-store-message-edit-btn" class="btn btn-outline btn-sm" onclick="openStoreMessageModal()" title="Edit Store Notice Message">Edit Message</button>
         </div>
       </div>
 
@@ -219,29 +222,14 @@
 
       <!-- Sales charts & Low Stock Alerts -->
       <div class="grid grid-2" style="gap:var(--sp-6);margin-bottom:var(--sp-8);">
-        <!-- Chart Simulator -->
+        <!-- Real Sales Analytics Chart -->
         <div class="chart-container">
-          <h3 class="filter-title mb-4">Sales Analytics (Last 6 Months)</h3>
-          <div style="height:240px;display:flex;align-items:flex-end;justify-content:space-between;padding-top:20px;border-bottom:2px solid var(--gray-200);border-left:2px solid var(--gray-200);position:relative;">
-            <!-- Simple SVG Chart Simulation -->
-            <div style="width:12%;height:60%;background:linear-gradient(to top, var(--primary), var(--primary-light));border-radius:4px 4px 0 0;text-align:center;">
-              <span style="font-size:10px;color:var(--gray-600);position:absolute;bottom:-20px;">Jul</span>
-            </div>
-            <div style="width:12%;height:75%;background:linear-gradient(to top, var(--primary), var(--primary-light));border-radius:4px 4px 0 0;">
-              <span style="font-size:10px;color:var(--gray-600);position:absolute;bottom:-20px;">Aug</span>
-            </div>
-            <div style="width:12%;height:68%;background:linear-gradient(to top, var(--primary), var(--primary-light));border-radius:4px 4px 0 0;">
-              <span style="font-size:10px;color:var(--gray-600);position:absolute;bottom:-20px;">Sep</span>
-            </div>
-            <div style="width:12%;height:82%;background:linear-gradient(to top, var(--primary), var(--primary-light));border-radius:4px 4px 0 0;">
-              <span style="font-size:10px;color:var(--gray-600);position:absolute;bottom:-20px;">Oct</span>
-            </div>
-            <div style="width:12%;height:95%;background:linear-gradient(to top, var(--primary), var(--primary-light));border-radius:4px 4px 0 0;">
-              <span style="font-size:10px;color:var(--gray-600);position:absolute;bottom:-20px;">Nov</span>
-            </div>
-            <div style="width:12%;height:90%;background:linear-gradient(to top, var(--primary), var(--primary-light));border-radius:4px 4px 0 0;">
-              <span style="font-size:10px;color:var(--gray-600);position:absolute;bottom:-20px;">Dec</span>
-            </div>
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="filter-title" style="margin-bottom:0;">Sales Analytics (Last 6 Months)</h3>
+            <span id="chart-total-subtext" style="font-size:0.8rem;color:var(--gray-500);">Live Aggregated Data</span>
+          </div>
+          <div style="height:240px;position:relative;">
+            <canvas id="dashboardSalesChart"></canvas>
           </div>
         </div>
 
@@ -483,6 +471,9 @@
         <h2>Inventory Management</h2>
         <div class="flex gap-2">
           <input type="text" id="inv-search" class="form-input" placeholder="Search Barcode, Name..." style="width:200px;" oninput="window.renderAdminInventory && window.renderAdminInventory()">
+          <select id="inv-filter-category" class="form-select" onchange="window.renderAdminInventory && window.renderAdminInventory()">
+            <option value="all">All Categories</option>
+          </select>
           <select id="inv-filter-stock" class="form-select" onchange="window.renderAdminInventory && window.renderAdminInventory()">
             <option value="all">All Stock</option>
             <option value="low">Low Stock</option>
@@ -519,7 +510,7 @@
     <div id="tab-purchase-entry" class="admin-tab-panel hidden">
       <div class="crud-header">
         <h2>Purchase Entry (POS)</h2>
-        <button class="btn btn-primary" onclick="window.savePurchaseBill && window.savePurchaseBill()">💾 Save Purchase</button>
+        <button class="btn btn-primary" id="admin-save-purchase-btn" onclick="window.savePurchaseBill && window.savePurchaseBill()">💾 Save Purchase</button>
       </div>
       <div class="grid grid-2 gap-6">
         <div class="chart-container" style="margin-bottom:0;">
@@ -555,11 +546,17 @@
           <div class="grid grid-3 gap-4 mb-4">
             <div class="form-group">
               <label class="form-label">Category</label>
-              <input type="text" class="form-input" id="pe-prod-category">
+              <select class="form-select" id="pe-prod-category">
+                <option value="">Loading categories...</option>
+              </select>
             </div>
             <div class="form-group">
               <label class="form-label">Brand</label>
-              <input type="text" class="form-input" id="pe-prod-brand">
+              <select class="form-select" id="pe-prod-brand" onchange="window.handlePurchaseBrandChange && window.handlePurchaseBrandChange(this)">
+                <option value="">Select Brand...</option>
+                <option value="__new__">➕ Add New Brand...</option>
+              </select>
+              <input type="text" class="form-input mt-2 hidden" id="pe-new-brand-input" placeholder="Type new brand name...">
             </div>
             <div class="form-group">
               <label class="form-label">Unit</label>
@@ -598,7 +595,7 @@
               <input type="number" class="form-input" id="pe-prod-gst" value="0">
             </div>
           </div>
-          <button class="btn btn-outline w-full" onclick="window.addPurchaseEntryProduct && window.addPurchaseEntryProduct()">➕ Add to Bill</button>
+          <button class="btn btn-outline w-full" id="pe-add-to-bill-btn" onclick="window.addPurchaseEntryProduct && window.addPurchaseEntryProduct()">➕ Add to Bill</button>
         </div>
       </div>
       
@@ -672,28 +669,6 @@
         </thead>
         <tbody id="admin-suppliers-tbody">
           <tr><td colspan="6">Loading suppliers...</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- TAB: Customers -->
-    <div id="tab-customers" class="admin-tab-panel hidden">
-      <div class="crud-header">
-        <h2>Customer Management</h2>
-      </div>
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Contact &amp; Phone</th>
-            <th>Email</th>
-            <th>Orders</th>
-            <th>WhatsApp Alerts</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="admin-customers-tbody">
-          <tr><td colspan="6">Loading customers...</td></tr>
         </tbody>
       </table>
     </div>
@@ -818,7 +793,46 @@
 
     <!-- TAB: Settings -->
     <div id="tab-settings" class="admin-tab-panel hidden">
-      <h2>Store Settings & WhatsApp Configuration</h2>
+      <h2>Store Settings & Order Rules</h2>
+
+      <!-- Minimum Order Amount Settings Card -->
+      <div class="card-flat p-6 mt-6 mb-6" style="max-width:640px;background:var(--white);border-radius:var(--radius-xl);border:1px solid var(--gray-200);box-shadow:0 1px 4px rgba(0,0,0,0.04);">
+        <div class="flex justify-between items-center mb-4">
+          <div class="flex items-center gap-3">
+            <span style="font-size:1.6rem;">🛍️</span>
+            <div>
+              <h3 style="margin:0;font-size:16px;font-weight:700;">Minimum Order Amount</h3>
+              <p style="font-size:12px;color:var(--gray-500);margin:2px 0 0 0;">Control whether customers must meet a minimum order subtotal before checkout.</p>
+            </div>
+          </div>
+          <span id="min-order-status-badge" class="badge badge-gray" style="font-size:11px;padding:3px 10px;">Loading…</span>
+        </div>
+
+        <div class="form-group mb-4" style="background:var(--gray-50);padding:12px 14px;border-radius:var(--radius-md);border:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <label for="setting-min-order-enabled" style="font-weight:700;font-size:13.5px;color:var(--gray-800);cursor:pointer;display:block;">
+              Enable Minimum Order Requirement
+            </label>
+            <span style="font-size:11.5px;color:var(--gray-500);">When enabled, customers cannot place an order if the cart subtotal is below this amount.</span>
+          </div>
+          <input type="checkbox" id="setting-min-order-enabled" onchange="updateMinOrderBadge()" style="width:20px;height:20px;cursor:pointer;accent-color:#00695c;">
+        </div>
+
+        <div class="form-group mb-4" id="min-order-amount-group">
+          <label class="form-label" for="setting-min-order-amount">Minimum Order Amount (in ₹)</label>
+          <div style="position:relative;">
+            <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-weight:700;color:var(--gray-600);font-size:15px;">₹</span>
+            <input type="number" class="form-input" id="setting-min-order-amount" placeholder="299" min="1" step="1" oninput="updateMinOrderBadge()" style="padding-left:32px;font-weight:600;font-size:15px;">
+          </div>
+          <small style="color:var(--gray-500);font-size:11px;margin-top:4px;display:block;">Example: Enter 299 for ₹299 minimum cart subtotal. Negative or zero values are not allowed when enabled.</small>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button class="btn btn-primary btn-sm" id="btn-save-min-order" onclick="saveMinimumOrderSettings()">
+            💾 Save Minimum Order Settings
+          </button>
+        </div>
+      </div>
 
       <!-- WhatsApp Click-to-Chat Settings -->
       <div class="card-flat p-6 mt-6 mb-6" style="max-width:640px;background:var(--white);border-radius:var(--radius-xl);border:1px solid var(--gray-200);">
@@ -852,6 +866,16 @@
           <label class="form-label">Store Outlet Location</label>
           <input type="text" class="form-input" id="setting-store-location" value="Madakottan, Ramanathapuram, Tamil Nadu - 623504">
         </div>
+        <div class="grid grid-2 mb-4" style="gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Store Latitude</label>
+            <input type="number" step="0.0001" class="form-input" id="setting-store-lat" value="9.3639">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Store Longitude</label>
+            <input type="number" step="0.0001" class="form-input" id="setting-store-lng" value="78.8395">
+          </div>
+        </div>
         <div class="form-group mb-4">
           <label class="form-label">Base Delivery Charge (Orders below ₹499)</label>
           <input type="number" class="form-input" id="setting-delivery-fee" value="40">
@@ -861,6 +885,43 @@
           <input type="number" class="form-input" id="setting-tax-rate" value="5">
         </div>
         <button class="btn btn-outline btn-sm" onclick="saveGeneralStoreConfig()">Save Store Config</button>
+      </div>
+    </div>
+
+    <!-- TAB: Contact Messages -->
+    <div id="tab-contacts" class="admin-tab-panel hidden">
+      <div class="crud-header">
+        <div>
+          <h2 style="margin:0;">Contact Messages</h2>
+          <p style="font-size:var(--text-sm);color:var(--gray-500);margin:4px 0 0 0;">Customer support requests submitted via the Contact Us page.</p>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="renderAdminContactMessages()" title="Refresh">🔄 Refresh</button>
+      </div>
+
+      <div id="contacts-loading" style="text-align:center;padding:3rem;color:var(--gray-400);">Loading messages…</div>
+
+      <div id="contacts-empty" class="hidden" style="text-align:center;padding:3rem;">
+        <div style="font-size:3rem;margin-bottom:1rem;">📭</div>
+        <p style="color:var(--gray-500);">No contact messages yet.</p>
+      </div>
+
+      <div id="contacts-table-wrap" class="hidden">
+        <div class="table-container">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Subject</th>
+                <th>Message Preview</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th style="text-align:center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="contacts-tbody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -1290,6 +1351,50 @@
 
 <div class="toast-container" id="toast-container"></div>
 
+<!-- Purchase Bill Details Modal -->
+<div class="modal-overlay hidden" id="purchase-bill-modal">
+  <div class="modal" style="max-width:750px;width:95%;">
+    <div class="modal-header" style="border-bottom:1px solid var(--gray-200);padding-bottom:12px;">
+      <div>
+        <h3 style="margin:0;font-size:1.15rem;display:flex;align-items:center;gap:8px;">🧾 Purchase Bill Details</h3>
+        <span id="pb-modal-subtitle" style="font-size:0.85rem;color:var(--gray-500);font-weight:normal;margin-top:2px;display:block;"></span>
+      </div>
+      <button class="btn btn-ghost btn-icon-sm" onclick="window.closePurchaseBillModal && window.closePurchaseBillModal()">✕</button>
+    </div>
+    <div class="modal-body" style="padding-top:16px;">
+      <div class="grid grid-3 gap-4 mb-4 p-3" style="background:var(--gray-50);border-radius:var(--radius-md);font-size:0.85rem;border:1px solid var(--gray-200);">
+        <div><strong>Supplier:</strong> <span id="pb-modal-supplier">—</span></div>
+        <div><strong>Date:</strong> <span id="pb-modal-date">—</span></div>
+        <div><strong>Status:</strong> <span class="badge badge-green" id="pb-modal-status">Paid</span></div>
+      </div>
+      <div id="pb-modal-notes-box" class="mb-3 hidden" style="font-size:0.85rem;color:var(--gray-600);background:var(--gray-50);padding:8px 12px;border-radius:var(--radius-md);">
+        <strong>Notes:</strong> <span id="pb-modal-notes"></span>
+      </div>
+      <div style="overflow-x:auto;max-height:360px;">
+        <table class="data-table mb-4" style="margin-bottom:0;width:100%;">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Category</th>
+              <th>Qty</th>
+              <th>Buy Price</th>
+              <th>GST %</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="pb-modal-tbody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+      <div class="flex justify-between items-center mt-4 p-3" style="background:var(--gray-50);border-radius:var(--radius-md);font-size:0.9rem;border:1px solid var(--gray-200);">
+        <div><strong>Total Items:</strong> <span id="pb-modal-item-count">0</span></div>
+        <div><strong>Grand Total:</strong> <span id="pb-modal-grand-total" style="color:var(--primary-dark);font-size:1.15rem;font-weight:bold;">₹0</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Supplier Modal -->
 <div class="modal-overlay hidden" id="supplier-modal">
   <div class="modal">
@@ -1355,23 +1460,125 @@
       <button class="btn btn-primary w-full" onclick="submitSupplierForm()">Save Supplier</button>
     </div>
   </div>
+</div>
+
+<!-- Store Status Modal -->
+<div class="modal-overlay hidden" id="admin-store-status-modal">
+  <div class="modal" style="max-width:520px;width:95%;border-radius:16px;">
+    <div class="modal-header">
+      <h3 style="margin:0;">🏪 Manage Store Status</h3>
+      <button id="admin-store-status-close-btn" class="btn btn-ghost btn-icon-sm" onclick="closeStoreStatusModal()" aria-label="Close modal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="p-4 mb-4" style="background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <strong style="display:block;font-size:14px;color:var(--gray-900);">Accept New Orders</strong>
+          <span style="font-size:12px;color:var(--gray-500);">Toggle store open/closed for customer checkout</span>
+        </div>
+        <label class="toggle-switch" style="transform:scale(1.15);">
+          <input type="checkbox" id="modal-store-is-open">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="form-group mb-4">
+        <label class="form-label">Customer Notice Message (shown when closed)</label>
+        <textarea class="form-input" id="modal-store-message" rows="3" placeholder="Store is temporarily closed. We're currently not accepting orders. Please try again later."></textarea>
+        <small style="color:var(--gray-500);font-size:11px;">This notice is displayed prominently on the homepage, cart, and checkout.</small>
+      </div>
+
+      <div class="p-3 mb-6" style="background:#fef2f2;border-left:4px solid #ef4444;border-radius:8px;font-size:12px;color:#991b1b;line-height:1.5;">
+        ℹ️ <strong>Active Orders Notice:</strong> Turning the store OFF will only pause <em>new</em> order placements. All existing confirmed orders will continue to be packed and delivered.
+      </div>
+
+      <div class="flex justify-end gap-3">
+        <button id="admin-store-status-cancel-btn" class="btn btn-ghost" onclick="closeStoreStatusModal()">Cancel</button>
+        <button id="admin-store-status-save-btn" class="btn btn-primary" onclick="saveStoreStatusFromModal()" style="background:#00695c;">
+          💾 Save &amp; Apply Status
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 <script src="../js/app.js"></script>
 <script>
   // Admin Authentication & Session Guard
+  const ADMIN_UID = '7SBL73wlj7OxKBsMExoJNhdrDTU2';
+  const ADMIN_EMAIL = 'mathurasupermrkt@gmail.com';
+
   function checkAdminSession() {
-    const user = MathuraQuickMart.state?.user;
-    if (!user || user.role !== 'admin') {
-      const auth = window.FirebaseAuth;
-      if (!auth || !auth.currentUser) {
-        window.location.href = '/admin/login.html';
+    if (!MathuraQuickMart.state || !MathuraQuickMart.state.user) {
+      if (typeof MathuraQuickMart.loadState === 'function') {
+        MathuraQuickMart.loadState();
       }
+    }
+
+    const user = MathuraQuickMart.state?.user;
+    if (user && (user.role === 'admin' || user.uid === ADMIN_UID || (user.email && user.email.toLowerCase() === ADMIN_EMAIL))) {
+      // Local state is verified as admin
+      if (typeof loadMinimumOrderSettings === 'function') {
+        loadMinimumOrderSettings();
+      }
+      if (typeof loadGeneralStoreConfig === 'function') {
+        loadGeneralStoreConfig();
+      }
+      return true;
+    }
+
+    // Asynchronously verify with Firebase Auth if available
+    const auth = window.FirebaseAuth;
+    const authFns = window.FirebaseAuthFns;
+    if (auth && authFns) {
+      authFns.onAuthStateChanged(auth, async (fbUser) => {
+        if (!fbUser) {
+          const freshUser = MathuraQuickMart.state?.user;
+          if (!freshUser || freshUser.role !== 'admin') {
+            window.location.href = '/admin/login.html';
+          }
+          return;
+        }
+
+        const isMaster = fbUser.uid === ADMIN_UID || (fbUser.email && fbUser.email.toLowerCase() === ADMIN_EMAIL);
+        let role = isMaster ? 'admin' : null;
+
+        if (!role && window.Firestore && window.FirebaseDB) {
+          try {
+            const snap = await window.Firestore.getDoc(window.Firestore.doc(window.FirebaseDB, 'users', fbUser.uid));
+            if (snap.exists()) role = snap.data().role;
+          } catch(e) {}
+        }
+
+        if (role === 'admin') {
+          MathuraQuickMart.login({
+            uid: fbUser.uid,
+            name: fbUser.displayName || 'Admin Manager',
+            email: fbUser.email,
+            role: 'admin'
+          });
+          if (typeof loadMinimumOrderSettings === 'function') {
+            loadMinimumOrderSettings();
+          }
+          if (typeof loadGeneralStoreConfig === 'function') {
+            loadGeneralStoreConfig();
+          }
+        } else {
+          window.location.href = '/admin/login.html';
+        }
+      });
+      return false;
+    } else {
+      window.addEventListener('firebase-ready', checkAdminSession, { once: true });
+      return false;
     }
   }
 
-  if (window.FirebaseDB) {
-    checkAdminSession();
+  // Run admin session check after DOM and Firebase initialize
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', checkAdminSession);
   } else {
-    window.addEventListener('firebase-ready', checkAdminSession, { once: true });
+    checkAdminSession();
   }
 
   function switchTab(tabName) {
@@ -1395,11 +1602,101 @@
     if (tabName === 'banners') renderAdminBanners();
     if (tabName === 'analytics') loadDashboardStats();
     if (tabName === 'delivery') renderAdminDelivery();
-    if (tabName === 'settings') loadWhatsAppSettings();
+    if (tabName === 'settings') { loadWhatsAppSettings(); loadMinimumOrderSettings(); loadGeneralStoreConfig(); }
     if (tabName === 'purchase-entry' && window.renderAdminPurchaseEntry) window.renderAdminPurchaseEntry();
     if (tabName === 'purchase-bills' && window.renderAdminPurchaseBills) window.renderAdminPurchaseBills();
     if (tabName === 'suppliers' && window.renderAdminSuppliers) window.renderAdminSuppliers();
     if (tabName === 'reports' && window.renderAdminReports) window.renderAdminReports();
+    if (tabName === 'contacts') renderAdminContactMessages();
+  }
+
+  async function renderAdminContactMessages() {
+    const loading    = document.getElementById('contacts-loading');
+    const empty      = document.getElementById('contacts-empty');
+    const tableWrap  = document.getElementById('contacts-table-wrap');
+    const tbody      = document.getElementById('contacts-tbody');
+    if (!loading || !tbody) return;
+
+    loading.classList.remove('hidden');
+    empty.classList.add('hidden');
+    tableWrap.classList.add('hidden');
+    tbody.innerHTML = '';
+
+    let messages = [];
+    if (window.FirebaseDB && window.Firestore) {
+      const fs = window.Firestore;
+      const db = window.FirebaseDB;
+      try {
+        const snap = await fs.getDocs(
+          fs.query(fs.collection(db, 'contactMessages'), fs.orderBy('submittedAt', 'desc'))
+        );
+        snap.forEach(docSnap => {
+          messages.push({ id: docSnap.id, ...docSnap.data() });
+        });
+      } catch(e) {
+        console.warn('Contact messages fetch error:', e);
+        MathuraQuickMart.toast('Could not load contact messages: ' + e.message, 'error');
+      }
+    }
+
+    loading.classList.add('hidden');
+
+    if (messages.length === 0) {
+      empty.classList.remove('hidden');
+      return;
+    }
+
+    tableWrap.classList.remove('hidden');
+    tbody.innerHTML = messages.map(m => {
+      const date     = m.submittedAt ? new Date(m.submittedAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+      const preview  = (m.body || '').substring(0, 60) + ((m.body || '').length > 60 ? '…' : '');
+      const isUnread = !m.status || m.status === 'unread';
+      const badge    = isUnread
+        ? '<span class="badge badge-warning" style="font-size:10px;">Unread</span>'
+        : '<span class="badge badge-green" style="font-size:10px;">Read</span>';
+      const markBtn  = isUnread
+        ? `<button class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 8px;" onclick="adminMarkContactRead('${m.id}')">✅ Mark Read</button>`
+        : '';
+      return `<tr style="${isUnread ? 'font-weight:600;background:#fffbeb;' : ''}">
+        <td>${m.name || '—'}</td>
+        <td><a href="mailto:${m.email || ''}" style="color:var(--primary);">${m.email || '—'}</a></td>
+        <td>${m.subject || '—'}</td>
+        <td style="color:var(--gray-600);font-size:var(--text-sm);">${preview || '—'}</td>
+        <td style="white-space:nowrap;">${date}</td>
+        <td>${badge}</td>
+        <td style="text-align:center;white-space:nowrap;display:flex;gap:6px;justify-content:center;">
+          ${markBtn}
+          <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 8px;color:var(--error);" onclick="adminDeleteContact('${m.id}')">🗑️</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function adminMarkContactRead(docId) {
+    if (!window.FirebaseDB || !window.Firestore) return;
+    const fs = window.Firestore;
+    const db = window.FirebaseDB;
+    try {
+      await fs.updateDoc(fs.doc(db, 'contactMessages', docId), { status: 'read' });
+      MathuraQuickMart.toast('Message marked as read.', 'success');
+      renderAdminContactMessages();
+    } catch(e) {
+      MathuraQuickMart.toast('Error: ' + e.message, 'error');
+    }
+  }
+
+  async function adminDeleteContact(docId) {
+    if (!confirm('Delete this contact message? This cannot be undone.')) return;
+    if (!window.FirebaseDB || !window.Firestore) return;
+    const fs = window.Firestore;
+    const db = window.FirebaseDB;
+    try {
+      await fs.deleteDoc(fs.doc(db, 'contactMessages', docId));
+      MathuraQuickMart.toast('Message deleted.', 'success');
+      renderAdminContactMessages();
+    } catch(e) {
+      MathuraQuickMart.toast('Error: ' + e.message, 'error');
+    }
   }
 
   async function renderAdminCustomers() {
@@ -1477,6 +1774,166 @@
     MathuraQuickMart.openWhatsApp(msg, phone);
   }
 
+  // ============ ADMIN MINIMUM ORDER AMOUNT SETTINGS ============
+  async function loadMinimumOrderSettings() {
+    const enabledInput = document.getElementById('setting-min-order-enabled');
+    const amountInput = document.getElementById('setting-min-order-amount');
+    const badge = document.getElementById('min-order-status-badge');
+    if (!enabledInput || !amountInput) return;
+
+    // 1. Instant local/cached population
+    const cached = (typeof MathuraQuickMart !== 'undefined' && typeof MathuraQuickMart.getOrderRules === 'function')
+      ? MathuraQuickMart.getOrderRules()
+      : { minimumOrderAmount: 0, minimumOrderEnabled: false };
+
+    if (cached) {
+      enabledInput.checked = cached.minimumOrderEnabled === true;
+      if (cached.minimumOrderAmount) {
+        amountInput.value = cached.minimumOrderAmount;
+      }
+      updateMinOrderBadge();
+    }
+
+    // 2. Fetch live settings document from Firestore
+    if (window.FirebaseDB && window.Firestore) {
+      const db = window.FirebaseDB;
+      const { doc, getDoc } = window.Firestore;
+      try {
+        const snap = await getDoc(doc(db, 'settings', 'orderRules'));
+        if (snap.exists()) {
+          const data = snap.data();
+          enabledInput.checked = data.minimumOrderEnabled === true;
+          amountInput.value = data.minimumOrderAmount || '';
+          if (typeof MathuraQuickMart !== 'undefined' && typeof MathuraQuickMart.setOrderRules === 'function') {
+            MathuraQuickMart.setOrderRules(data);
+          }
+        } else {
+          // Check fallback settings/store
+          const storeSnap = await getDoc(doc(db, 'settings', 'store'));
+          if (storeSnap.exists() && typeof storeSnap.data().minimumOrderAmount !== 'undefined') {
+            const sData = storeSnap.data();
+            enabledInput.checked = sData.minimumOrderEnabled === true;
+            amountInput.value = sData.minimumOrderAmount || '';
+            if (typeof MathuraQuickMart !== 'undefined' && typeof MathuraQuickMart.setOrderRules === 'function') {
+              MathuraQuickMart.setOrderRules(sData);
+            }
+          }
+        }
+        updateMinOrderBadge();
+      } catch (err) {
+        console.warn('Could not fetch minimum order settings:', err);
+      }
+    }
+  }
+
+  function updateMinOrderBadge() {
+    const enabledInput = document.getElementById('setting-min-order-enabled');
+    const amountInput = document.getElementById('setting-min-order-amount');
+    const badge = document.getElementById('min-order-status-badge');
+    if (!badge || !enabledInput || !amountInput) return;
+
+    const isEnabled = enabledInput.checked;
+    const amount = Number(amountInput.value) || 0;
+
+    if (isEnabled && amount > 0) {
+      badge.className = 'badge badge-green';
+      badge.textContent = `🟢 Active (₹${amount} min)`;
+    } else if (isEnabled) {
+      badge.className = 'badge badge-yellow';
+      badge.textContent = '🟡 Enabled (Amount pending)';
+    } else {
+      badge.className = 'badge badge-gray';
+      badge.textContent = '⚪ Disabled (No minimum)';
+    }
+  }
+
+  async function saveMinimumOrderSettings() {
+    const enabledInput = document.getElementById('setting-min-order-enabled');
+    const amountInput = document.getElementById('setting-min-order-amount');
+    const saveBtn = document.getElementById('btn-save-min-order');
+    if (!enabledInput || !amountInput) return;
+
+    const isEnabled = enabledInput.checked;
+    const rawVal = amountInput.value.trim();
+    const amount = Number(rawVal);
+
+    // Validation
+    if (isEnabled) {
+      if (!rawVal || isNaN(amount) || amount <= 0) {
+        MathuraQuickMart.toast('❌ Please enter a valid positive minimum order amount in ₹ (e.g. 299)', 'error');
+        amountInput.focus();
+        amountInput.style.borderColor = 'var(--error)';
+        return;
+      }
+    }
+
+    if (rawVal && amount < 0) {
+      MathuraQuickMart.toast('❌ Minimum order amount cannot be negative', 'error');
+      amountInput.focus();
+      return;
+    }
+
+    amountInput.style.borderColor = '';
+
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
+    }
+
+    const cleanAmount = (isEnabled && amount > 0) ? amount : (amount >= 0 ? amount : 0);
+    const user = (typeof MathuraQuickMart !== 'undefined' && MathuraQuickMart.state) ? MathuraQuickMart.state.user : null;
+    const adminUid = (user && user.uid) ? user.uid : 'admin';
+
+    const orderRulesData = {
+      minimumOrderAmount: cleanAmount,
+      minimumOrderEnabled: Boolean(isEnabled),
+      updatedAt: new Date().toISOString(),
+      updatedBy: adminUid
+    };
+
+    // Update local state first
+    if (typeof MathuraQuickMart !== 'undefined' && typeof MathuraQuickMart.setOrderRules === 'function') {
+      MathuraQuickMart.setOrderRules(orderRulesData);
+    }
+
+    // Persist to Firestore
+    if (window.FirebaseDB && window.Firestore) {
+      const db = window.FirebaseDB;
+      const { doc, setDoc } = window.Firestore;
+      try {
+        await setDoc(doc(db, 'settings', 'orderRules'), orderRulesData, { merge: true });
+        // Also persist to settings/store for backward compatibility
+        await setDoc(doc(db, 'settings', 'store'), {
+          minimumOrderAmount: cleanAmount,
+          minimumOrderEnabled: Boolean(isEnabled),
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+        console.log('✅ Minimum order settings saved to Firestore settings/orderRules and settings/store');
+      } catch (err) {
+        console.error('Error saving order rules to Firestore:', err);
+        MathuraQuickMart.toast('Failed to save settings to Firestore: ' + (err.message || 'Permission denied'), 'error');
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = '💾 Save Minimum Order Settings';
+        }
+        return;
+      }
+    }
+
+    updateMinOrderBadge();
+    MathuraQuickMart.toast(
+      isEnabled 
+        ? `✅ Minimum order amount set to ₹${cleanAmount} successfully!`
+        : '✅ Minimum order requirement disabled successfully!',
+      'success'
+    );
+
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = '💾 Save Minimum Order Settings';
+    }
+  }
+
   // ============ ADMIN WHATSAPP CLICK-TO-CHAT INTEGRATION ============
   function loadWhatsAppSettings() {
     const num = (typeof MathuraQuickMart !== 'undefined') ? MathuraQuickMart.getWhatsAppNumber() : '919876543210';
@@ -1538,25 +1995,73 @@
     MathuraQuickMart.openWhatsApp(testMsg, num);
   }
 
-  function saveGeneralStoreConfig() {
+  async function saveGeneralStoreConfig() {
+    const locInput = document.getElementById('setting-store-location');
+    const latInput = document.getElementById('setting-store-lat');
+    const lngInput = document.getElementById('setting-store-lng');
+    const feeInput = document.getElementById('setting-delivery-fee');
+    const taxInput = document.getElementById('setting-tax-rate');
+
+    const storeLocation = locInput ? locInput.value.trim() : 'Madakottan, Ramanathapuram, Tamil Nadu - 623504';
+    const storeLatitude = latInput ? parseFloat(latInput.value) : 9.3639;
+    const storeLongitude = lngInput ? parseFloat(lngInput.value) : 78.8395;
+    const deliveryFee = feeInput ? parseFloat(feeInput.value) : 40;
+    const taxRate = taxInput ? parseFloat(taxInput.value) : 5;
+
+    if (isNaN(storeLatitude) || storeLatitude < -90 || storeLatitude > 90) {
+      MathuraQuickMart.toast('Please enter a valid store latitude (-90 to 90)', 'error');
+      return;
+    }
+    if (isNaN(storeLongitude) || storeLongitude < -180 || storeLongitude > 180) {
+      MathuraQuickMart.toast('Please enter a valid store longitude (-180 to 180)', 'error');
+      return;
+    }
+
+    if (window.FirebaseDB && window.Firestore) {
+      const db = window.FirebaseDB;
+      const { doc, setDoc } = window.Firestore;
+      try {
+        await setDoc(doc(db, 'settings', 'store'), {
+          storeLocation,
+          storeLatitude,
+          storeLongitude,
+          deliveryFee,
+          taxRate,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+        console.log('✅ Store configuration saved to Firestore settings/store');
+      } catch (err) {
+        console.warn('Could not save store configuration to Firestore:', err);
+      }
+    }
+
     MathuraQuickMart.toast('✅ Store configuration saved successfully!', 'success');
   }
 
-  function openWhatsAppForOrder(orderId) {
-    const list = (_adminOrdersCache && _adminOrdersCache.length > 0) ? _adminOrdersCache : (API.orders || []);
-    const order = list.find(o => String(o.id) === String(orderId));
-    if (!order) {
-      MathuraQuickMart.toast('Order not found', 'error');
-      return;
+  async function loadGeneralStoreConfig() {
+    if (window.FirebaseDB && window.Firestore) {
+      const db = window.FirebaseDB;
+      const { doc, getDoc } = window.Firestore;
+      try {
+        const storeSnap = await getDoc(doc(db, 'settings', 'store'));
+        if (storeSnap.exists()) {
+          const d = storeSnap.data();
+          const locInput = document.getElementById('setting-store-location');
+          const latInput = document.getElementById('setting-store-lat');
+          const lngInput = document.getElementById('setting-store-lng');
+          const feeInput = document.getElementById('setting-delivery-fee');
+          const taxInput = document.getElementById('setting-tax-rate');
+
+          if (locInput && d.storeLocation) locInput.value = d.storeLocation;
+          if (latInput && typeof d.storeLatitude !== 'undefined') latInput.value = d.storeLatitude;
+          if (lngInput && typeof d.storeLongitude !== 'undefined') lngInput.value = d.storeLongitude;
+          if (feeInput && typeof d.deliveryFee !== 'undefined') feeInput.value = d.deliveryFee;
+          if (taxInput && typeof d.taxRate !== 'undefined') taxInput.value = d.taxRate;
+        }
+      } catch (e) {
+        console.warn('Could not load general store settings:', e);
+      }
     }
-    const customerPhone = order.customerPhone || order.phone;
-    if (!customerPhone) {
-      MathuraQuickMart.toast('⚠️ Customer phone number not available for WhatsApp', 'warning');
-      return;
-    }
-    const msg = MathuraQuickMart.buildAdminCustomerWhatsAppMessage(order);
-    MathuraQuickMart.openWhatsApp(msg, customerPhone);
-    MathuraQuickMart.toast('💬 WhatsApp chat opened with customer!', 'success');
   }
 
   async function loadDashboardStats() {
@@ -1614,6 +2119,67 @@
           <td>${o.date ? new Date(o.date).toLocaleDateString() : 'N/A'}</td>
         </tr>
       `).join('') : '<tr><td colspan="6">No recent orders</td></tr>';
+    }
+
+    // Real 6-month sales chart
+    try {
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const now = new Date();
+      const labels = [];
+      const monthData = [];
+
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const y = d.getFullYear();
+        const m = d.getMonth();
+        labels.push(`${monthNames[m]}`);
+        
+        const monthTotal = orders.filter(o => {
+          const od = new Date(o.createdAt || o.date || 0);
+          return od.getFullYear() === y && od.getMonth() === m && o.status !== 'cancelled';
+        }).reduce((sum, o) => sum + (Number(o.total) || Number(o.subtotal) || 0), 0);
+
+        monthData.push(monthTotal);
+      }
+
+      const canvas = document.getElementById('dashboardSalesChart');
+      if (canvas && typeof Chart !== 'undefined') {
+        if (window._adminSalesChartInstance) {
+          window._adminSalesChartInstance.destroy();
+        }
+        const ctx = canvas.getContext('2d');
+        window._adminSalesChartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Sales (₹)',
+              data: monthData,
+              backgroundColor: 'rgba(0, 105, 92, 0.75)',
+              borderColor: '#00695c',
+              borderWidth: 1,
+              borderRadius: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  callback: (val) => '₹' + val.toLocaleString('en-IN')
+                }
+              }
+            },
+            plugins: {
+              legend: { display: false }
+            }
+          }
+        });
+      }
+    } catch (chartErr) {
+      console.warn('Dashboard chart error:', chartErr);
     }
   }
 
@@ -1716,6 +2282,7 @@
     MathuraQuickMart.toast(`Category "${name}" saved!`, 'success');
     closeCategoryModal();
     renderAdminCategories();
+    if (window.loadPurchaseCategories) window.loadPurchaseCategories();
   }
 
   async function deleteCategoryAdmin(name) {
@@ -1723,6 +2290,7 @@
     await API.deleteCategory(name);
     MathuraQuickMart.toast(`Category "${name}" deleted!`, 'success');
     renderAdminCategories();
+    if (window.loadPurchaseCategories) window.loadPurchaseCategories();
   }
 
   function renderAdminInventory() {
@@ -2018,7 +2586,7 @@
       API.saveOrder(match);
       MathuraQuickMart.toast(`Order ${id} updated to ${val.toUpperCase()}!`, 'success');
     } else {
-      MathuraQuickMart.toast(`Status updated! (Mock order)`, 'success');
+      MathuraQuickMart.toast(`Order ${id} updated to ${val.toUpperCase()}!`, 'success');
     }
     // Also persist to Firestore
     if (window.FirebaseDB && window.Firestore) {
@@ -2085,65 +2653,6 @@
     if (url) {
       window.open(url, '_blank');
       MathuraQuickMart.toast('💬 WhatsApp opened for direct chat!', 'success');
-    }
-  }
-
-  async function renderAdminCustomers() {
-    const tbody = document.getElementById('admin-customers-tbody');
-    if (!tbody) return;
-    
-    if (window.FirebaseDB && window.Firestore) {
-      try {
-        const fs = window.Firestore;
-        const db = window.FirebaseDB;
-        const usersSnap = await fs.getDocs(fs.collection(db, 'users'));
-        const userMap = new Map();
-        
-        usersSnap.forEach(doc => {
-          const u = { id: doc.id, ...doc.data() };
-          if (u.role === 'customer' || !u.role) {
-            const key = String(u.uid || u.email || doc.id).toLowerCase().trim();
-            if (!userMap.has(key)) {
-              userMap.set(key, u);
-            }
-          }
-        });
-
-        const usersList = Array.from(userMap.values());
-        if (usersList.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;">No customers found.</td></tr>';
-          return;
-        }
-
-        tbody.innerHTML = usersList.map(u => {
-          const userOrdersCount = (API.orders || []).filter(o => o.userId === u.id || o.userId === u.uid || o.customerId === u.uid || (u.email && o.customerEmail === u.email)).length;
-          const hasOptedIn = u.whatsappOptIn === true || u.offerMessagesEnabled === true;
-          const phone = u.phone || 'N/A';
-          const optInBadge = hasOptedIn 
-            ? `<span class="badge badge-green">Opted In</span>` 
-            : `<span class="badge badge-orange" style="opacity:0.8;">Standard</span>`;
-          
-          return `
-            <tr>
-              <td><strong>${u.name || 'Customer'}</strong></td>
-              <td>📞 ${phone}</td>
-              <td>${u.email || 'N/A'}</td>
-              <td>${userOrdersCount} orders</td>
-              <td>${optInBadge}</td>
-              <td>
-                <button class="btn btn-sm" style="background:#25d366;color:#000;font-weight:700;font-size:0.75rem;padding:3px 8px;border:none;" onclick="openWhatsAppForCustomer('${u.phone || ''}', '${u.name || 'Customer'}')">
-                  💬 WhatsApp
-                </button>
-              </td>
-            </tr>
-          `;
-        }).join('');
-      } catch (e) {
-        console.error("Error fetching customers:", e);
-        tbody.innerHTML = '<tr><td colspan="6">Error loading customers</td></tr>';
-      }
-    } else {
-      tbody.innerHTML = '<tr><td colspan="6">Firebase not initialized</td></tr>';
     }
   }
 
@@ -2247,6 +2756,7 @@
       MathuraQuickMart.toast(`Brand "${name}" ${editId ? 'updated' : 'added'} successfully!`, 'success');
       closeBrandModal();
       renderAdminBrands();
+      if (window.loadPurchaseBrands) window.loadPurchaseBrands(true);
     } catch (e) {
       MathuraQuickMart.toast('Error saving brand. Please try again.', 'error');
     }
@@ -2259,6 +2769,7 @@
     await API.deleteBrand(id);
     MathuraQuickMart.toast(`Brand "${brand.name}" deleted!`, 'success');
     renderAdminBrands();
+    if (window.loadPurchaseBrands) window.loadPurchaseBrands(true);
   }
 
   async function toggleBrandStatus(id) {
@@ -2268,6 +2779,7 @@
     await API.saveBrand(brand);
     MathuraQuickMart.toast(`Brand "${brand.name}" ${brand.isActive ? 'enabled' : 'disabled'}!`, 'success');
     renderAdminBrands();
+    if (window.loadPurchaseBrands) window.loadPurchaseBrands(true);
   }
 
   // ========================================================
@@ -3096,27 +3608,31 @@
   }
 
   function editProduct(id) {
-    const p = API.getProduct(id);
+    let p = API.getProduct(id);
+    if (!p && window._cachedInventoryProducts) {
+      p = window._cachedInventoryProducts.find(item => String(item.id) === String(id));
+    }
     if (!p) return;
 
     openProductModal();
     document.getElementById('prod-modal-title').textContent = 'Edit Product';
     document.getElementById('edit-prod-id').value = p.id;
-    document.getElementById('prod-name').value = p.name;
-    document.getElementById('prod-price').value = p.price;
+    document.getElementById('prod-name').value = p.name || '';
+    document.getElementById('prod-price').value = p.price || '';
     document.getElementById('prod-orig-price').value = p.originalPrice || '';
-    document.getElementById('prod-weight').value = p.weight;
-    document.getElementById('prod-stock').value = p.stock;
-    document.getElementById('prod-category').value = p.category;
-    document.getElementById('prod-image').value = p.image;
+    document.getElementById('prod-weight').value = p.weight || '';
+    document.getElementById('prod-stock').value = p.stock || 0;
+    document.getElementById('prod-category').value = p.category || '';
+    document.getElementById('prod-image').value = p.image || p.image_url || '';
     document.getElementById('prod-brand').value = p.brandId || '';
   }
 
-  function deleteProduct(id) {
+  async function deleteProduct(id) {
     if (confirm('Are you sure you want to delete this product from the catalog?')) {
-      API.deleteProduct(id);
+      await API.deleteProduct(id);
       MathuraQuickMart.toast('Product deleted from database catalogue!', 'success');
       renderAdminProducts();
+      if (window.renderAdminInventory) window.renderAdminInventory();
     }
   }
 
@@ -3204,8 +3720,15 @@
   document.addEventListener('DOMContentLoaded', () => {
     MathuraQuickMart.requireAuth('admin');
     
-    // Default tab
-    switchTab('analytics');
+    // Default tab (supports ?tab=orders or #orders)
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialTab = urlParams.get('tab') || window.location.hash.replace('#', '') || 'analytics';
+    switchTab(initialTab);
+
+    window.addEventListener('hashchange', () => {
+      const hashTab = window.location.hash.replace('#', '');
+      if (hashTab) switchTab(hashTab);
+    });
     
     document.getElementById('sidebar-toggle').addEventListener('click', () => {
       document.querySelector('.admin-sidebar').classList.toggle('open');
@@ -3351,12 +3874,28 @@
         const drivers = [];
         snap.forEach(d => drivers.push({ id: d.id, ...d.data() }));
 
+        // Query active in-progress orders to accurately calculate live busy drivers
+        let activeDriverIds = new Set();
+        try {
+          const activeSnap = await fs.getDocs(
+            fs.query(fs.collection(db, 'orders'),
+              fs.where('status', 'in', ['assigned', 'processing', 'packed', 'out-delivery'])
+            )
+          );
+          activeSnap.forEach(o => {
+            const d = o.data();
+            if (d.driverId) activeDriverIds.add(d.driverId);
+          });
+        } catch (activeErr) {
+          console.warn('Could not query active order statuses for driver busy check:', activeErr);
+        }
+
         if (drivers.length === 0) {
           driverSelect.innerHTML = '<option value="">No approved drivers available</option>';
         } else {
           driverSelect.innerHTML = drivers.map(d => {
-            const busy = d.assignedOrders && d.assignedOrders.length > 0;
-            const label = (d.name || d.email) + (busy ? ' (On Duty)' : ' (Available)');
+            const busy = activeDriverIds.has(d.id);
+            const label = (d.name || d.email) + (busy ? ' (On Duty - Active Delivery)' : ' (Available)');
             return `<option value="${d.id}" data-email="${d.email}" data-name="${d.name || d.email}">${label}</option>`;
           }).join('');
         }
@@ -3446,19 +3985,42 @@
     }
   }
 
+
   // ══════════════════════════════════════════════════════════════════════
   // STORE STATUS MANAGEMENT (OPEN / CLOSED)
   // ══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Calls `fn` immediately if Firebase is already initialized, otherwise
+   * waits for the 'firebase-ready' event. Avoids the missed-event race where
+   * firebase-init.js (a module script) fires 'firebase-ready' synchronously
+   * before the regular <script> block registers its listener on DOMContentLoaded.
+   */
+  function whenFirebaseReady(fn) {
+    if (window.FirebaseDB && window.Firestore) {
+      fn();
+    } else if (window.firebaseIsReady) {
+      Promise.resolve().then(fn);
+    } else {
+      window.addEventListener('firebase-ready', fn, { once: true });
+    }
+  }
+
   let _adminStoreStatus = {
     isOpen: true,
-    message: "Store is temporarily closed. We're currently not accepting orders. Please try again later."
+    message: "Store is temporarily closed. We're currently not accepting orders. Please try again later.",
+    updatedAt: null,
+    updatedBy: null
   };
 
   function initAdminStoreStatusListener() {
-    const doListen = () => {
-      if (!window.FirebaseDB || !window.Firestore) return;
+    whenFirebaseReady(() => {
       const fs = window.Firestore;
       const db = window.FirebaseDB;
+      if (!fs || !db) {
+        console.warn('Store status listener: Firebase not available');
+        return;
+      }
       try {
         fs.onSnapshot(fs.doc(db, 'settings', 'store'), (docSnap) => {
           if (docSnap.exists()) {
@@ -3473,21 +4035,19 @@
             _adminStoreStatus = {
               isOpen: true,
               message: "Store is temporarily closed. We're currently not accepting orders. Please try again later.",
-              updatedAt: null
+              updatedAt: null,
+              updatedBy: null
             };
           }
           paintAdminStoreStatusUI();
+        }, (err) => {
+          console.error('Store status snapshot error:', err);
+          MathuraQuickMart.toast('Could not sync store status: ' + err.message, 'error');
         });
       } catch (e) {
         console.warn('Admin store status listener note:', e);
       }
-    };
-
-    if (window.FirebaseDB && window.Firestore) {
-      doListen();
-    } else {
-      window.addEventListener('firebase-ready', doListen, { once: true });
-    }
+    });
   }
 
   function paintAdminStoreStatusUI() {
@@ -3496,7 +4056,7 @@
 
     // 1. Topbar Widget
     const topbarText = document.getElementById('admin-topbar-store-status-text');
-    const topbarBox = document.getElementById('admin-topbar-store-status');
+    const topbarBox  = document.getElementById('admin-topbar-store-status');
     if (topbarText && topbarBox) {
       if (isOpen) {
         topbarBox.style.color = '#15803d';
@@ -3508,21 +4068,21 @@
     }
 
     // 2. Dashboard Card
-    const badge = document.getElementById('admin-store-status-badge');
-    const toggle = document.getElementById('admin-store-toggle-input');
-    const desc = document.getElementById('admin-store-status-desc');
+    const badge   = document.getElementById('admin-store-status-badge');
+    const toggle  = document.getElementById('admin-store-toggle-input');
+    const desc    = document.getElementById('admin-store-status-desc');
     const updated = document.getElementById('admin-store-status-updated');
 
     if (badge) {
       badge.className = isOpen ? 'badge badge-green' : 'badge badge-orange';
       badge.textContent = isOpen ? '🟢 Store Open' : '🔴 Store Temporarily Closed';
       if (!isOpen) {
-        badge.style.background = '#fee2e2';
-        badge.style.color = '#b91c1c';
-        badge.style.borderColor = '#fca5a5';
+        badge.style.background   = '#fee2e2';
+        badge.style.color        = '#b91c1c';
+        badge.style.borderColor  = '#fca5a5';
       } else {
-        badge.style.background = '';
-        badge.style.color = '';
+        badge.style.background  = '';
+        badge.style.color       = '';
         badge.style.borderColor = '';
       }
     }
@@ -3544,9 +4104,15 @@
   }
 
   function handleStoreToggleChange(newOpenState) {
+    // Re-sync checkbox to current saved state while the modal/save runs
+    const toggle = document.getElementById('admin-store-toggle-input');
+    if (toggle) toggle.checked = _adminStoreStatus.isOpen;
+
     if (!newOpenState) {
+      // Closing: open modal so admin can set a closure message before saving
       openStoreStatusModal(false);
     } else {
+      // Opening: save directly without modal (no message needed for open state)
       saveStoreStatusToFirestore(true, _adminStoreStatus.message);
     }
   }
@@ -3556,10 +4122,43 @@
     if (!modal) return;
 
     const isOpen = overrideOpenState !== null ? overrideOpenState : _adminStoreStatus.isOpen;
-    document.getElementById('modal-store-is-open').checked = isOpen;
-    document.getElementById('modal-store-message').value = _adminStoreStatus.message || "Store is temporarily closed. We're currently not accepting orders. Please try again later.";
-    
+    const checkbox = document.getElementById('modal-store-is-open');
+    if (checkbox) checkbox.checked = isOpen;
+
+    const messageInput = document.getElementById('modal-store-message');
+    if (messageInput) {
+      messageInput.value = _adminStoreStatus.message ||
+        "Store is temporarily closed. We're currently not accepting orders. Please try again later.";
+    }
+
+    // Reset Save button state
+    const saveBtn = document.getElementById('admin-store-status-save-btn') ||
+      modal.querySelector('button[onclick*="saveStoreStatusFromModal"]');
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = '💾 Save & Apply Status';
+    }
+
     modal.classList.remove('hidden');
+  }
+
+  function openStoreMessageModal() {
+    openStoreStatusModal();
+    const textarea = document.getElementById('modal-store-message');
+    if (textarea) {
+      try {
+        textarea.focus();
+        textarea.select();
+      } catch (e) {}
+    }
+  }
+
+  function toggleStoreStatus(targetState = null) {
+    if (targetState !== null) {
+      openStoreStatusModal(Boolean(targetState));
+    } else {
+      openStoreStatusModal(!_adminStoreStatus.isOpen);
+    }
   }
 
   function closeStoreStatusModal() {
@@ -3568,88 +4167,209 @@
     paintAdminStoreStatusUI();
   }
 
+  let _isSavingStoreStatus = false;
   async function saveStoreStatusFromModal() {
-    const isOpen = document.getElementById('modal-store-is-open').checked;
-    const message = document.getElementById('modal-store-message').value.trim() || "Store is temporarily closed. We're currently not accepting orders. Please try again later.";
-    
-    await saveStoreStatusToFirestore(isOpen, message);
-    closeStoreStatusModal();
-  }
+    if (_isSavingStoreStatus) return; // Prevent duplicate clicks
+    _isSavingStoreStatus = true;
 
-  async function saveStoreStatusToFirestore(isOpen, message) {
-    const user = MathuraQuickMart.state.user || {};
-    const payload = {
-      isOpen: Boolean(isOpen),
-      message: message,
-      updatedAt: new Date().toISOString(),
-      updatedBy: user.email || user.uid || 'admin'
-    };
+    const modal   = document.getElementById('admin-store-status-modal');
+    const saveBtn = document.getElementById('admin-store-status-save-btn') ||
+      (modal ? modal.querySelector('button[onclick*="saveStoreStatusFromModal"]') : null);
 
-    _adminStoreStatus = { ...payload };
-    paintAdminStoreStatusUI();
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = '⏳ Saving…';
+    }
 
-    if (window.FirebaseDB && window.Firestore) {
-      try {
-        const fs = window.Firestore;
-        const db = window.FirebaseDB;
-        await fs.setDoc(fs.doc(db, 'settings', 'store'), payload, { merge: true });
-        MathuraQuickMart.toast(isOpen ? '🟢 Store is now OPEN for orders!' : '🔴 Store order acceptance PAUSED.', isOpen ? 'success' : 'warning');
-      } catch (e) {
-        console.error('Error saving store status:', e);
-        MathuraQuickMart.toast('Error updating store status in Firestore', 'error');
+    try {
+      const isOpenEl = document.getElementById('modal-store-is-open');
+      const isOpen = isOpenEl ? isOpenEl.checked : true;
+      const messageEl = document.getElementById('modal-store-message');
+      const message = ((messageEl ? messageEl.value : '') || '').trim() ||
+        "Store is temporarily closed. We're currently not accepting orders. Please try again later.";
+
+      const success = await saveStoreStatusToFirestore(isOpen, message);
+
+      if (success) {
+        closeStoreStatusModal();
       }
-    } else {
-      MathuraQuickMart.toast('Store status saved locally (offline)', 'info');
+      // If save failed, modal remains open so user can retry
+    } finally {
+      _isSavingStoreStatus = false;
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = '💾 Save & Apply Status';
+      }
     }
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  /**
+   * Writes store status to Firestore.
+   * Local state is updated ONLY after a successful write.
+   * Returns true on success, false on failure.
+   */
+  async function saveStoreStatusToFirestore(isOpen, message) {
+    const user    = MathuraQuickMart.state?.user || {};
+
+    // ── Auth guard: require a real Firebase Auth session ──────────────────────
+    // localStorage admin state passes the UI auth check, but Firestore rules
+    // require a real Firebase Auth token. Catch this early and show a clear msg.
+    const fbUser = window.FirebaseAuth ? window.FirebaseAuth.currentUser : null;
+    if (window.FirebaseAuth && !fbUser) {
+      MathuraQuickMart.toast(
+        '⚠️ Not logged in. Please sign in at /admin/login.html first.',
+        'error'
+      );
+      return false;
+    }
+
+    const payload = {
+      isOpen:    Boolean(isOpen),
+      message:   message,
+      updatedAt: new Date().toISOString(),
+      updatedBy: fbUser ? (fbUser.email || fbUser.uid) : (user.email || user.uid || 'admin')
+    };
+
+    if (!window.FirebaseDB || !window.Firestore) {
+      // Offline fallback — update local state only
+      _adminStoreStatus = { ...payload };
+      paintAdminStoreStatusUI();
+      MathuraQuickMart.toast('Store status saved locally (Firebase not connected)', 'info');
+      return true;
+    }
+
+    try {
+      const fs = window.Firestore;
+      const db = window.FirebaseDB;
+      await fs.setDoc(fs.doc(db, 'settings', 'store'), payload, { merge: true });
+
+      // Only update local state after successful write
+      _adminStoreStatus = { ...payload };
+      paintAdminStoreStatusUI();
+      MathuraQuickMart.toast(
+        isOpen ? '🟢 Store is now OPEN for orders!' : '🔴 Store order acceptance PAUSED.',
+        isOpen ? 'success' : 'warning'
+      );
+      return true;
+    } catch (e) {
+      console.error('Error saving store status:', e);
+      const isPermission = e.code === 'permission-denied' || (e.message && e.message.includes('permission'));
+      const errMsg = isPermission
+        ? '⛔ Permission denied. Ensure you are logged in as an admin.'
+        : `❌ Error updating store status: ${e.message || e}`;
+      MathuraQuickMart.toast(errMsg, 'error');
+      // Revert the toggle checkbox to the actual saved state
+      paintAdminStoreStatusUI();
+      return false;
+    }
+  }
+
+  function bindStoreStatusButtons() {
+    const changeBtn = document.getElementById('admin-store-status-change-btn');
+    if (changeBtn && !changeBtn._hasStoreStatusHandler) {
+      changeBtn._hasStoreStatusHandler = true;
+      changeBtn.addEventListener('click', (e) => {
+        openStoreStatusModal();
+      });
+    }
+
+    const editBtn = document.getElementById('admin-store-message-edit-btn');
+    if (editBtn && !editBtn._hasStoreStatusHandler) {
+      editBtn._hasStoreStatusHandler = true;
+      editBtn.addEventListener('click', (e) => {
+        openStoreMessageModal();
+      });
+    }
+
+    const saveBtn = document.getElementById('admin-store-status-save-btn');
+    if (saveBtn && !saveBtn._hasStoreStatusHandler) {
+      saveBtn._hasStoreStatusHandler = true;
+      saveBtn.addEventListener('click', (e) => {
+        saveStoreStatusFromModal();
+      });
+    }
+
+    const cancelBtn = document.getElementById('admin-store-status-cancel-btn');
+    if (cancelBtn && !cancelBtn._hasStoreStatusHandler) {
+      cancelBtn._hasStoreStatusHandler = true;
+      cancelBtn.addEventListener('click', (e) => {
+        closeStoreStatusModal();
+      });
+    }
+
+    const closeBtn = document.getElementById('admin-store-status-close-btn');
+    if (closeBtn && !closeBtn._hasStoreStatusHandler) {
+      closeBtn._hasStoreStatusHandler = true;
+      closeBtn.addEventListener('click', (e) => {
+        closeStoreStatusModal();
+      });
+    }
+  }
+
+  // Expose functions globally to window
+  window.whenFirebaseReady           = whenFirebaseReady;
+  window.initAdminStoreStatusListener = initAdminStoreStatusListener;
+  window.paintAdminStoreStatusUI      = paintAdminStoreStatusUI;
+  window.handleStoreToggleChange      = handleStoreToggleChange;
+  window.openStoreStatusModal         = openStoreStatusModal;
+  window.openStoreMessageModal        = openStoreMessageModal;
+  window.toggleStoreStatus            = toggleStoreStatus;
+  window.closeStoreStatusModal        = closeStoreStatusModal;
+  window.saveStoreStatusFromModal     = saveStoreStatusFromModal;
+  window.saveStoreStatusToFirestore   = saveStoreStatusToFirestore;
+  window.bindStoreStatusButtons       = bindStoreStatusButtons;
+
+  // Aliases for compatibility
+  try {
+    Object.defineProperty(window, 'toggleStoreStatusBtn', {
+      get: () => document.getElementById('admin-store-status-change-btn'),
+      configurable: true
+    });
+    Object.defineProperty(window, 'editStoreMessageBtn', {
+      get: () => document.getElementById('admin-store-message-edit-btn'),
+      configurable: true
+    });
+  } catch (e) {}
+
+  // ── Init ────────────────────────────────────────────────────────────────
+  // Guard against double-init if both DOMContentLoaded and firebase-ready fire
+  let _storeListenerStarted = false;
+  function _startStoreListenerOnce() {
+    bindStoreStatusButtons();
+    if (_storeListenerStarted) return;
+    _storeListenerStarted = true;
     initAdminStoreStatusListener();
     loadWhatsAppSettings();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    bindStoreStatusButtons();
+    whenFirebaseReady(_startStoreListenerOnce);
   });
-  window.addEventListener('db-ready', () => {
-    loadWhatsAppSettings();
+
+  // Fallback: if DOMContentLoaded already ran before firebase-ready fires
+  window.addEventListener('firebase-ready', () => {
+    if (document.readyState !== 'loading') {
+      _startStoreListenerOnce();
+    }
   });
+
+  // Global Escape key listener to close any open modal
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const openModal = document.querySelector('.modal-overlay:not(.hidden)');
+      if (openModal) {
+        openModal.classList.add('hidden');
+        if (openModal.id === 'admin-store-status-modal') {
+          paintAdminStoreStatusUI();
+        }
+      }
+    }
+  });
+
+
+  // (duplicate definitions removed — canonical versions live above at line ~3845)
 </script>
-
-<!-- Store Status Modal -->
-<div class="modal-overlay hidden" id="admin-store-status-modal">
-  <div class="modal" style="max-width:520px;width:95%;border-radius:16px;">
-    <div class="modal-header">
-      <h3 style="margin:0;">🏪 Manage Store Status</h3>
-      <button class="btn btn-ghost btn-icon-sm" onclick="closeStoreStatusModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="p-4 mb-4" style="background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;">
-        <div>
-          <strong style="display:block;font-size:14px;color:var(--gray-900);">Accept New Orders</strong>
-          <span style="font-size:12px;color:var(--gray-500);">Toggle store open/closed for customer checkout</span>
-        </div>
-        <label class="toggle-switch" style="transform:scale(1.15);">
-          <input type="checkbox" id="modal-store-is-open">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-
-      <div class="form-group mb-4">
-        <label class="form-label">Customer Notice Message (shown when closed)</label>
-        <textarea class="form-input" id="modal-store-message" rows="3" placeholder="Store is temporarily closed. We're currently not accepting orders. Please try again later."></textarea>
-        <small style="color:var(--gray-500);font-size:11px;">This notice is displayed prominently on the homepage, cart, and checkout.</small>
-      </div>
-
-      <div class="p-3 mb-6" style="background:#fef2f2;border-left:4px solid #ef4444;border-radius:8px;font-size:12px;color:#991b1b;line-height:1.5;">
-        ℹ️ <strong>Active Orders Notice:</strong> Turning the store OFF will only pause <em>new</em> order placements. All existing confirmed orders will continue to be packed and delivered.
-      </div>
-
-      <div class="flex justify-end gap-3">
-        <button class="btn btn-ghost" onclick="closeStoreStatusModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveStoreStatusFromModal()" style="background:#00695c;">
-          💾 Save &amp; Apply Status
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <script type="module">
   import { initInventoryModule } from '/js/admin-inventory.js';

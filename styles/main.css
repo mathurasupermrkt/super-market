@@ -645,6 +645,8 @@ ul { list-style: none; }
 .modal-overlay {
   position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100%;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   z-index: 1000;
@@ -920,6 +922,9 @@ ul { list-style: none; }
 }
 
 /* ---- Number Badge ---- */
+.nav-cart-btn {
+  position: relative;
+}
 .num-badge {
   position: absolute;
   top: -6px;
@@ -936,6 +941,8 @@ ul { list-style: none; }
   justify-content: center;
   padding: 0 4px;
   border: 2px solid var(--white);
+  z-index: 2;
+  pointer-events: none;
 }
 
 /* ---- Dropdown ---- */
@@ -2257,5 +2264,150 @@ section,
   padding: 0.85rem 1.5rem;
   font-size: var(--text-base);
 }
+
+/* ==========================================================================
+   LEAFLET & OPENSTREETMAP CUSTOM STYLES
+   ========================================================================== */
+
+/* Custom DOM Pin Markers */
+.leaflet-custom-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+}
+
+.marker-pin {
+  width: 38px;
+  height: 38px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+  border: 2px solid #ffffff;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.marker-pin-inner {
+  transform: rotate(45deg);
+  font-size: 18px;
+  line-height: 1;
+  user-select: none;
+}
+
+.marker-pin.store-pin {
+  background: linear-gradient(135deg, #059669, #10b981);
+}
+
+.marker-pin.customer-pin {
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+}
+
+.marker-pin.rider-pin {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+}
+
+.leaflet-custom-marker:hover .marker-pin {
+  transform: rotate(-45deg) scale(1.1);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+}
+
+/* Animated Pulse Effect for Live Tracking */
+.marker-pulse {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.35);
+  animation: marker-pulse-anim 2s infinite ease-out;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.marker-pulse.store-pulse {
+  background: rgba(16, 185, 129, 0.3);
+}
+
+@keyframes marker-pulse-anim {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* Leaflet Map Recenter Control Button */
+.leaflet-control-recenter {
+  background: #ffffff;
+  width: 34px;
+  height: 34px;
+  border-radius: 4px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  border: 2px solid rgba(0,0,0,0.15);
+  transition: background-color 0.2s ease;
+}
+
+.leaflet-control-recenter:hover {
+  background-color: #f4f4f4;
+}
+
+/* Map Popups */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  font-family: inherit;
+  padding: 4px;
+}
+
+.leaflet-popup-content {
+  margin: 10px 14px;
+  line-height: 1.45;
+  font-size: 13px;
+}
+
+.map-popup-header {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #1e293b;
+}
+
+.map-popup-sub {
+  font-size: 11px;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.map-popup-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.map-popup-badge.live {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+/* Attribution styling */
+.leaflet-control-attribution {
+  font-size: 10px !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  padding: 2px 6px !important;
+  border-radius: 4px 0 0 0;
+}
+
 
 

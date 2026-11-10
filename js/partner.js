@@ -11,23 +11,29 @@ let currentIncomingOrderId = null;
 let incomingOrderTimer = null;
 
 
-// Initialize Google Map
+// Initialize Leaflet Map
 export function initMap() {
     if (document.getElementById('delivery-map') && !map) {
-        map = new google.maps.Map(document.getElementById('delivery-map'), {
-            center: { lat: 13.0850, lng: 80.0178 },
-            zoom: 15,
-            mapTypeControl: false,
-            streetViewControl: false,
-            fullscreenControl: false,
-            mapTypeId: 'satellite'
+        if (!window.MQMap || typeof L === 'undefined') {
+            setTimeout(initMap, 100);
+            return;
+        }
+
+        map = MQMap.createMap('delivery-map', {
+            center: { lat: 9.3639, lng: 78.8395 },
+            zoom: 15
         });
 
-        marker = new google.maps.Marker({
-            position: { lat: 13.0850, lng: 80.0178 },
-            map: map,
-            title: 'Your Location'
-        });
+        if (map) {
+            marker = MQMap.createRiderMarker(9.3639, 78.8395, {
+                name: currentUser ? (currentUser.displayName || 'Delivery Partner') : 'Your Location',
+                phone: currentUser ? (currentUser.phoneNumber || currentUser.email) : ''
+            }).addTo(map);
+
+            MQMap.addRecenterButton(map, () => {
+                if (marker) map.setView(marker.getLatLng(), 16);
+            });
+        }
     }
 }
 
@@ -75,11 +81,26 @@ export function startTracking() {
                 console.log('Location updated: ' + lat + ', ' + lng);
 
                 if (marker && map) {
-                    marker.setLatLng([lat, lng]);
-                    map.setView([lat, lng], 15);
-                } else if (map && !marker) {
-                    marker = L.marker([lat, lng]).addTo(map);
-                    map.setView([lat, lng], 15);
+                    if (typeof marker.setLatLng === 'function') {
+                        marker.setLatLng([lat, lng]);
+                    }
+                    if (typeof map.setView === 'function') {
+                        map.setView([lat, lng]);
+                    }
+                    if (marker._updateRiderPopup) {
+                        marker._updateRiderPopup({
+                            name: currentUser ? (currentUser.displayName || 'Delivery Partner') : 'Your Location',
+                            phone: currentUser ? (currentUser.phoneNumber || currentUser.email) : '',
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                } else if (map && !marker && window.MQMap) {
+                    marker = MQMap.createRiderMarker(lat, lng, {
+                        name: currentUser ? (currentUser.displayName || 'Delivery Partner') : 'Your Location',
+                        phone: currentUser ? (currentUser.phoneNumber || currentUser.email) : '',
+                        timestamp: new Date().toISOString()
+                    }).addTo(map);
+                    map.setView([lat, lng]);
                 }
 
                 if (trackingStatus) {

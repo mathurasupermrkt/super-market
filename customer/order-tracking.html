@@ -9,7 +9,10 @@
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/svg+xml" href="/images/icon.svg">
   <link rel="stylesheet" href="../styles/main.css">
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCrhrfd6_Hxh29dNJFRIbFatHbNrseHYEU" defer></script>
+  <!-- Leaflet 1.9.4 & OpenStreetMap -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="/js/maps.js"></script>
   <style>
     .navbar {
       position: sticky;
@@ -232,87 +235,158 @@
 <script type="module">
   import { onSnapshot, doc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
-  // Default centre — Mathura, India (shown before any rider data arrives)
-  const DEFAULT_LAT = 27.4924;
-  const DEFAULT_LNG = 77.6737;
+  // Ramanathapuram, Tamil Nadu store coordinates (Madakottan)
+  const DEFAULT_LAT = 9.3639;
+  const DEFAULT_LNG = 78.8395;
 
-  // ---- Rider-id to listen to ----
-  // Replace with the actual delivery partner's UID (from order assignment)
-  // or read it dynamically from the order document.
-  const RIDER_DOC_ID = localStorage.getItem('assignedPartnerUid') || 'delivery1';
+  let map = null;
+  let storeMarker = null;
+  let customerMarker = null;
+  let riderMarker = null;
+  let routePolyline = null;
+  let currentStore = { lat: DEFAULT_LAT, lng: DEFAULT_LNG, name: 'Mathura Quick Mart', address: 'Madakottan, Ramanathapuram' };
+  let lastRiderLatLng = null;
+  let lastCustomerLatLng = null;
 
-  // ---- Google Map setup ----
-  const mapEl = document.getElementById('map');
-  const map = new google.maps.Map(mapEl, {
-    center: { lat: DEFAULT_LAT, lng: DEFAULT_LNG },
-    zoom: 13,
-    mapTypeControl: false,
-    streetViewControl: false,
-    fullscreenControl: false,
-    mapTypeId: 'satellite'
-  });
+  // Leaflet 1.9.4 & OpenStreetMap setup
+  async function initTrackingMap() {
+    const mapEl = document.getElementById('map');
+    if (!mapEl || map) return;
 
-  // Rider marker
-  const marker = new google.maps.Marker({
-    position: { lat: DEFAULT_LAT, lng: DEFAULT_LNG },
-    map: map,
-    title: 'Delivery Partner'
-  });
-  const riderInfoWindow = new google.maps.InfoWindow();
-
-  // ---- onSnapshot: listen for real-time rider location updates ----
-  function startLiveMap() {
-    const db = window.FirebaseDB;
-    if (!db) {
-      // Firebase not ready yet – wait for the event
-      window.addEventListener('firebase-ready', startLiveMap, { once: true });
+    if (!window.MQMap || typeof L === 'undefined') {
+      setTimeout(initTrackingMap, 100);
       return;
     }
 
-    // Updated to match the deliveryPartners collection written by partner.js
-    const locationRef = doc(db, 'deliveryPartners', RIDER_DOC_ID);
+    try {
+      const store = await MQMap.getStoreLocation();
+      if (store) currentStore = store;
+    } catch (e) {
+      console.warn('Store location fetch warning:', e);
+    }
 
-    onSnapshot(locationRef, (docSnap) => {
-      if (!docSnap.exists()) {
-        console.log('No location data for rider yet.');
-        return;
-      }
-
-      const data = docSnap.data();
-
-      // Update partner info in sidebar
-      const driverName = document.getElementById('driver-name');
-      if (driverName && data.name) driverName.textContent = data.name;
-
-      const driverPhone = document.getElementById('driver-phone');
-      if (driverPhone && data.email) driverPhone.textContent = data.email;
-
-      // Only move map if coordinates are available and partner is tracking
-      if (data.latitude && data.longitude) {
-        const newLatLng = { lat: data.latitude, lng: data.longitude };
-
-        marker.setPosition(newLatLng);
-        map.panTo(newLatLng);
-
-        const time = data.timestamp
-          ? new Date(data.timestamp).toLocaleTimeString('en-IN')
-          : 'unknown';
-
-        const trackingBadge = data.isTracking ? '🟢 Live' : '🔴 Offline';
-        const statusLabel = data.status || 'unknown';
-
-        riderInfoWindow.setContent(
-          `🛵 ${data.name || 'Delivery Partner'}<br>` +
-          `<small>Status: ${statusLabel} | ${trackingBadge}</small><br>` +
-          `<small>Updated: ${time}</small>`
-        );
-        riderInfoWindow.open(map, marker);
-
-        console.log(`📍 Rider location update: ${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}`);
-      }
-    }, (err) => {
-      console.error('onSnapshot error:', err);
+    map = MQMap.createMap('map', {
+      center: currentStore,
+      zoom: 14
     });
+
+    if (map) {
+      storeMarker = MQMap.createStoreMarker(currentStore.lat, currentStore.lng, currentStore).addTo(map);
+
+      MQMap.addRecenterButton(map, () => {
+        recenterMap();
+      });
+    }
+  }
+
+  function recenterMap() {
+    if (!map || typeof L === 'undefined') return;
+    const pts = [];
+    if (riderMarker) pts.push(riderMarker.getLatLng());
+    if (customerMarker) pts.push(customerMarker.getLatLng());
+    if (storeMarker) pts.push(storeMarker.getLatLng());
+
+    if (pts.length > 1) {
+      map.fitBounds(L.latLngBounds(pts), { padding: [40, 40] });
+    } else if (pts.length === 1) {
+      map.setView(pts[0], 15);
+    } else {
+      map.setView([currentStore.lat, currentStore.lng], 14);
+    }
+  }
+
+  async function updateTrackingRoute(startPos, endPos) {
+    if (!map || !window.MQMap || !startPos || !endPos) return;
+    if (routePolyline) {
+      try { map.removeLayer(routePolyline); } catch (e) {}
+      routePolyline = null;
+    }
+
+    const res = await MQMap.drawRoute(map, startPos, endPos, {
+      color: '#059669',
+      weight: 4,
+      fitBounds: false
+    });
+
+    if (res && res.polyline) {
+      routePolyline = res.polyline;
+    }
+  }
+
+  // Real-time rider location updated directly from the order document (secure order-based tracking)
+  async function updateRiderLocationFromOrder(order) {
+    if (!order) return;
+    const driverLoc = order.driverLocation;
+    const driverName = document.getElementById('driver-name');
+    if (driverName && order.driverName) driverName.textContent = order.driverName;
+
+    const driverPhone = document.getElementById('driver-phone');
+    if (driverPhone && (order.driverPhone || order.driverEmail)) {
+      driverPhone.textContent = order.driverPhone || order.driverEmail;
+    }
+
+    if (!map) {
+      await initTrackingMap();
+    }
+    if (!map || !window.MQMap) return;
+
+    // 1. Update Customer Destination Marker
+    const custLoc = order.customerLocation;
+    if (custLoc && custLoc.latitude && custLoc.longitude) {
+      const cLat = Number(custLoc.latitude);
+      const cLng = Number(custLoc.longitude);
+      lastCustomerLatLng = { lat: cLat, lng: cLng };
+
+      if (customerMarker) {
+        customerMarker.setLatLng([cLat, cLng]);
+      } else {
+        customerMarker = MQMap.createCustomerMarker(cLat, cLng, {
+          title: 'Delivery Address',
+          popupContent: `
+            <div class="map-popup-header"><span>📍</span> Delivery Destination</div>
+            <div class="map-popup-sub">${order.address || custLoc.formattedAddress || 'Your delivery location'}</div>
+          `
+        }).addTo(map);
+      }
+    }
+
+    // 2. Update Live Delivery Partner Marker
+    const isRiderActive = driverLoc && driverLoc.latitude && driverLoc.longitude &&
+      (order.status === 'out-delivery' || order.status === 'assigned' || order.status === 'delivered');
+
+    if (isRiderActive) {
+      const rLat = Number(driverLoc.latitude);
+      const rLng = Number(driverLoc.longitude);
+      lastRiderLatLng = { lat: rLat, lng: rLng };
+
+      const time = driverLoc.timestamp
+        ? new Date(driverLoc.timestamp).toLocaleTimeString('en-IN')
+        : 'recent';
+
+      const riderData = {
+        name: order.driverName || 'Delivery Partner',
+        phone: order.driverPhone || order.driverEmail || '',
+        timestamp: driverLoc.timestamp
+      };
+
+      if (riderMarker) {
+        riderMarker.setLatLng([rLat, rLng]);
+        if (riderMarker._updateRiderPopup) {
+          riderMarker._updateRiderPopup(riderData);
+        }
+      } else {
+        riderMarker = MQMap.createRiderMarker(rLat, rLng, riderData).addTo(map);
+      }
+    }
+
+    // 3. Draw Route between (Rider or Store) and Customer Destination
+    if (lastCustomerLatLng) {
+      const startPoint = (isRiderActive && lastRiderLatLng) ? lastRiderLatLng : currentStore;
+      updateTrackingRoute(startPoint, lastCustomerLatLng);
+    }
+
+    // 4. Auto-fit bounds
+    recenterMap();
   }
 
   let currentOrderStatus = 'confirmed';
@@ -334,26 +408,31 @@
     const stepOut = document.getElementById('step-out');
     const stepDelivered = document.getElementById('step-delivered');
 
-    if (status === 'confirmed' || status === 'processing' || status === 'pending') {
+    // Update rider location directly from order document
+    updateRiderLocationFromOrder(order);
+
+    if (status === 'confirmed' || status === 'processing' || status === 'pending' || status === 'packed' || status === 'assigned') {
       if (statusBadge) {
         statusBadge.className = 'status status-processing';
-        statusBadge.textContent = 'Processing / Packing';
+        statusBadge.textContent = status === 'assigned' ? 'Rider Assigned' : (status === 'packed' ? 'Order Packed' : 'Processing / Packing');
       }
-      if (driverName) driverName.textContent = 'Awaiting Driver Assignment';
-      if (driverPhone) driverPhone.textContent = 'Driver will be assigned by store staff';
+      if (driverName) driverName.textContent = order.driverName || 'Awaiting Driver Assignment';
+      if (driverPhone) driverPhone.textContent = order.driverName ? (order.driverPhone || 'Driver assigned') : 'Will be assigned upon order packing';
 
       stepPlaced.className = 'tracking-step done';
       stepPacked.className = 'tracking-step active';
       stepOut.className = 'tracking-step';
-      stepOut.querySelector('.tracking-step-desc').textContent = 'Waiting for driver assignment & dispatch...';
+      stepOut.querySelector('.tracking-step-desc').textContent = order.driverName ? `Assigned to ${order.driverName}. Preparing for dispatch...` : 'Waiting for driver assignment & dispatch...';
       stepDelivered.className = 'tracking-step';
-      document.getElementById('delivery-time-text').textContent = 'Pending dispatch';
+      document.getElementById('delivery-time-text').textContent = status === 'assigned' ? 'Rider assigned, dispatching soon' : 'Pending dispatch';
     } 
-    else if (status === 'out-delivery') {
+    else if (status === 'out-delivery' || status === 'out-for-delivery') {
       if (statusBadge) {
         statusBadge.className = 'status status-out-delivery';
         statusBadge.textContent = 'Out for Delivery';
       }
+      if (driverName && order.driverName) driverName.textContent = order.driverName;
+
       if (currentOrderStatus !== 'out-delivery') {
         MathuraQuickMart.toast('📦 Order Dispatched! Your driver is on the way.', 'info');
       }
@@ -376,6 +455,17 @@
       stepDelivered.className = 'tracking-step done';
       document.getElementById('delivery-time-text').textContent = 'Order successfully delivered!';
     }
+    else if (status === 'cancelled') {
+      if (statusBadge) {
+        statusBadge.className = 'status status-cancelled';
+        statusBadge.textContent = 'Cancelled';
+      }
+      stepPlaced.className = 'tracking-step';
+      stepPacked.className = 'tracking-step';
+      stepOut.className = 'tracking-step';
+      stepDelivered.className = 'tracking-step';
+      document.getElementById('delivery-time-text').textContent = 'Order has been cancelled.';
+    }
 
     currentOrderStatus = status;
   }
@@ -391,35 +481,57 @@
     const orderRef = doc(db, 'orders', orderId);
     onSnapshot(orderRef, (docSnap) => {
       if (docSnap.exists()) {
-        const orderData = docSnap.data();
+        const orderData = { id: docSnap.id, ...docSnap.data() };
         updateOrderUI(orderData);
       }
     }, (err) => {
-      console.warn('Live order tracking snapshot error:', err);
+      console.warn('Live order tracking snapshot note:', err.message);
     });
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    const lastOrderStr = localStorage.getItem('mathuraquickmart_last_order');
-    let orderId = null;
+    initTrackingMap();
 
-    if (lastOrderStr) {
-      try {
-        const order = JSON.parse(lastOrderStr);
-        orderId = order.id;
-        updateOrderUI(order);
-      } catch (e) {}
-    }
+    // 1. Check URL parameters for orderId
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramOrderId = urlParams.get('orderId') || urlParams.get('id');
 
-    if (orderId) {
-      listenToLiveOrder(orderId);
-    }
+    let resolvedOrder = null;
 
-    // Start live map listener
-    if (window.FirebaseDB) {
-      startLiveMap();
+    if (paramOrderId) {
+      // Find in cached orders or query
+      const userOrders = MathuraQuickMart.getUserOrders();
+      resolvedOrder = userOrders.find(o => String(o.id) === String(paramOrderId));
+      if (!resolvedOrder) {
+        resolvedOrder = { id: paramOrderId, status: 'confirmed' };
+      }
+      updateOrderUI(resolvedOrder);
+      listenToLiveOrder(paramOrderId);
     } else {
-      window.addEventListener('firebase-ready', startLiveMap, { once: true });
+      // 2. Fall back to localStorage last order
+      const lastOrderStr = localStorage.getItem('mathuraquickmart_last_order');
+      if (lastOrderStr) {
+        try {
+          resolvedOrder = JSON.parse(lastOrderStr);
+          updateOrderUI(resolvedOrder);
+          if (resolvedOrder.id) listenToLiveOrder(resolvedOrder.id);
+        } catch (e) {}
+      }
+    }
+
+    if (!resolvedOrder) {
+      // Show honest empty state
+      const idEl = document.getElementById('track-id');
+      if (idEl) idEl.textContent = 'No Order Selected';
+      const statusBadge = document.querySelector('.tracking-card .status');
+      if (statusBadge) {
+        statusBadge.className = 'status status-cancelled';
+        statusBadge.textContent = 'No Active Order';
+      }
+      const driverName = document.getElementById('driver-name');
+      if (driverName) driverName.textContent = 'Please select an order from your order history.';
+      const driverPhone = document.getElementById('driver-phone');
+      if (driverPhone) driverPhone.innerHTML = '<a href="/customer/my-orders.html" class="btn btn-outline btn-sm mt-2">View My Orders</a>';
     }
   });
 

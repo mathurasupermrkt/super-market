@@ -362,32 +362,6 @@
 <script>
   let selectedOrder = null;
 
-  // Static return requests if not already defined in localStorage or Firestore
-  const mockReturns = [
-    {
-      id: 'RET495830',
-      orderId: 'SM2024001',
-      date: '2026-07-20T10:30:00.000Z',
-      items: [{ id: 1, name: 'Fresh Organic Apples', qty: 1, price: 149 }],
-      reason: 'quality-issue',
-      comments: 'Apples were bruised and soft.',
-      refundMethod: 'wallet',
-      amount: 149,
-      status: 'completed' // completed, processing, requested, rejected
-    },
-    {
-      id: 'RET284958',
-      orderId: 'SM2024003',
-      date: '2026-07-23T12:00:00.000Z',
-      items: [{ id: 3, name: 'Brown Bread (Britannia)', qty: 1, price: 45 }],
-      reason: 'damaged',
-      comments: 'Packet packaging was torn on arrival.',
-      refundMethod: 'source',
-      amount: 45,
-      status: 'requested'
-    }
-  ];
-
   function switchTab(tabId) {
     // Hide all sections
     document.querySelectorAll('.returns-section').forEach(s => s.classList.add('hidden'));
@@ -429,20 +403,6 @@
       document.getElementById('tab-request').style.opacity = '1';
       
       sidebarUserName.textContent = user.name || user.email;
-
-      // Seed initial return data if none exists
-      if (!MathuraQuickMart.state.returns || MathuraQuickMart.state.returns.length === 0) {
-        // Associate mock returns with the active user and save
-        const userReturns = mockReturns.map(ret => ({ ...ret, userId: user.uid }));
-        MathuraQuickMart.state.returns = userReturns;
-        MathuraQuickMart.saveState();
-        
-        // Sync them to Firestore in the background
-        userReturns.forEach(ret => {
-          MathuraQuickMart._syncReturnToFirestore(ret);
-        });
-      }
-      
       switchTab('overview');
     }
   }
@@ -613,13 +573,15 @@
       return;
     }
 
-    // Populate order items
-    // If order has no explicit items array (it is a mock order), provide fallback item details
-    const items = selectedOrder.items || [
-      { id: 1, name: 'Fresh Organic Apples', qty: 2, price: 149 },
-      { id: 2, name: 'Whole Milk (Amul)', qty: 1, price: 68 },
-      { id: 3, name: 'Brown Bread (Britannia)', qty: 1, price: 45 }
-    ];
+    // Populate real order items
+    const items = selectedOrder.items || [];
+    
+    if (items.length === 0) {
+      itemsList.innerHTML = `<div style="padding:16px;color:var(--gray-500);text-align:center;">No itemized products found for order ${selectedOrder.id}. Please contact customer care for assistance.</div>`;
+      formContainer.classList.remove('hidden');
+      updateRefundEstimation();
+      return;
+    }
     
     // Save items array to selectedOrder for form submissions
     selectedOrder.items = items;
@@ -652,12 +614,12 @@
     if (!selectedOrder || !selectedOrder.items) return;
 
     document.querySelectorAll('.return-item-checkbox:checked').forEach(cb => {
-      const productId = parseInt(cb.getAttribute('data-id'));
-      const item = selectedOrder.items.find(i => i.id === productId);
+      const productId = cb.getAttribute('data-id');
+      const item = selectedOrder.items.find(i => String(i.id) === String(productId));
       if (item) {
         const qtySelect = document.getElementById(`qty-return-${productId}`);
-        const qtyToReturn = parseInt(qtySelect.value);
-        estimation += item.price * qtyToReturn;
+        const qtyToReturn = parseInt(qtySelect?.value) || 1;
+        estimation += (Number(item.price) || 0) * qtyToReturn;
       }
     });
 
@@ -687,17 +649,17 @@
     let totalRefund = 0;
 
     checkedCheckboxes.forEach(cb => {
-      const productId = parseInt(cb.getAttribute('data-id'));
-      const item = selectedOrder.items.find(i => i.id === productId);
+      const productId = cb.getAttribute('data-id');
+      const item = selectedOrder.items.find(i => String(i.id) === String(productId));
       if (item) {
-        const qtyToReturn = parseInt(document.getElementById(`qty-return-${productId}`).value);
+        const qtyToReturn = parseInt(document.getElementById(`qty-return-${productId}`)?.value) || 1;
         returnedItems.push({
           id: item.id,
           name: item.name,
           qty: qtyToReturn,
-          price: item.price
+          price: Number(item.price) || 0
         });
-        totalRefund += item.price * qtyToReturn;
+        totalRefund += (Number(item.price) || 0) * qtyToReturn;
       }
     });
 

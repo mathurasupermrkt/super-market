@@ -3,7 +3,8 @@ import {
   getFirestore,
   collection, getDocs, getDoc, doc, setDoc,
   query, where, addDoc, deleteDoc, orderBy, updateDoc, serverTimestamp,
-  onSnapshot, limit, runTransaction, arrayUnion
+  onSnapshot, limit, runTransaction, arrayUnion, writeBatch,
+  connectFirestoreEmulator
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import {
   getAuth,
@@ -18,6 +19,7 @@ import {
   updatePassword,
   GoogleAuthProvider,
   signInWithPopup,
+  connectAuthEmulator
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import {
   getStorage,
@@ -27,6 +29,11 @@ import {
   getDownloadURL,
   deleteObject
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
+import {
+  getFunctions,
+  httpsCallable,
+  connectFunctionsEmulator
+} from "https://www.gstatic.com/firebasejs/10.9.0/firebase-functions.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCy-euC1CaVTejDj_cCQNgzyJ6uIZHJ0jM",
@@ -39,10 +46,58 @@ const firebaseConfig = {
 };
 
 try {
-  // Initialize Firebase — core only (App + Firestore + Auth)
+  // Initialize Firebase — core only (App + Firestore + Auth + Functions)
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   const auth = getAuth(app);
+  const functions = getFunctions(app);
+
+  // ── LOCAL EMULATOR ISOLATION (localhost / 127.0.0.1) ──
+  // Immediately establish local emulator connections before ANY application operations.
+  // Fail closed: Do NOT silently fall back to production if an emulator connection fails.
+  const isLocalEnv = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  if (isLocalEnv) {
+    if (!window._firebaseEmulatorsConnected) {
+      try {
+        const host = window.location.hostname;
+        
+        // 1. Connect Functions emulator (port 5001)
+        connectFunctionsEmulator(functions, host, 5001);
+
+        // 2. Connect Firestore emulator (port 8080)
+        connectFirestoreEmulator(db, host, 8080);
+
+        // 3. Connect Auth emulator (port 9099)
+        connectAuthEmulator(auth, `http://${host}:9099`, { disableWarnings: true });
+
+        window._firebaseEmulatorsConnected = true;
+        console.log(`🔒 [Local Dev Isolation] Connected to Firebase Emulators on ${host} (Functions:5001, Firestore:8080, Auth:9099)`);
+      } catch (emuErr) {
+        // FAIL CLOSED: Prevent any operations from leaking to production
+        window.firebaseIsReady = false;
+        console.error("🚨 [CRITICAL SAFETY ERROR] Failed to establish local emulator isolation:", emuErr);
+        const errBanner = document.createElement('div');
+        errBanner.id = 'emulator-isolation-error';
+        errBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#dc2626;color:#ffffff;padding:14px 20px;font-family:sans-serif;font-size:14px;font-weight:bold;z-index:999999;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+        errBanner.innerHTML = '⚠️ LOCAL DEV ERROR: Firebase Emulator isolation failed. Operations halted to prevent accidental writes to production database. Ensure Firebase Emulators are running on ports 8080, 5001, and 9099.';
+        if (document.body) {
+          document.body.prepend(errBanner);
+        } else {
+          document.addEventListener('DOMContentLoaded', () => document.body.prepend(errBanner));
+        }
+        throw new Error(`EMULATOR_ISOLATION_FAILED: ${emuErr.message}`);
+      }
+    }
+  }
+
+  // Expose Functions to window
+  window.FirebaseFunctions = functions;
+  window.FirebaseFunctionsFns = {
+    httpsCallable,
+    connectFunctionsEmulator
+  };
 
   // Expose Firestore to window so existing vanilla JS can access it
   window.FirebaseApp = app;
@@ -64,6 +119,8 @@ try {
     limit,
     runTransaction,
     arrayUnion,
+    writeBatch,
+    connectFirestoreEmulator
   };
 
   // Expose Auth instance and helper functions to window
@@ -80,6 +137,7 @@ try {
     updatePassword,
     GoogleAuthProvider,
     signInWithPopup,
+    connectAuthEmulator
   };
 
   // Expose Storage instance and helper functions to window

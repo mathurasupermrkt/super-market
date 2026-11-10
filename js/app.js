@@ -165,6 +165,7 @@ const MathuraQuickMart = {
     this.initMobileMenu();
     this.initAnimations();
     this.initStoreStatusListener();
+    this.initOrderRulesListener();
 
     const setupAuthListener = () => {
       const auth = window.FirebaseAuth;
@@ -320,6 +321,9 @@ const MathuraQuickMart = {
     try {
       localStorage.setItem('mathuraquickmart_state', JSON.stringify(this.state));
     } catch(e) { console.warn('State save error:', e); }
+    try {
+      window.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart: this.state.cart } }));
+    } catch(_) {}
   },
 
     setUserLocation(lat, lng) {
@@ -392,6 +396,108 @@ const MathuraQuickMart = {
     }
   },
 
+  getAuthenticatedFirebaseUser() {
+    return new Promise((resolve) => {
+      const auth = window.FirebaseAuth;
+      const authFns = window.FirebaseAuthFns;
+
+      if (!auth || !authFns) {
+        let timer = null;
+        const onReady = () => {
+          if (timer) clearTimeout(timer);
+          resolve(this.getAuthenticatedFirebaseUser());
+        };
+        timer = setTimeout(() => {
+          window.removeEventListener('firebase-ready', onReady);
+          resolve(null);
+        }, 2500);
+        window.addEventListener('firebase-ready', onReady, { once: true });
+        return;
+      }
+
+      if (auth.currentUser) {
+        return resolve(auth.currentUser);
+      }
+
+      let resolved = false;
+      let unsubscribe = null;
+      try {
+        unsubscribe = authFns.onAuthStateChanged(auth, (user) => {
+          if (!resolved) {
+            resolved = true;
+            if (typeof unsubscribe === 'function') unsubscribe();
+            resolve(user);
+          }
+        });
+      } catch (_) {
+        resolve(auth.currentUser || null);
+        return;
+      }
+
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          if (typeof unsubscribe === 'function') unsubscribe();
+          resolve(auth.currentUser || null);
+        }
+      }, 1500);
+    });
+  },
+
+  async verifyIsAdmin() {
+    const ADMIN_UID = '7SBL73wlj7OxKBsMExoJNhdrDTU2';
+    const ADMIN_EMAIL = 'mathurasupermrkt@gmail.com';
+
+    // 1. Must have an authenticated Firebase session
+    const fbUser = await this.getAuthenticatedFirebaseUser();
+    if (!fbUser) {
+      return false;
+    }
+
+    // 2. Check master admin by UID or verified email
+    if (fbUser.uid === ADMIN_UID) return true;
+    if (fbUser.email && fbUser.email.toLowerCase() === ADMIN_EMAIL && fbUser.emailVerified !== false) {
+      return true;
+    }
+
+    // 3. Authoritative Firestore check: users/{uid}.role === 'admin'
+    if (window.FirebaseDB && window.Firestore) {
+      try {
+        const { doc, getDoc } = window.Firestore;
+        const snap = await getDoc(doc(window.FirebaseDB, 'users', fbUser.uid));
+        if (snap.exists() && snap.data().role === 'admin') {
+          return true;
+        }
+      } catch (e) {
+        console.warn('verifyIsAdmin: Firestore lookup error:', e);
+      }
+    }
+
+    return false;
+  },
+
+  async goToOrders(e) {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+
+    // If not logged in in local state, check if Firebase has an active session
+    let user = this.state.user;
+    if (!user) {
+      const fbUser = await this.getAuthenticatedFirebaseUser();
+      if (!fbUser) {
+        this.requireAuth();
+        return;
+      }
+    }
+
+    // Determine if the authenticated user is an admin
+    const isAdmin = await this.verifyIsAdmin();
+    if (isAdmin) {
+      window.location.href = '/admin/dashboard.html?tab=orders';
+    } else {
+      window.location.href = '/customer/my-orders.html';
+    }
+  },
+
   requireAuth(role) {
     if (!this.state.user) {
       this.toast('Please log in to continue', 'warning');
@@ -444,6 +550,10 @@ const MathuraQuickMart = {
     const prodId = String(product.id);
     const existing = this.state.cart.find(i => String(i.id) === prodId);
     if (existing) {
+      if (product.stock !== undefined && product.stock !== null && (existing.qty + qty) > product.stock) {
+        this.toast(`Only ${product.stock} items available in stock`, 'warning');
+        return;
+      }
       existing.qty += qty;
     } else {
       this.state.cart.push({ ...product, id: parseInt(product.id) || product.id, qty });
@@ -471,6 +581,11 @@ const MathuraQuickMart = {
     const pId = String(productId);
     const item = this.state.cart.find(i => String(i.id) === pId);
     if (item) {
+      const product = (window.API && window.API.getProduct) ? window.API.getProduct(productId) : null;
+      if (product && product.stock !== undefined && product.stock !== null && qty > product.stock) {
+        this.toast(`Only ${product.stock} items available in stock`, 'warning');
+        return;
+      }
       item.qty = qty;
       this.saveState();
       this.renderCartBadge();
@@ -498,6 +613,10 @@ const MathuraQuickMart = {
     if (totalEl) {
       const total = this.getCartTotal();
       totalEl.textContent = total > 0 ? '₹' + total : '₹0';
+    }
+
+    if (typeof updateProductCardButtons === 'function') {
+      updateProductCardButtons();
     }
   },
 
@@ -555,7 +674,18 @@ const MathuraQuickMart = {
   },
 
   // ============ TOAST NOTIFICATIONS ============
+  _recentToastKeys: {},
+
   toast(message, type = 'success', duration = 3500) {
+    if (!message) return;
+    const key = `${type}:${message}`;
+    const now = Date.now();
+    if (this._recentToastKeys && this._recentToastKeys[key] && (now - this._recentToastKeys[key] < 1500)) {
+      return; // Deduplicate identical message within 1.5 seconds
+    }
+    if (!this._recentToastKeys) this._recentToastKeys = {};
+    this._recentToastKeys[key] = now;
+
     let container = document.getElementById('toast-container');
     if (!container) {
       container = document.createElement('div');
@@ -1053,6 +1183,114 @@ const MathuraQuickMart = {
     }
   },
 
+  // ============ ORDER RULES (MINIMUM ORDER AMOUNT) ============
+  orderRules: {
+    minimumOrderAmount: 0,
+    minimumOrderEnabled: false,
+    updatedAt: null,
+    updatedBy: null
+  },
+
+  getOrderRules() {
+    if (!this.orderRules || typeof this.orderRules.minimumOrderAmount === 'undefined' || this.orderRules.minimumOrderAmount === 0) {
+      try {
+        const saved = localStorage.getItem('mathura_order_rules');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          this.orderRules = {
+            minimumOrderAmount: Number(parsed.minimumOrderAmount) || 0,
+            minimumOrderEnabled: parsed.minimumOrderEnabled === true,
+            updatedAt: parsed.updatedAt || null,
+            updatedBy: parsed.updatedBy || null
+          };
+        }
+      } catch (e) {}
+    }
+    return this.orderRules || { minimumOrderAmount: 0, minimumOrderEnabled: false };
+  },
+
+  setOrderRules(rules) {
+    const minAmt = Number(rules.minimumOrderAmount);
+    this.orderRules = {
+      minimumOrderAmount: isNaN(minAmt) ? 0 : Math.max(0, minAmt),
+      minimumOrderEnabled: rules.minimumOrderEnabled === true,
+      updatedAt: rules.updatedAt || new Date().toISOString(),
+      updatedBy: rules.updatedBy || null
+    };
+    try {
+      localStorage.setItem('mathura_order_rules', JSON.stringify(this.orderRules));
+    } catch (e) {}
+    window.dispatchEvent(new CustomEvent('order-rules-changed', { detail: this.orderRules }));
+    return this.orderRules;
+  },
+
+  checkMinimumOrder(subtotal) {
+    const rules = this.getOrderRules();
+    const minAmount = Number(rules.minimumOrderAmount) || 0;
+    const enabled = rules.minimumOrderEnabled === true && minAmount > 0;
+    const currentSubtotal = Math.max(0, Number(subtotal) || 0);
+    const isMet = !enabled || currentSubtotal >= minAmount;
+    const difference = isMet ? 0 : Math.round(minAmount - currentSubtotal);
+    const message = isMet
+      ? ''
+      : `Minimum order amount is ₹${minAmount}. Add ₹${difference} more to place your order.`;
+
+    return {
+      isMet,
+      enabled,
+      minAmount,
+      subtotal: currentSubtotal,
+      difference,
+      message
+    };
+  },
+
+  initOrderRulesListener() {
+    this.getOrderRules(); // Pre-load from localStorage cache
+
+    const doListen = () => {
+      if (!window.FirebaseDB || !window.Firestore) return;
+      const fs = window.Firestore;
+      const db = window.FirebaseDB;
+      try {
+        fs.onSnapshot(fs.doc(db, 'settings', 'orderRules'), (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            this.setOrderRules({
+              minimumOrderAmount: data.minimumOrderAmount,
+              minimumOrderEnabled: data.minimumOrderEnabled,
+              updatedAt: data.updatedAt,
+              updatedBy: data.updatedBy
+            });
+          } else {
+            // Check fallback settings/store if orderRules doc doesn't exist yet
+            fs.getDoc(fs.doc(db, 'settings', 'store')).then((storeSnap) => {
+              if (storeSnap.exists() && typeof storeSnap.data().minimumOrderAmount !== 'undefined') {
+                const sData = storeSnap.data();
+                this.setOrderRules({
+                  minimumOrderAmount: sData.minimumOrderAmount,
+                  minimumOrderEnabled: sData.minimumOrderEnabled,
+                  updatedAt: sData.updatedAt,
+                  updatedBy: sData.updatedBy
+                });
+              }
+            }).catch(() => {});
+          }
+        }, (err) => {
+          console.warn('Order rules listener note:', err);
+        });
+      } catch (e) {
+        console.warn('Error attaching order rules listener:', e);
+      }
+    };
+
+    if (window.FirebaseDB && window.Firestore) {
+      doListen();
+    } else {
+      window.addEventListener('firebase-ready', doListen, { once: true });
+    }
+  },
+
   escapeHtml(str) {
     if (!str) return '';
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -1189,17 +1427,9 @@ const API = {
     { code: 'MART100', discount: 100, type: 'flat', minOrder: 999, description: '₹100 off on orders above ₹999' },
   ],
 
-  orders: [
-    { id: 'SM2024001', date: '2024-12-20', status: 'delivered', total: 458, items: 4, tracking: 'Delivered on Dec 22' },
-    { id: 'SM2024002', date: '2024-12-22', status: 'out-delivery', total: 892, items: 7, tracking: 'Out for delivery' },
-    { id: 'SM2024003', date: '2024-12-23', status: 'processing', total: 234, items: 2, tracking: 'Being processed' },
-  ],
+  orders: [],
 
-  reviews: [
-    { id: 1, productId: 1, user: 'Priya S.', rating: 5, date: '2024-12-15', comment: 'Absolutely fresh and delicious! The apples are crispy and sweet. Will definitely order again.', verified: true },
-    { id: 2, productId: 1, user: 'Rahul M.', rating: 4, date: '2024-12-10', comment: 'Good quality apples. Delivered on time. Slightly expensive but worth it for organic.', verified: true },
-    { id: 3, productId: 1, user: 'Anita K.', rating: 5, date: '2024-12-08', comment: 'Best apples I have ever had from an online store. Packaging was excellent.', verified: false },
-  ],
+  reviews: [],
 
   // Search products (name, category, weight, brand, badge, description)
   searchProducts(query) {
@@ -1258,7 +1488,7 @@ const API = {
   },
 
   getProduct(id) {
-    return this.products.find(p => p.id === parseInt(id));
+    return this.products.find(p => String(p.id) === String(id) || p.id === parseInt(id));
   },
 
   // Validate coupon
@@ -1297,82 +1527,125 @@ const API = {
       throw new Error(`STORE_CLOSED: ${closedMsg}`);
     }
 
-    const nowMs = Date.now();
-    const nowISO = new Date(nowMs).toISOString();
-    const expiresISO = new Date(nowMs + 30 * 1000).toISOString(); // 30s timeout
-
-    const order = {
-      id: 'SM' + nowMs,
-      ...orderData,
-      total: (orderData.subtotal || 0) + (orderData.deliveryFee || 0) - (orderData.discount || 0),
-      status: 'confirmed',
-      driverId: null,
-      driverName: null,
-      deliveryRequestStatus: 'pending',
-      deliveryRequestCreatedAt: nowISO,
-      deliveryRequestExpiresAt: expiresISO,
-      declinedDrivers: [],
-      assignmentType: 'automatic',
-      date: nowISO,
-      createdAt: nowISO,
-      estimatedDelivery: new Date(nowMs + 2 * 24 * 60 * 60 * 1000).toISOString(),
-    };
-
-    // Save order (local state + Firestore)
-    await this.saveOrder(order);
-
-    // ── Queue WhatsApp Order Message (Non-blocking, deduplicated) ──
-    try {
-      if (typeof WhatsAppService !== 'undefined') {
-        WhatsAppService.queueOrderMessage(order, 'ORDER_PLACED').catch(e => console.warn('WhatsApp queue err:', e));
-      }
-    } catch (waErr) { console.warn(waErr); }
-
-    // ── Local In-Memory Stock Decrement ──
-    if (order.items && order.items.length > 0) {
-      (order.items || []).forEach(item => {
-        const prod = this.products.find(p => String(p.id) === String(item.id) || p.name === item.name);
-        if (prod && typeof prod.stock === 'number') {
-          prod.stock = Math.max(0, prod.stock - (item.qty || 1));
-        }
-      });
+    // ── STRICT MINIMUM ORDER AMOUNT VERIFICATION ──
+    let trustedSubtotal = 0;
+    if (orderData.items && Array.isArray(orderData.items) && orderData.items.length > 0) {
+      trustedSubtotal = orderData.items.reduce((sum, item) => {
+        const prod = (this.products || []).find(p => String(p.id) === String(item.id) || p.name === item.name);
+        const price = (prod && typeof prod.price === 'number') ? prod.price : (Number(item.price) || 0);
+        const qty = Math.max(1, parseInt(item.qty, 10) || 1);
+        return sum + (price * qty);
+      }, 0);
+    } else {
+      trustedSubtotal = Math.max(0, Number(orderData.subtotal) || 0);
     }
 
-    // ── Remote Stock Decrement (Only when authenticated as Admin) ──
-    const authUser = MathuraQuickMart.state?.user;
-    if (authUser && authUser.role === 'admin' && window.FirebaseDB && window.Firestore && order.items && order.items.length > 0) {
-      const fs = window.Firestore;
-      const db = window.FirebaseDB;
-      
-      Promise.all((order.items || []).map(async (item) => {
-        try {
-          const productId = String(item.id);
-          const docRef = fs.doc(db, 'products', productId);
-          const docSnap = await fs.getDoc(docRef);
+    let minOrderAmount = 0;
+    let minOrderEnabled = false;
 
-          if (docSnap.exists()) {
-            const currentStock = docSnap.data().stock || 0;
-            const newStock = Math.max(0, currentStock - (item.qty || 1));
-            await fs.updateDoc(docRef, { stock: newStock });
-            console.log(`📦 Stock updated: ${item.name} → ${newStock} units remaining`);
-          } else {
-            const q = fs.query(fs.collection(db, 'products'), fs.where('name', '==', item.name));
-            const snap = await fs.getDocs(q);
-            if (!snap.empty) {
-              const matchDoc = snap.docs[0];
-              const currentStock = matchDoc.data().stock || 0;
-              const newStock = Math.max(0, currentStock - (item.qty || 1));
-              await fs.updateDoc(matchDoc.ref, { stock: newStock });
-              console.log(`📦 Stock updated (by name): ${item.name} → ${newStock} units remaining`);
-            }
+    if (window.FirebaseDB && window.Firestore) {
+      try {
+        const fs = window.Firestore;
+        const db = window.FirebaseDB;
+        const rulesDoc = await fs.getDoc(fs.doc(db, 'settings', 'orderRules'));
+        if (rulesDoc.exists()) {
+          const rData = rulesDoc.data();
+          minOrderAmount = Number(rData.minimumOrderAmount) || 0;
+          minOrderEnabled = rData.minimumOrderEnabled === true;
+        } else {
+          const storeDoc = await fs.getDoc(fs.doc(db, 'settings', 'store'));
+          if (storeDoc.exists()) {
+            const sData = storeDoc.data();
+            minOrderAmount = Number(sData.minimumOrderAmount) || 0;
+            minOrderEnabled = sData.minimumOrderEnabled === true;
           }
-        } catch (e) {
-          console.warn(`Admin stock update notice for ${item.name}:`, e.message);
         }
-      })).catch(err => console.warn('Background stock decrement notice:', err.message));
+      } catch (err) {
+        console.warn('Could not re-fetch order rules from Firestore, checking local cache:', err);
+        const cached = MathuraQuickMart.getOrderRules();
+        minOrderAmount = Number(cached.minimumOrderAmount) || 0;
+        minOrderEnabled = cached.minimumOrderEnabled === true;
+      }
+    } else {
+      const cached = MathuraQuickMart.getOrderRules();
+      minOrderAmount = Number(cached.minimumOrderAmount) || 0;
+      minOrderEnabled = cached.minimumOrderEnabled === true;
     }
 
-    return order;
+    if (minOrderEnabled && minOrderAmount > 0 && trustedSubtotal < minOrderAmount) {
+      const diff = Math.round(minOrderAmount - trustedSubtotal);
+      const errMsg = `Minimum order amount is ₹${minOrderAmount}. Add ₹${diff} more to place your order.`;
+      throw new Error(`MINIMUM_ORDER_NOT_MET: ${errMsg}`);
+    }
+
+    const nowMs = Date.now();
+    const clientOrderId = 'SM' + nowMs;
+
+    // ── Trusted Backend Path: Callable Cloud Function ──
+    if (window.FirebaseFunctions && window.FirebaseFunctionsFns) {
+      const { httpsCallable } = window.FirebaseFunctionsFns;
+      const verifyAndPlace = httpsCallable(window.FirebaseFunctions, 'verifyAndPlaceOrder');
+
+      try {
+        const result = await verifyAndPlace({
+          items: (orderData.items || []).map(i => ({
+            id: i.id,
+            qty: i.qty || 1,
+            name: i.name
+          })),
+          address: orderData.address || '',
+          customerLocation: orderData.customerLocation || null,
+          paymentMethod: orderData.paymentMethod || 'COD',
+          couponCode: orderData.couponCode || null,
+          customerName: orderData.customerName || '',
+          customerPhone: orderData.customerPhone || '',
+          clientOrderId: clientOrderId
+        });
+
+        if (result && result.data && result.data.order) {
+          const serverOrder = result.data.order;
+
+          // Update local memory and cached state
+          const idx = this.orders.findIndex(o => o.id === serverOrder.id);
+          if (idx >= 0) {
+            this.orders[idx] = serverOrder;
+          } else {
+            this.orders.unshift(serverOrder);
+          }
+          const stateIdx = MathuraQuickMart.state.orders.findIndex(o => o.id === serverOrder.id);
+          if (stateIdx >= 0) {
+            MathuraQuickMart.state.orders[stateIdx] = serverOrder;
+          } else {
+            MathuraQuickMart.state.orders.unshift(serverOrder);
+          }
+          MathuraQuickMart.saveState();
+
+          // Queue WhatsApp Order Message (non-blocking)
+          try {
+            if (typeof WhatsAppService !== 'undefined') {
+              WhatsAppService.queueOrderMessage(serverOrder, 'ORDER_PLACED').catch(e => console.warn('WhatsApp queue err:', e));
+            }
+          } catch (waErr) { console.warn(waErr); }
+
+          // Local In-Memory Stock Decrement for immediate UI feedback
+          (serverOrder.items || []).forEach(item => {
+            const prod = this.products.find(p => String(p.id) === String(item.id) || p.name === item.name);
+            if (prod && typeof prod.stock === 'number') {
+              prod.stock = Math.max(0, prod.stock - (item.qty || 1));
+            }
+          });
+
+          return serverOrder;
+        }
+      } catch (fnError) {
+        console.error("Backend verifyAndPlaceOrder error:", fnError);
+        const errMsg = fnError.message || (fnError.details ? String(fnError.details) : 'Server order placement failed.');
+        throw new Error(errMsg);
+      }
+    }
+
+    // Fail closed: Do not silently fallback to insecure client order creation
+    throw new Error("Secure order service unavailable. Please check your connection to Firebase Services.");
   },
 
   // Save/Update order in local state and Firestore
@@ -1410,45 +1683,49 @@ const API = {
     }
   },
 
-  // Admin stats
+  // Admin stats — dynamically calculated from verified underlying records
   getAdminStats() {
+    const orders = this.orders || [];
+    const products = this.products || [];
+    const totalSales = orders.reduce((sum, o) => sum + (Number(o.total) || Number(o.subtotal) || 0), 0);
+    const lowStock = products.filter(p => typeof p.stock === 'number' && p.stock <= 10);
+
+    // Compute sales by month for the last 6 months
+    const now = new Date();
+    const salesChart = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthLabel = d.toLocaleString('en-IN', { month: 'short' });
+      const yearMonth = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      const monthSales = orders
+        .filter(o => {
+          const dateStr = o.date || o.createdAt || '';
+          return typeof dateStr === 'string' && dateStr.startsWith(yearMonth);
+        })
+        .reduce((sum, o) => sum + (Number(o.total) || Number(o.subtotal) || 0), 0);
+      salesChart.push({ month: monthLabel, sales: monthSales });
+    }
+
     return {
-      totalSales: 2847593,
-      totalOrders: 12847,
-      totalCustomers: 8934,
-      totalProducts: 1247,
+      totalSales,
+      totalOrders: orders.length,
+      totalCustomers: new Set(orders.map(o => o.userId || o.customerPhone || o.customerEmail).filter(Boolean)).size,
+      totalProducts: products.length,
       revenue: {
-        today: 45890,
-        week: 312450,
-        month: 1289340,
-        year: 12847593,
+        today: orders
+          .filter(o => (o.date || o.createdAt || '').startsWith(now.toISOString().split('T')[0]))
+          .reduce((sum, o) => sum + (Number(o.total) || Number(o.subtotal) || 0), 0),
+        total: totalSales
       },
-      recentOrders: [
-        { id: 'SM240001', customer: 'Priya Sharma', items: 4, total: 458, status: 'delivered', date: '2024-12-23' },
-        { id: 'SM240002', customer: 'Rahul Mehta', items: 7, total: 892, status: 'out-delivery', date: '2024-12-23' },
-        { id: 'SM240003', customer: 'Anita Kumar', items: 2, total: 234, status: 'processing', date: '2024-12-22' },
-        { id: 'SM240004', customer: 'Vikram Singh', items: 5, total: 676, status: 'confirmed', date: '2024-12-22' },
-        { id: 'SM240005', customer: 'Meera Nair', items: 3, total: 389, status: 'pending', date: '2024-12-21' },
-      ],
-      lowStock: [
-        { id: 7, name: 'Extra Virgin Olive Oil', stock: 5, category: 'Cooking Essentials' },
-        { id: 12, name: 'Chia Seeds', stock: 8, category: 'Health & Wellness' },
-        { id: 15, name: 'Honey (Dabur)', stock: 12, category: 'Cooking Essentials' },
-      ],
-      salesChart: [
-        { month: 'Jul', sales: 890000 },
-        { month: 'Aug', sales: 1020000 },
-        { month: 'Sep', sales: 940000 },
-        { month: 'Oct', sales: 1180000 },
-        { month: 'Nov', sales: 1340000 },
-        { month: 'Dec', sales: 1289340 },
-      ],
+      recentOrders: [...orders].sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0)).slice(0, 5),
+      lowStock: lowStock.map(p => ({ id: p.id, name: p.name, stock: p.stock, category: p.category })),
+      salesChart
     };
   },
 
   // Delivery orders — reads live orders from API.orders (synced from Firestore)
   getDeliveryOrders(staffId) {
-    const activeStatuses = ['confirmed', 'processing', 'packed', 'out-delivery'];
+    const activeStatuses = ['assigned', 'confirmed', 'processing', 'packed', 'out-delivery'];
     const liveOrders = (this.orders || []).filter(o => activeStatuses.includes(o.status));
 
     // Map live orders to the shape the delivery dashboard expects
@@ -1461,18 +1738,14 @@ const API = {
         items: Array.isArray(o.items) ? o.items.length : (o.items || 0),
         total: o.subtotal || o.total || 0,
         status: o.status,
-        lat: o.lat || 13.0850,
-        lng: o.lng || 80.0178,
-        assignedAt: o.date || new Date().toISOString(),
+        lat: o.customerLocation?.latitude || o.lat || 9.3639,
+        lng: o.customerLocation?.longitude || o.lng || 78.8395,
+        assignedAt: o.date || o.createdAt || new Date().toISOString(),
       }));
     }
 
-    // Fallback to demo data only if no live orders exist yet
-    return [
-      { id: 'SM240002', customer: 'Rahul Mehta', phone: '+91 98765 43210', address: '42, Green Park, New Delhi - 110016', items: 7, total: 892, status: 'out-delivery', lat: 28.5562, lng: 77.2100, assignedAt: '2024-12-23T09:00:00Z' },
-      { id: 'SM240006', customer: 'Sunita Patel', phone: '+91 87654 32109', address: '8, Rose Garden, Sector 15, Noida - 201301', items: 3, total: 345, status: 'packed', lat: 28.5844, lng: 77.3267, assignedAt: '2024-12-23T10:30:00Z' },
-      { id: 'SM240007', customer: 'Arun Joshi', phone: '+91 76543 21098', address: '17, Lake View, Indirapuram - 201014', items: 5, total: 678, status: 'confirmed', lat: 28.6440, lng: 77.3657, assignedAt: '2024-12-23T11:00:00Z' },
-    ];
+    // Honest empty state when no active live orders exist
+    return [];
   },
 
   // Database Synchronization Methods — PARALLEL fetch for speed
@@ -1488,12 +1761,13 @@ const API = {
     const t0 = performance.now();
 
     const currentUser = MathuraQuickMart.state?.user;
-    const isStaff = currentUser && (currentUser.role === 'admin' || currentUser.role === 'delivery');
 
-    // Secure order querying: staff get all orders; authenticated customer gets strictly their own orders; guests get none.
+    // Secure order querying: admin gets all orders; delivery gets assigned orders; customer gets their own orders; guests get none.
     let ordersPromise = Promise.resolve(null);
-    if (isStaff) {
-      ordersPromise = getDocs(collection(db, 'orders')).catch(e => { console.warn("orders sync (staff):", e.message); return null; });
+    if (currentUser && currentUser.role === 'admin') {
+      ordersPromise = getDocs(collection(db, 'orders')).catch(e => { console.warn("orders sync (admin):", e.message); return null; });
+    } else if (currentUser && currentUser.role === 'delivery' && currentUser.uid) {
+      ordersPromise = getDocs(query(collection(db, 'orders'), where('driverId', '==', currentUser.uid))).catch(e => { console.warn("orders sync (delivery):", e.message); return null; });
     } else if (currentUser && currentUser.uid) {
       ordersPromise = getDocs(query(collection(db, 'orders'), where('userId', '==', currentUser.uid))).catch(e => { console.warn("orders sync (user):", e.message); return null; });
     }
@@ -1507,7 +1781,7 @@ const API = {
         ordersPromise,
         getDocs(collection(db, 'reviews')).catch(e => { console.warn("reviews sync:", e.message); return null; }),
         getDocs(collection(db, 'brands')).catch(e => { console.warn("brands sync:", e.message); return null; }),
-        getDocs(collection(db, 'banners')).catch(e => { console.warn("banners sync:", e.message); return null; }),
+        getDocs(query(collection(db, 'banners'), where('isActive', '==', true))).catch(e => { console.warn("banners sync:", e.message); return null; }),
       ]);
 
     // Process results with deduplication
@@ -1620,7 +1894,7 @@ const API = {
   },
 
   async saveProduct(product) {
-    const idx = this.products.findIndex(p => p.id === product.id);
+    const idx = this.products.findIndex(p => String(p.id) === String(product.id));
     if (idx >= 0) {
       this.products[idx] = product;
     } else {
@@ -1640,7 +1914,7 @@ const API = {
   },
 
   async deleteProduct(productId) {
-    this.products = this.products.filter(p => p.id !== productId);
+    this.products = this.products.filter(p => String(p.id) !== String(productId));
 
     if (window.FirebaseDB && window.Firestore) {
       const db = window.FirebaseDB;
@@ -1870,39 +2144,62 @@ const API = {
   },
 };
 
-// Expose API to window globally
+// Expose MathuraQuickMart and API to window globally
+window.MathuraQuickMart = MathuraQuickMart;
 window.API = API;
 
-// ============ PRODUCT CARD RENDERER ============
-function renderProductCard(product, options = {}) {
-  const inWishlist = MathuraQuickMart.isInWishlist(product.id);
-  const cartItem = MathuraQuickMart.getCart().find(i => i.id === product.id);
-  const cartQty = cartItem ? cartItem.qty : 0;
-  const discountPercent = product.discount || (product.originalPrice ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0);
+// ============ PRODUCT CARD & CART BUTTON RENDERER ============
+function renderCartButtonHtml(productId, stock) {
+  const pId = String(productId);
+  const cartItem = MathuraQuickMart.getCart().find(i => String(i.id) === pId);
+  const cartQty = cartItem ? (cartItem.qty || 0) : 0;
 
-  let cartButtonHtml = '';
-  if (product.stock <= 0) {
-    cartButtonHtml = `<button class="add-to-cart-btn" disabled style="opacity:0.5;font-size:10px;">OUT OF STOCK</button>`;
-  } else if (cartQty > 0) {
-    cartButtonHtml = `
-      <div class="qty-counter" onclick="event.stopPropagation();">
-        <button onclick="updateCartQtyDirect(${product.id}, ${cartQty - 1})">-</button>
-        <span>${cartQty}</span>
-        <button onclick="addToCart(${product.id})">+</button>
-      </div>`;
-  } else {
-    cartButtonHtml = `
-      <button class="add-to-cart-btn" onclick="event.stopPropagation(); addToCart(${product.id})">
-        ADD
-      </button>`;
+  if (stock !== undefined && stock !== null && Number(stock) <= 0) {
+    return `<button class="add-to-cart-btn" disabled style="opacity:0.5;font-size:10px;">OUT OF STOCK</button>`;
   }
+  if (cartQty > 0) {
+    return `
+      <div class="qty-counter" onclick="event.stopPropagation();">
+        <button onclick="event.stopPropagation(); updateCartQtyDirect('${pId}', ${cartQty - 1})" aria-label="Decrease quantity">-</button>
+        <span>${cartQty}</span>
+        <button onclick="event.stopPropagation(); addToCart('${pId}')" aria-label="Increase quantity">+</button>
+      </div>`;
+  }
+  return `
+    <button class="add-to-cart-btn" onclick="event.stopPropagation(); addToCart('${pId}')" aria-label="Add to cart">
+      ADD
+    </button>`;
+}
+
+function updateProductCardButtons(targetProductId = null) {
+  const selector = (targetProductId != null && targetProductId !== '')
+    ? `.product-card-btn-container[data-btn-product-id="${targetProductId}"]`
+    : `.product-card-btn-container[data-btn-product-id]`;
+
+  const containers = document.querySelectorAll(selector);
+  containers.forEach(container => {
+    const pid = container.getAttribute('data-btn-product-id');
+    if (!pid) return;
+    const product = (window.API && window.API.getProduct)
+      ? window.API.getProduct(pid)
+      : (window.API && window.API.products ? window.API.products.find(p => String(p.id) === String(pid)) : null);
+    const stock = product ? product.stock : 999;
+    container.innerHTML = renderCartButtonHtml(pid, stock);
+  });
+}
+
+function renderProductCard(product, options = {}) {
+  const pId = String(product.id);
+  const inWishlist = MathuraQuickMart.isInWishlist(product.id);
+  const discountPercent = product.discount || (product.originalPrice ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0);
+  const cartButtonHtml = renderCartButtonHtml(pId, product.stock);
 
   return `
-    <div class="product-card" onclick="window.location.href='/customer/product-detail.html?id=${product.id}'">
+    <div class="product-card" data-product-id="${pId}" onclick="window.location.href='/customer/product-detail.html?id=${pId}'">
       <div class="product-card-img" style="position:relative;overflow:hidden;">
         ${discountPercent ? `<div class="discount-pill">${discountPercent}% OFF</div>` : ''}
         <img src="${product.image}" alt="${product.name}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=400'">
-        <button class="product-card-wishlist ${inWishlist ? 'active' : ''}" onclick="event.stopPropagation(); toggleWishlist(${product.id})" title="Wishlist">
+        <button class="product-card-wishlist ${inWishlist ? 'active' : ''}" onclick="event.stopPropagation(); toggleWishlist('${pId}')" title="Wishlist">
           ${inWishlist ? '❤️' : '🤍'}
         </button>
       </div>
@@ -1918,7 +2215,7 @@ function renderProductCard(product, options = {}) {
             <span class="price-current">₹${product.price}</span>
             ${product.originalPrice ? `<span class="price-original">₹${product.originalPrice}</span>` : ''}
           </div>
-          <div style="min-width:76px;">
+          <div class="product-card-btn-container" data-btn-product-id="${pId}" style="min-width:76px;">
             ${cartButtonHtml}
           </div>
         </div>
@@ -1936,21 +2233,42 @@ function renderStars(rating) {
 }
 
 function addToCart(productId) {
-  const product = API.getProduct(productId);
+  const product = (window.API && window.API.getProduct)
+    ? window.API.getProduct(productId)
+    : (window.API && window.API.products ? window.API.products.find(p => String(p.id) === String(productId)) : null);
   if (product) {
     MathuraQuickMart.addToCart(product);
-    refreshProductCards();
+    refreshProductCards(productId);
   }
 }
 
 function updateCartQtyDirect(productId, qty) {
   MathuraQuickMart.updateCartQty(productId, qty);
-  refreshProductCards();
+  refreshProductCards(productId);
 }
 
-function refreshProductCards() {
+function refreshProductCards(productId = null) {
+  updateProductCardButtons(productId);
   if (typeof renderStorefront === 'function') renderStorefront();
   if (typeof renderProducts === 'function') renderProducts();
+}
+
+window.renderCartButtonHtml = renderCartButtonHtml;
+window.updateProductCardButtons = updateProductCardButtons;
+
+// Keep cards synchronized when cart changes or across tabs
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('cart-updated', () => {
+    updateProductCardButtons();
+  });
+
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'mathuraquickmart_state') {
+      MathuraQuickMart.loadState();
+      MathuraQuickMart.renderCartBadge();
+      updateProductCardButtons();
+    }
+  });
 }
 
 function toggleWishlist(productId) {

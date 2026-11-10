@@ -101,94 +101,7 @@
   </div>
 
   <div id="notifications-list">
-    <!-- Today -->
-    <div style="font-size:11px;font-weight:var(--fw-bold);color:var(--gray-400);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:var(--sp-3);">Today</div>
-
-    <div class="notif-item unread" onclick="this.classList.remove('unread')">
-      <div class="notif-icon delivery">🛵</div>
-      <div class="notif-content">
-        <div class="notif-title">Order SM240005 is out for delivery!</div>
-        <div class="notif-desc">Your delivery rider Ramesh is on the way. Estimated arrival in 15 minutes.</div>
-        <div class="notif-time">10 minutes ago</div>
-      </div>
-      <div class="notif-dot"></div>
-    </div>
-
-    <div class="notif-item unread" onclick="this.classList.remove('unread')">
-      <div class="notif-icon promo">🎉</div>
-      <div class="notif-content">
-        <div class="notif-title">Flash Sale: 30% off on Fresh Fruits!</div>
-        <div class="notif-desc">Limited time offer on mangoes, apples, and seasonal fruits. Use code FRUITY30.</div>
-        <div class="notif-time">2 hours ago</div>
-      </div>
-      <div class="notif-dot"></div>
-    </div>
-
-    <div class="notif-item unread" onclick="this.classList.remove('unread')">
-      <div class="notif-icon order">📦</div>
-      <div class="notif-content">
-        <div class="notif-title">Order SM240005 has been packed</div>
-        <div class="notif-desc">Your order has been packed and is being assigned to a delivery partner.</div>
-        <div class="notif-time">3 hours ago</div>
-      </div>
-      <div class="notif-dot"></div>
-    </div>
-
-    <!-- Yesterday -->
-    <div style="font-size:11px;font-weight:var(--fw-bold);color:var(--gray-400);text-transform:uppercase;letter-spacing:0.08em;margin:var(--sp-6) 0 var(--sp-3);">Yesterday</div>
-
-    <div class="notif-item" onclick="this.classList.remove('unread')">
-      <div class="notif-icon order">✅</div>
-      <div class="notif-content">
-        <div class="notif-title">Order SM240004 delivered successfully</div>
-        <div class="notif-desc">Your order has been delivered. Thank you for shopping with Mathura Quick Mart!</div>
-        <div class="notif-time">Yesterday, 6:30 PM</div>
-      </div>
-      <div class="notif-dot"></div>
-    </div>
-
-    <div class="notif-item" onclick="this.classList.remove('unread')">
-      <div class="notif-icon promo">🏷️</div>
-      <div class="notif-content">
-        <div class="notif-title">Price drop alert: Organic Honey</div>
-        <div class="notif-desc">An item in your wishlist is now ₹120 cheaper! Get it before it's gone.</div>
-        <div class="notif-time">Yesterday, 2:15 PM</div>
-      </div>
-      <div class="notif-dot"></div>
-    </div>
-
-    <!-- Earlier -->
-    <div style="font-size:11px;font-weight:var(--fw-bold);color:var(--gray-400);text-transform:uppercase;letter-spacing:0.08em;margin:var(--sp-6) 0 var(--sp-3);">Earlier This Week</div>
-
-    <div class="notif-item" onclick="this.classList.remove('unread')">
-      <div class="notif-icon alert">💳</div>
-      <div class="notif-content">
-        <div class="notif-title">Payment received: ₹892</div>
-        <div class="notif-desc">Payment for order SM240004 has been confirmed via UPI.</div>
-        <div class="notif-time">2 days ago</div>
-      </div>
-      <div class="notif-dot"></div>
-    </div>
-
-    <div class="notif-item" onclick="this.classList.remove('unread')">
-      <div class="notif-icon promo">🎊</div>
-      <div class="notif-content">
-        <div class="notif-title">Weekend Special: Free delivery on all orders!</div>
-        <div class="notif-desc">Enjoy free delivery this weekend with no minimum order. Valid till Sunday.</div>
-        <div class="notif-time">3 days ago</div>
-      </div>
-      <div class="notif-dot"></div>
-    </div>
-
-    <div class="notif-item" onclick="this.classList.remove('unread')">
-      <div class="notif-icon order">⭐</div>
-      <div class="notif-content">
-        <div class="notif-title">Rate your recent order SM240003</div>
-        <div class="notif-desc">How was your experience? Your feedback helps us serve you better.</div>
-        <div class="notif-time">4 days ago</div>
-      </div>
-      <div class="notif-dot"></div>
-    </div>
+    <!-- Rendered dynamically from real user orders & active offers -->
   </div>
 </div>
 
@@ -202,6 +115,103 @@
     });
     MathuraQuickMart.toast('✓ All notifications marked as read', 'success');
   }
+
+  function renderDynamicNotifications() {
+    const listEl = document.getElementById('notifications-list');
+    if (!listEl) return;
+
+    const userOrders = MathuraQuickMart.getUserOrders();
+    const coupons = API.coupons || [];
+    const notifs = [];
+
+    // Build notifications from real user orders
+    userOrders.forEach(o => {
+      const orderDate = new Date(o.date || o.createdAt || Date.now());
+      const timeStr = MathuraQuickMart.formatDate(orderDate.toISOString());
+
+      if (o.status === 'out-delivery' || o.status === 'out-for-delivery') {
+        notifs.push({
+          icon: '🛵',
+          type: 'delivery',
+          title: `Order ${o.id} is out for delivery!`,
+          desc: o.driverName ? `Your rider ${o.driverName} is on the way with your order.` : 'Your order is on the way to your address.',
+          time: timeStr,
+          timestamp: orderDate.getTime(),
+          unread: true,
+          link: `/customer/order-tracking.html?orderId=${encodeURIComponent(o.id)}`
+        });
+      } else if (o.status === 'delivered') {
+        notifs.push({
+          icon: '✅',
+          type: 'order',
+          title: `Order ${o.id} delivered successfully`,
+          desc: `Your grocery package has been delivered (Total: ₹${o.total || o.subtotal || 0}). Thank you for shopping with Mathura Quick Mart!`,
+          time: timeStr,
+          timestamp: orderDate.getTime(),
+          unread: false,
+          link: `/customer/my-orders.html`
+        });
+      } else if (o.status === 'confirmed' || o.status === 'pending') {
+        notifs.push({
+          icon: '📦',
+          type: 'order',
+          title: `Order ${o.id} placed & confirmed`,
+          desc: `We received your order for ${Array.isArray(o.items) ? o.items.length : 1} items. Store staff are currently packing it.`,
+          time: timeStr,
+          timestamp: orderDate.getTime(),
+          unread: false,
+          link: `/customer/order-tracking.html?orderId=${encodeURIComponent(o.id)}`
+        });
+      }
+    });
+
+    // Add active coupon announcements
+    coupons.slice(0, 2).forEach(c => {
+      notifs.push({
+        icon: '🏷️',
+        type: 'promo',
+        title: `Offer: ${c.code} — ${c.description || (c.type === 'percent' ? c.discount + '% OFF' : '₹' + c.discount + ' OFF')}`,
+        desc: `Use code ${c.code} at checkout on orders above ₹${c.minOrder || 0}.`,
+        time: 'Active Store Offer',
+        timestamp: Date.now() - 3600000,
+        unread: false,
+        link: '/customer/cart.html'
+      });
+    });
+
+    // Sort newest first
+    notifs.sort((a, b) => b.timestamp - a.timestamp);
+
+    if (notifs.length === 0) {
+      listEl.innerHTML = `
+        <div class="dash-card text-center py-12" style="background:#fff;border-radius:var(--radius-xl);padding:3rem 1.5rem;border:1px solid var(--gray-200);">
+          <div style="font-size:2.5rem;margin-bottom:var(--sp-3);">🔔</div>
+          <h3 style="font-size:var(--text-lg);font-weight:bold;color:var(--gray-800);margin-bottom:var(--sp-2);">No notifications yet</h3>
+          <p style="font-size:var(--text-sm);color:var(--gray-500);margin-bottom:var(--sp-4);">Updates about your active orders, deliveries, and verified store promotions will appear here.</p>
+          <a href="/customer/products.html" class="btn btn-primary btn-sm">🛍️ Browse Store</a>
+        </div>
+      `;
+      return;
+    }
+
+    listEl.innerHTML = notifs.map(n => `
+      <div class="notif-item ${n.unread ? 'unread' : ''}" onclick="${n.link ? `window.location.href='${n.link}'` : 'this.classList.remove(\'unread\')'}" style="cursor:pointer;">
+        <div class="notif-icon ${n.type}">${n.icon}</div>
+        <div class="notif-content">
+          <div class="notif-title">${n.title}</div>
+          <div class="notif-desc">${n.desc}</div>
+          <div class="notif-time">${n.time}</div>
+        </div>
+        ${n.unread ? '<div class="notif-dot"></div>' : ''}
+      </div>
+    `).join('');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    renderDynamicNotifications();
+    window.addEventListener('user-data-ready', renderDynamicNotifications);
+    window.addEventListener('db-ready', renderDynamicNotifications);
+  });
 </script>
 </body>
 </html>

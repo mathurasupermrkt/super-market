@@ -250,6 +250,104 @@ const WhatsAppAdmin = {
     this.updateAudienceMetrics();
   },
 
+  setCampaignTarget(target) {
+    const map = {
+      'opted_in': 'all',
+      'recent_30': 'recent',
+      'inactive_60': 'inactive',
+      'high_value': 'high_value'
+    };
+    this.selectedTarget = map[target] || target || 'all';
+    this.updateCampaignPreview();
+    const countEl = document.getElementById('audience-eligible-count');
+    if (countEl) countEl.textContent = this.getFilteredCustomers().length;
+  },
+
+  handleBannerUrlInput(url) {
+    this.bannerUrl = (url || '').trim();
+    this.updateCampaignPreview();
+  },
+
+  openCampaignConfirmationModal() {
+    const title = document.getElementById('camp-title')?.value.trim();
+    const coupon = document.getElementById('camp-coupon')?.value.trim();
+    const discount = document.getElementById('camp-discount')?.value.trim();
+
+    if (!title || !coupon || !discount) {
+      MathuraQuickMart.toast('Please fill in Offer Title, Coupon Code, and Discount.', 'error');
+      return;
+    }
+
+    const recipients = this.getFilteredCustomers().length;
+    const targetSelect = document.getElementById('camp-target-select');
+    const targetText = targetSelect ? targetSelect.options[targetSelect.selectedIndex].text : 'All Customers';
+
+    const modal = document.getElementById('wa-confirm-modal');
+    if (!modal) return;
+
+    const tEl = document.getElementById('confirm-camp-title');
+    const cEl = document.getElementById('confirm-camp-coupon');
+    const dEl = document.getElementById('confirm-camp-discount');
+    const tgtEl = document.getElementById('confirm-camp-target');
+    const rEl = document.getElementById('confirm-camp-recipients');
+
+    if (tEl) tEl.textContent = title;
+    if (cEl) cEl.textContent = coupon.toUpperCase();
+    if (dEl) dEl.textContent = discount;
+    if (tgtEl) tgtEl.textContent = targetText;
+    if (rEl) rEl.textContent = `${recipients} customer${recipients === 1 ? '' : 's'}`;
+
+    modal.classList.remove('hidden');
+  },
+
+  closeConfirmModal() {
+    const modal = document.getElementById('wa-confirm-modal');
+    if (modal) modal.classList.add('hidden');
+  },
+
+  async executeCampaignPublish() {
+    const btn = document.getElementById('btn-confirm-publish');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Queuing Broadcast…'; }
+
+    const title = document.getElementById('camp-title')?.value.trim();
+    const coupon = document.getElementById('camp-coupon')?.value.trim();
+    const discount = document.getElementById('camp-discount')?.value.trim();
+    const minOrder = Number(document.getElementById('camp-min-order')?.value) || 0;
+    const expiry = document.getElementById('camp-expiry')?.value.trim() || '';
+    const recipients = this.getFilteredCustomers();
+
+    const payload = {
+      title,
+      coupon: coupon.toUpperCase(),
+      discount,
+      minOrder,
+      expiry,
+      targetAudience: this.selectedTarget || 'all',
+      eligibleCustomers: recipients.length,
+      bannerUrl: this.bannerUrl || null,
+      status: 'Queued',
+      broadcastVia: 'Meta Cloud API',
+      createdAt: new Date().toISOString()
+    };
+
+    if (window.FirebaseDB && window.Firestore) {
+      const db = window.FirebaseDB;
+      const fs = window.Firestore;
+      try {
+        await fs.addDoc(fs.collection(db, 'whatsappCampaigns'), payload);
+        MathuraQuickMart.toast(`🚀 Campaign broadcast queued for ${recipients.length} customer(s)!`, 'success');
+      } catch (err) {
+        console.error('Error queuing campaign:', err);
+        MathuraQuickMart.toast('Error saving campaign broadcast. Check console.', 'error');
+      }
+    } else {
+      MathuraQuickMart.toast(`🚀 Campaign broadcast simulated for ${recipients.length} customer(s) (offline)!`, 'info');
+    }
+
+    if (btn) { btn.disabled = false; btn.textContent = '🚀 Publish Campaign Now'; }
+    this.closeConfirmModal();
+  },
+
   getFilteredCustomers() {
     const list = this.customers || [];
     const orders = this.orders || [];
@@ -328,6 +426,29 @@ const WhatsAppAdmin = {
 
   renderCampaignHistory() {
     const tbody = document.getElementById('campaign-history-tbody');
+    const listEl = document.getElementById('wa-campaigns-list');
+
+    if (listEl) {
+      if (!this.campaigns || this.campaigns.length === 0) {
+        listEl.innerHTML = `<p style="color:var(--gray-500);font-size:13px;">No campaigns generated yet.</p>`;
+      } else {
+        listEl.innerHTML = this.campaigns.slice(0, 10).map(c => `
+          <div class="card-flat p-4 mb-3" style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;">
+            <div class="flex justify-between items-center mb-1">
+              <strong style="color:var(--gray-900);">${c.title || 'Special Offer'}</strong>
+              <span class="badge ${c.status === 'Queued' ? 'badge-green' : 'badge-blue'}">${c.status || 'Active'}</span>
+            </div>
+            <div style="font-size:12px;color:var(--gray-600);">
+              Coupon: <strong style="color:#b45309;">${c.coupon || 'N/A'}</strong> (${c.discount || ''})
+            </div>
+            <div style="font-size:11px;color:var(--gray-400);margin-top:4px;">
+              Target: ${c.targetAudience || 'All'} • ${c.eligibleCustomers || 0} recipients • ${c.createdAt ? new Date(c.createdAt).toLocaleDateString() : 'Recent'}
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
     if (!tbody) return;
 
     if (!this.campaigns || this.campaigns.length === 0) {

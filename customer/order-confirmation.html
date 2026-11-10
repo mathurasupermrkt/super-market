@@ -102,7 +102,7 @@
       <button class="btn btn-whatsapp btn-lg w-full" id="btn-confirm-whatsapp" onclick="sendConfirmedOrderToWhatsApp()" style="width:100%;">
         💬 Send Order Details on WhatsApp
       </button>
-      <a href="/customer/order-tracking.html" class="btn btn-primary btn-lg">
+      <a href="/customer/order-tracking.html" id="btn-track-order" class="btn btn-primary btn-lg">
         🚚 Live Order Tracking
       </a>
       <a href="#" onclick="MathuraQuickMart.goToDashboard(event)" class="btn btn-outline btn-lg">
@@ -132,6 +132,10 @@
         document.getElementById('conf-order-id').textContent = confirmedOrderData.id || 'N/A';
         document.getElementById('conf-total').textContent = `₹${Math.round(totalAmt)}`;
         document.getElementById('conf-pay-method').textContent = confirmedOrderData.paymentMethod || 'Online';
+        if (confirmedOrderData.id) {
+          const trackBtn = document.getElementById('btn-track-order');
+          if (trackBtn) trackBtn.href = `/customer/order-tracking.html?orderId=${encodeURIComponent(confirmedOrderData.id)}`;
+        }
       } catch (e) {
         console.warn('Error parsing last order:', e);
       }

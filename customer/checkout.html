@@ -9,7 +9,10 @@
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/svg+xml" href="/images/icon.svg">
   <link rel="stylesheet" href="../styles/main.css">
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCrhrfd6_Hxh29dNJFRIbFatHbNrseHYEU&libraries=places" defer></script>
+  <!-- Leaflet 1.9.4 & OpenStreetMap -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="/js/maps.js"></script>
 
   <style>
     /* ── Navbar ── */
@@ -439,6 +442,22 @@
       </div>
 
       <div class="divider"></div>
+      
+      <!-- Minimum Order Warning Box -->
+      <div id="checkout-min-order-box" style="display:none;margin-bottom:14px;background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:12px 14px;color:#92400e;">
+        <div style="display:flex;align-items:flex-start;gap:8px;">
+          <span style="font-size:18px;line-height:1;">⚠️</span>
+          <div>
+            <div id="checkout-min-order-text" style="font-size:13px;font-weight:700;line-height:1.4;">
+              Minimum order amount is ₹299. Add ₹80 more to place your order.
+            </div>
+            <a href="/customer/products.html" style="display:inline-block;margin-top:6px;font-size:12px;font-weight:700;color:#00695c;text-decoration:underline;">
+              + Add more items to your order
+            </a>
+          </div>
+        </div>
+      </div>
+
       <p style="font-size:11px;color:var(--gray-500);line-height:1.5;margin-bottom:12px;">
         By placing this order, you agree to Mathura Quick Mart's Terms &amp; Conditions and Privacy Policy.
       </p>
@@ -526,8 +545,8 @@
    CONSTANTS
 ───────────────────────────────────────────────── */
 /** Shop coordinates — Mathura Quick Mart, Ramanathapuram */
-const SHOP_LAT = 13.0843;
-const SHOP_LNG = 80.0182;
+const SHOP_LAT = 9.3639;
+const SHOP_LNG = 78.8395;
 const SHOP_NAME = 'Mathura Quick Mart';
 
 /* ─────────────────────────────────────────────────
@@ -537,30 +556,12 @@ let paymentMethod     = 'cod';
 let activeCoupon      = null;
 let confirmedLocation = null;  // { latitude, longitude, formattedAddress }
 
-// Google Maps instances
-let locMap         = null;
-let customerMarker = null;
-let shopMarker     = null;
-let routePolyline  = null;
-let geocoder       = null;
-let placesService  = null;
-let autocompleteTimeout;
-
-/* ─────────────────────────────────────────────────
-   GOOGLE MAPS PIN ICON HELPER
-───────────────────────────────────────────────── */
-function createPinIcon(color) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 28 38">
-    <path d="M14 0C6.27 0 0 6.27 0 14c0 9.14 14 24 14 24S28 23.14 28 14C28 6.27 21.73 0 14 0z"
-          fill="${color}" stroke="#fff" stroke-width="2"/>
-    <circle cx="14" cy="14" r="5" fill="#fff" opacity="0.9"/>
-  </svg>`;
-  return {
-    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-    scaledSize: new google.maps.Size(28, 38),
-    anchor: new google.maps.Point(14, 38)
-  };
-}
+// Leaflet & OpenStreetMap instances
+let locMap            = null;
+let customerMarker    = null;
+let shopMarker        = null;
+let routePolyline     = null;
+let currentStoreCoords = { lat: SHOP_LAT, lng: SHOP_LNG, name: SHOP_NAME };
 
 /* ─────────────────────────────────────────────────
    MODAL CONTROL
@@ -603,43 +604,56 @@ function handleOverlayClick(e) {
 }
 
 /* ─────────────────────────────────────────────────
-   MAP INITIALISATION
+   MAP INITIALISATION (Leaflet 1.9.4)
 ───────────────────────────────────────────────── */
 /**
- * initializeMap — creates the Google Map and shop marker once.
- * On subsequent calls it just triggers a resize event (needed
- * because the map was hidden inside a modal).
+ * initializeMap — creates the Leaflet map and shop marker once.
+ * On subsequent calls it invalidates size so tiles render smoothly.
  */
-function initializeMap() {
+async function initializeMap() {
   if (!locMap) {
-    geocoder = new google.maps.Geocoder();
-    locMap = new google.maps.Map(document.getElementById('loc-map'), {
-      center: { lat: SHOP_LAT, lng: SHOP_LNG },
-      zoom: 14,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-      mapTypeId: 'satellite'
-    });
+    if (window.MQMap) {
+      try {
+        const store = await MQMap.getStoreLocation();
+        if (store) currentStoreCoords = store;
+      } catch (e) {
+        console.warn('Store location fetch warning:', e);
+      }
+    }
 
-    // Fixed blue shop marker
-    const shopInfoWindow = new google.maps.InfoWindow({
-      content: `<b>${SHOP_NAME}</b><br>Madakottan, Ramanathapuram`
-    });
-    shopMarker = new google.maps.Marker({
-      position: { lat: SHOP_LAT, lng: SHOP_LNG },
-      map: locMap,
-      icon: createPinIcon('#2563eb'),
-      title: SHOP_NAME
-    });
-    shopMarker.addListener('click', () => shopInfoWindow.open(locMap, shopMarker));
+    if (window.MQMap) {
+      locMap = MQMap.createMap('loc-map', {
+        center: currentStoreCoords,
+        zoom: 14
+      });
+    }
 
-    // Init Places Autocomplete on the address search input
+    if (locMap && window.MQMap) {
+      shopMarker = MQMap.createStoreMarker(
+        currentStoreCoords.lat,
+        currentStoreCoords.lng,
+        currentStoreCoords
+      ).addTo(locMap);
+
+      MQMap.addRecenterButton(locMap, () => {
+        if (customerMarker) {
+          locMap.setView(customerMarker.getLatLng(), 16);
+        } else {
+          locMap.setView([currentStoreCoords.lat, currentStoreCoords.lng], 14);
+        }
+      });
+    }
+
+    // Init address autocomplete listeners
     initPlacesAutocomplete();
   }
 
-  // Re-trigger layout calculation (critical after display:none → flex transition)
-  setTimeout(() => google.maps.event.trigger(locMap, 'resize'), 120);
+  // Invalidate Leaflet layout size after modal displays
+  setTimeout(() => {
+    if (locMap) {
+      try { locMap.invalidateSize(); } catch (e) {}
+    }
+  }, 150);
 }
 
 /* ─────────────────────────────────────────────────
@@ -687,37 +701,30 @@ async function getCurrentLocation() {
  * and triggers reverse geocoding.
  */
 async function updateMarker(lat, lng) {
-  if (!locMap) return;
+  if (!locMap || !window.MQMap) return;
 
-  const pos = { lat, lng };
+  const pos = [lat, lng];
 
   // Move or create the draggable green customer marker
   if (customerMarker) {
-    customerMarker.setPosition(pos);
+    customerMarker.setLatLng(pos);
   } else {
-    customerMarker = new google.maps.Marker({
-      position: pos,
-      map: locMap,
-      icon: createPinIcon('#16a34a'),
+    customerMarker = MQMap.createCustomerMarker(lat, lng, {
       draggable: true,
-      title: 'Your delivery location'
-    });
-
-    // On drag end: reverse geocode new position
-    customerMarker.addListener('dragend', async () => {
-      const p = customerMarker.getPosition();
-      showLoading('Updating address…');
-      await reverseGeocodeAndFill(p.lat(), p.lng());
-      hideLoading();
-      drawPolyline(p.lat(), p.lng());
-    });
+      title: 'Your delivery location',
+      onDragEnd: async (newPos) => {
+        showLoading('Updating address…');
+        await reverseGeocodeAndFill(newPos.lat, newPos.lng);
+        hideLoading();
+        await drawPolyline(newPos.lat, newPos.lng);
+      }
+    }).addTo(locMap);
   }
 
-  locMap.setCenter(pos);
-  locMap.setZoom(16);
+  locMap.setView(pos, 16);
 
   // Draw route line
-  drawPolyline(lat, lng);
+  await drawPolyline(lat, lng);
 
   // Reverse geocode
   showLoading('Detecting address…');
@@ -726,60 +733,50 @@ async function updateMarker(lat, lng) {
 }
 
 /**
- * drawPolyline — draws a dashed polyline between the shop and customer marker.
+ * drawPolyline — draws a routing line between the shop and customer marker via OSRM.
  */
-function drawPolyline(customerLat, customerLng) {
-  if (routePolyline) {
-    routePolyline.setMap(null);
+async function drawPolyline(customerLat, customerLng) {
+  if (routePolyline && locMap) {
+    try { locMap.removeLayer(routePolyline); } catch (e) {}
+    routePolyline = null;
   }
-  routePolyline = new google.maps.Polyline({
-    path: [
-      { lat: SHOP_LAT, lng: SHOP_LNG },
-      { lat: customerLat, lng: customerLng }
-    ],
-    geodesic: false,
-    strokeColor: '#22c55e',
-    strokeOpacity: 0.8,
-    strokeWeight: 3,
-    icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 4 }, offset: '0', repeat: '16px' }]
-  });
-  routePolyline.setMap(locMap);
+  if (!locMap || !window.MQMap) return;
+
+  const routeRes = await MQMap.drawRoute(
+    locMap,
+    currentStoreCoords,
+    { lat: customerLat, lng: customerLng },
+    { color: '#16a34a', weight: 4, fitBounds: false }
+  );
+
+  if (routeRes && routeRes.polyline) {
+    routePolyline = routeRes.polyline;
+  }
 }
 
 /* ─────────────────────────────────────────────────
-   REVERSE GEOCODING (Google Maps Geocoder)
+   REVERSE GEOCODING (Nominatim OpenStreetMap)
 ───────────────────────────────────────────────── */
 /**
- * reverseGeocode — calls Google Maps Geocoder and returns address data.
- * Returns null on failure.
- */
-function reverseGeocode(lat, lng) {
-  return new Promise((resolve) => {
-    if (!geocoder) geocoder = new google.maps.Geocoder();
-    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-      if (status === 'OK' && results && results.length > 0) {
-        resolve(results[0]);
-      } else {
-        console.warn('Reverse geocode failed:', status);
-        resolve(null);
-      }
-    });
-  });
-}
-
-/**
- * reverseGeocodeAndFill — geocodes coordinates, updates the preview panel
- * inside the modal and the checkout address form fields.
+ * reverseGeocodeAndFill — geocodes coordinates via Nominatim,
+ * updates the preview panel inside the modal and the checkout address form fields.
  * Also enables the Confirm button.
  */
 async function reverseGeocodeAndFill(lat, lng) {
-  const result = await reverseGeocode(lat, lng);
+  let result = null;
+  if (window.MQMap) {
+    try {
+      result = await MQMap.reverseGeocode(lat, lng);
+    } catch (e) {
+      console.warn('Geocoding warning:', e);
+    }
+  }
 
   // Update coordinate display
   document.getElementById('loc-addr-preview-coords').textContent =
     `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 
-  if (!result) {
+  if (!result || !result.formattedAddress) {
     document.getElementById('loc-addr-preview-text').textContent =
       'Address details unavailable. You can still confirm this location.';
     document.getElementById('loc-confirm-btn').disabled = false;
@@ -793,30 +790,18 @@ async function reverseGeocodeAndFill(lat, lng) {
 }
 
 /* ─────────────────────────────────────────────────
-   FILL ADDRESS FIELDS (from Google Geocoder result)
+   FILL ADDRESS FIELDS (from Geocoder result)
 ───────────────────────────────────────────────── */
 /**
  * fillAddressFromGeocodeResult — populates both the modal preview and the
- * checkout form inputs from a Google Maps Geocoder result.
+ * checkout form inputs from a geocoder result.
  */
 function fillAddressFromGeocodeResult(result, lat, lng) {
-  const components = result.address_components || [];
-
-  const get = (types) => {
-    const c = components.find(c => types.some(t => c.types.includes(t)));
-    return c ? c.long_name : '';
-  };
-
-  const houseNum  = get(['street_number']);
-  const road      = get(['route']);
-  const area      = get(['sublocality_level_1', 'sublocality', 'neighborhood']);
-  const city      = get(['locality', 'administrative_area_level_2']);
-  const state     = get(['administrative_area_level_1']);
-  const postcode  = get(['postal_code']);
-
-  let streetStr = [houseNum, road, area].filter(Boolean).join(', ');
-  const formattedAddress = result.formatted_address ||
-    [streetStr, city, state, postcode].filter(Boolean).join(', ');
+  const formattedAddress = result.formattedAddress || '';
+  const streetStr = [result.road, result.suburb].filter(Boolean).join(', ');
+  const city = result.city || 'Ramanathapuram';
+  const state = result.state || 'Tamil Nadu';
+  const postcode = result.postcode || '623504';
 
   // ── Update modal address preview ──
   document.getElementById('loc-addr-preview-text').textContent = formattedAddress || '—';
@@ -853,14 +838,14 @@ function fillAddressFromGeocodeResult(result, lat, lng) {
 function confirmLocation() {
   if (!customerMarker) return;
 
-  const pos     = customerMarker.getPosition();
+  const pos     = customerMarker.getLatLng();
   const pending = customerMarker._pendingCoords || {};
 
   // Persist confirmed location
   confirmedLocation = {
-    latitude:         pos.lat(),
-    longitude:        pos.lng(),
-    formattedAddress: pending.formattedAddress || `${pos.lat().toFixed(5)}, ${pos.lng().toFixed(5)}`
+    latitude:         pos.lat,
+    longitude:        pos.lng,
+    formattedAddress: pending.formattedAddress || `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`
   };
 
   // Show status bar in the checkout form
@@ -975,66 +960,127 @@ function loadOrderSummary() {
 
   // Expose delivery fee globally so placeOrder() can include it in the order
   window._checkoutDeliveryFee = delivery;
+
+  // ── Minimum Order Validation in Checkout ──
+  const minCheck = (typeof MathuraQuickMart !== 'undefined' && typeof MathuraQuickMart.checkMinimumOrder === 'function')
+    ? MathuraQuickMart.checkMinimumOrder(subtotal)
+    : { isMet: true, enabled: false, message: '' };
+
+  const minBox = document.getElementById('checkout-min-order-box');
+  const minText = document.getElementById('checkout-min-order-text');
+  const placeBtn = document.getElementById('place-order-btn');
+
+  if (minCheck.enabled && !minCheck.isMet) {
+    if (minBox) {
+      minBox.style.display = 'block';
+      if (minText) minText.textContent = minCheck.message;
+    }
+    if (placeBtn) {
+      placeBtn.disabled = true;
+      placeBtn.setAttribute('data-min-order-blocked', 'true');
+      placeBtn.style.opacity = '0.55';
+      placeBtn.style.cursor = 'not-allowed';
+      placeBtn.title = minCheck.message;
+    }
+  } else {
+    if (minBox) minBox.style.display = 'none';
+    if (placeBtn) {
+      placeBtn.removeAttribute('data-min-order-blocked');
+      if (!MathuraQuickMart.storeStatus || MathuraQuickMart.storeStatus.isOpen !== false) {
+        placeBtn.disabled = false;
+        placeBtn.style.opacity = '1';
+        placeBtn.style.cursor = 'pointer';
+        placeBtn.title = '';
+      }
+    }
+  }
 }
 
 /* ─────────────────────────────────────────────────
-   ADDRESS SEARCH (Google Places Autocomplete)
+   ADDRESS SEARCH (Nominatim OpenStreetMap)
 ───────────────────────────────────────────────── */
-let _placesAutocomplete = null;
+let _autocompleteTimer = null;
 
 function initPlacesAutocomplete() {
   const input = document.getElementById('address-search');
-  if (!input || _placesAutocomplete) return;
+  if (!input || input._autocompleteInitialized) return;
+  input._autocompleteInitialized = true;
 
-  _placesAutocomplete = new google.maps.places.Autocomplete(input, {
-    componentRestrictions: { country: 'in' },
-    fields: ['geometry', 'formatted_address', 'address_components']
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const firstSugg = document.querySelector('#autocomplete-suggestions .suggestion-item');
+      if (firstSugg) firstSugg.click();
+    }
   });
 
-  // Prevent form submit on Enter
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
-
-  _placesAutocomplete.addListener('place_changed', async () => {
-    const place = _placesAutocomplete.getPlace();
-    if (!place.geometry) return;
-
-    const lat = place.geometry.location.lat();
-    const lng = place.geometry.location.lng();
-
-    // Move map marker to the selected place
-    await updateMarker(lat, lng);
-
-    // Auto-confirm without requiring manual map interaction
-    confirmedLocation = {
-      latitude:         lat,
-      longitude:        lng,
-      formattedAddress: place.formatted_address || `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
-      isManualEntry:    false
-    };
-
-    const bar  = document.getElementById('loc-status-bar');
-    const addr = document.getElementById('loc-status-addr');
-    if (addr) addr.textContent = place.formatted_address;
-    if (bar)  bar.classList.add('visible');
-
-    const trigBtn = document.getElementById('loc-trigger-btn');
-    if (trigBtn) {
-      trigBtn.innerHTML = '<span class="btn-icon">📍</span> Change Delivery Location';
-      trigBtn.style.background = 'linear-gradient(135deg,#065f46,#16a34a)';
+  document.addEventListener('click', (e) => {
+    const list = document.getElementById('autocomplete-suggestions');
+    if (list && !input.contains(e.target) && !list.contains(e.target)) {
+      list.style.display = 'none';
     }
   });
 }
 
-/** simulateAutocomplete — kept for backward compat; Places Autocomplete now handles suggestions natively */
-function simulateAutocomplete(val) {
-  // No-op: Google Places Autocomplete widget handles suggestions automatically
+async function simulateAutocomplete(val) {
+  const list = document.getElementById('autocomplete-suggestions');
+  if (!list) return;
+
+  clearTimeout(_autocompleteTimer);
+
+  if (!val || val.trim().length < 3) {
+    list.innerHTML = '';
+    list.style.display = 'none';
+    return;
+  }
+
+  _autocompleteTimer = setTimeout(async () => {
+    if (!window.MQMap) return;
+
+    try {
+      const results = await MQMap.searchAddress(val.trim());
+      if (!results || results.length === 0) {
+        list.innerHTML = '<div style="padding:10px 14px;color:var(--gray-500);font-size:13px;">No matching locations found in area</div>';
+        list.style.display = 'block';
+        return;
+      }
+
+      list.innerHTML = results.map(item => {
+        const title = item.formattedAddress.split(',')[0];
+        const safeAddr = item.formattedAddress.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        return `
+          <div class="suggestion-item"
+               style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--gray-100);font-size:13px;line-height:1.4;background:var(--white);transition:background 0.15s ease;"
+               onmouseover="this.style.background='var(--primary-pale)'"
+               onmouseout="this.style.background='var(--white)'"
+               onclick="selectSearchSuggestion('${safeAddr}', ${item.lat}, ${item.lng})">
+            <div style="font-weight:600;color:var(--gray-900);">📍 ${title}</div>
+            <div style="color:var(--gray-500);font-size:12px;margin-top:2px;">${item.formattedAddress}</div>
+          </div>
+        `;
+      }).join('');
+      list.style.display = 'block';
+    } catch (e) {
+      console.warn('Autocomplete search failed:', e);
+    }
+  }, 350);
 }
 
-/** selectSearchSuggestion — kept for backward compat; no longer used with Places Autocomplete */
 async function selectSearchSuggestion(address, lat, lon) {
   const parsedLat = parseFloat(lat);
   const parsedLon = parseFloat(lon);
 
+  const searchEl = document.getElementById('address-search');
+  if (searchEl) searchEl.value = address;
+
+  const list = document.getElementById('autocomplete-suggestions');
+  if (list) {
+    list.innerHTML = '';
+    list.style.display = 'none';
+  }
+
+  // Ensure map is ready and positioned
+  await initializeMap();
   await updateMarker(parsedLat, parsedLon);
 
   confirmedLocation = {
@@ -1066,96 +1112,114 @@ async function selectSearchSuggestion(address, lat, lon) {
  * saves customerLocation to Firestore, then navigates to confirmation.
  */
 async function placeOrder() {
-  // ── Verification: Store Status ──
-  if (MathuraQuickMart.storeStatus && MathuraQuickMart.storeStatus.isOpen === false) {
-    MathuraQuickMart.showStoreClosedModal();
-    return;
-  }
-
-  // ── Verification: User Authentication Required for Order Security ──
-  const user = MathuraQuickMart.state.user;
-  if (!user || !user.uid) {
-    MathuraQuickMart.toast('Please sign in or create an account to place an order', 'warning');
-    setTimeout(() => {
-      window.location.href = '/customer/login.html?redirect=' + encodeURIComponent(window.location.pathname);
-    }, 1200);
-    return;
-  }
-
-  // ── Validation: duplicate tap prevention ──
+  // ── 1. Immediate Double-Click Lock ──
   if (window._isPlacingOrder) return;
-
-  // ── Validation: delivery location ──
-  if (!confirmedLocation) {
-    const flat    = document.getElementById('flat-no')?.value.trim();
-    const street  = document.getElementById('street-address')?.value.trim();
-    const city    = document.getElementById('city')?.value.trim();
-    const state   = document.getElementById('state')?.value.trim();
-    const pin     = document.getElementById('pincode')?.value.trim();
-    const search  = document.getElementById('address-search')?.value.trim();
-
-    if (flat && street && city && pin) {
-      const builtAddress = search || [flat, street, city, state, pin].filter(Boolean).join(', ');
-      confirmedLocation = {
-        latitude:         SHOP_LAT,
-        longitude:        SHOP_LNG,
-        formattedAddress: builtAddress,
-        isManualEntry:    true
-      };
-    } else {
-      MathuraQuickMart.toast('📍 Please select your delivery location on the map.', 'error');
-      document.getElementById('loc-trigger-btn').scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
-    }
-  }
-
-  // ── Validation: address fields ──
-  const name   = document.getElementById('contact-name').value.trim();
-  const phone  = document.getElementById('contact-phone').value.trim();
-  const flat   = document.getElementById('flat-no').value.trim();
-  const street = document.getElementById('street-address').value.trim();
-  const pin    = document.getElementById('pincode').value.trim();
-
-  if (!name || !phone || !flat || !street || !pin) {
-    MathuraQuickMart.toast('Please fill in all address and contact details', 'error');
-    return;
-  }
-
-  // ── Validation: cart ──
-  const cart = MathuraQuickMart.getCart();
-  if (cart.length === 0) {
-    MathuraQuickMart.toast('Your cart is empty', 'error');
-    return;
-  }
-
   window._isPlacingOrder = true;
+
   const btn = document.getElementById('place-order-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Placing Order…'; }
-
-  const city  = document.getElementById('city').value.trim();
-  const state = document.getElementById('state').value.trim();
-
-  const orderData = {
-    userId:           user.uid,
-    customerName:     name,
-    customerPhone:    phone,
-    customerEmail:    user.email || '',
-    address:          `${flat}, ${street}, ${city} - ${pin}`,
-    paymentMethod:    paymentMethod.toUpperCase(),
-    subtotal:         MathuraQuickMart.getCartTotal(),
-    deliveryFee:      window._checkoutDeliveryFee || 0,
-    couponCode:       activeCoupon ? activeCoupon.code   : null,
-    discount:         activeCoupon ? activeCoupon.discount : 0,
-    items:            cart,
-    customerLocation: {
-      latitude:         confirmedLocation.latitude,
-      longitude:        confirmedLocation.longitude,
-      formattedAddress: confirmedLocation.formattedAddress,
-      timestamp:        new Date().toISOString()
-    }
-  };
+  let isRedirecting = false;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Placing Order…';
+  }
 
   try {
+    // ── Verification: Store Status ──
+    if (MathuraQuickMart.storeStatus && MathuraQuickMart.storeStatus.isOpen === false) {
+      MathuraQuickMart.showStoreClosedModal();
+      return;
+    }
+
+    // ── Verification: Minimum Order Amount ──
+    const cartSubtotal = MathuraQuickMart.getCartTotal();
+    const minOrderCheck = (typeof MathuraQuickMart !== 'undefined' && typeof MathuraQuickMart.checkMinimumOrder === 'function')
+      ? MathuraQuickMart.checkMinimumOrder(cartSubtotal)
+      : { isMet: true, enabled: false, message: '' };
+
+    if (minOrderCheck.enabled && !minOrderCheck.isMet) {
+      MathuraQuickMart.toast(`⚠️ ${minOrderCheck.message}`, 'error');
+      const minBox = document.getElementById('checkout-min-order-box');
+      if (minBox) minBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    // ── Verification: User Authentication Required for Order Security ──
+    const user = MathuraQuickMart.state.user;
+    if (!user || !user.uid) {
+      MathuraQuickMart.toast('Please sign in or create an account to place an order', 'warning');
+      isRedirecting = true;
+      setTimeout(() => {
+        window.location.href = '/customer/login.html?redirect=' + encodeURIComponent(window.location.pathname);
+      }, 1200);
+      return;
+    }
+
+    // ── Validation: delivery location ──
+    if (!confirmedLocation) {
+      const flat    = document.getElementById('flat-no')?.value.trim();
+      const street  = document.getElementById('street-address')?.value.trim();
+      const city    = document.getElementById('city')?.value.trim();
+      const state   = document.getElementById('state')?.value.trim();
+      const pin     = document.getElementById('pincode')?.value.trim();
+      const search  = document.getElementById('address-search')?.value.trim();
+
+      if (flat && street && city && pin) {
+        const builtAddress = search || [flat, street, city, state, pin].filter(Boolean).join(', ');
+        confirmedLocation = {
+          latitude:         SHOP_LAT,
+          longitude:        SHOP_LNG,
+          formattedAddress: builtAddress,
+          isManualEntry:    true
+        };
+      } else {
+        MathuraQuickMart.toast('📍 Please select your delivery location on the map.', 'error');
+        document.getElementById('loc-trigger-btn').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
+
+    // ── Validation: address fields ──
+    const name   = document.getElementById('contact-name').value.trim();
+    const phone  = document.getElementById('contact-phone').value.trim();
+    const flat   = document.getElementById('flat-no').value.trim();
+    const street = document.getElementById('street-address').value.trim();
+    const pin    = document.getElementById('pincode').value.trim();
+
+    if (!name || !phone || !flat || !street || !pin) {
+      MathuraQuickMart.toast('Please fill in all address and contact details', 'error');
+      return;
+    }
+
+    // ── Validation: cart ──
+    const cart = MathuraQuickMart.getCart();
+    if (cart.length === 0) {
+      MathuraQuickMart.toast('Your cart is empty', 'error');
+      return;
+    }
+
+    const city  = document.getElementById('city').value.trim();
+    const state = document.getElementById('state').value.trim();
+
+    const orderData = {
+      userId:           user.uid,
+      customerName:     name,
+      customerPhone:    phone,
+      customerEmail:    user.email || '',
+      address:          `${flat}, ${street}, ${city} - ${pin}`,
+      paymentMethod:    paymentMethod.toUpperCase(),
+      subtotal:         MathuraQuickMart.getCartTotal(),
+      deliveryFee:      window._checkoutDeliveryFee || 0,
+      couponCode:       activeCoupon ? activeCoupon.code   : null,
+      discount:         activeCoupon ? activeCoupon.discount : 0,
+      items:            cart,
+      customerLocation: {
+        latitude:         confirmedLocation.latitude,
+        longitude:        confirmedLocation.longitude,
+        formattedAddress: confirmedLocation.formattedAddress,
+        timestamp:        new Date().toISOString()
+      }
+    };
+
     const order = await API.placeOrder(orderData);
     saveCustomerLocation(order.id).catch(e => console.warn(e));
 
@@ -1163,19 +1227,22 @@ async function placeOrder() {
     MathuraQuickMart.toast('🎉 Order placed successfully!', 'success');
     localStorage.setItem('mathuraquickmart_last_order', JSON.stringify(order));
 
+    isRedirecting = true;
     setTimeout(() => {
       window.location.href = '/customer/order-confirmation.html';
     }, 500);
 
   } catch (err) {
     console.error('placeOrder error:', err);
-    window._isPlacingOrder = false;
-    if (!err.message || !err.message.startsWith('STORE_CLOSED:')) {
-      MathuraQuickMart.toast('Failed to place order. Please try again.', 'error');
-    }
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = paymentMethod === 'cod' ? '🛍️ Place Order (Cash on Delivery)' : '🛍️ Place Order (UPI on Delivery)';
+    const errMsg = err.message || 'Failed to place order. Please try again.';
+    MathuraQuickMart.toast(errMsg, 'error', 6000);
+  } finally {
+    if (!isRedirecting) {
+      window._isPlacingOrder = false;
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = paymentMethod === 'cod' ? '🛍️ Place Order (Cash on Delivery)' : '🛍️ Place Order (UPI on Delivery)';
+      }
     }
   }
 }
@@ -1225,6 +1292,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeLocationModal();
   });
+
+  window.addEventListener('order-rules-changed', loadOrderSummary);
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'mathuraquickmart_state' || e.key === 'mathura_order_rules') {
+      loadOrderSummary();
+    }
+  });
 });
 
 function sendCheckoutToWhatsApp() {
@@ -1234,6 +1308,11 @@ function sendCheckoutToWhatsApp() {
     return;
   }
   const subtotal = MathuraQuickMart.getCartTotal();
+  const ruleCheck = MathuraQuickMart.checkMinimumOrder ? MathuraQuickMart.checkMinimumOrder(subtotal) : { met: true };
+  if (!ruleCheck.met) {
+    MathuraQuickMart.toast(ruleCheck.message || 'Minimum order amount not reached', 'warning');
+    return;
+  }
   const discount = activeCoupon ? activeCoupon.discount : 0;
   const delivery = (subtotal < 499 && subtotal > 0) ? 40 : 0;
   const total = Math.max(0, subtotal + delivery - discount);

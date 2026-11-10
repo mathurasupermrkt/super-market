@@ -94,7 +94,7 @@
 
       <div class="form-group mb-4">
         <label class="form-label" id="username-label">Email ID</label>
-        <input type="email" class="form-input" id="login-email" placeholder="admin@mathuraquickmart.in" required>
+        <input type="email" class="form-input" id="login-email" placeholder="mathurasupermrkt@gmail.com" value="mathurasupermrkt@gmail.com" required>
       </div>
 
       <div class="form-group mb-6">
@@ -182,7 +182,7 @@
 
     if (role === 'admin') {
       titleEl.textContent     = 'Admin Login';
-      emailInput.placeholder  = 'admin@mathuraquickmart.in';
+      emailInput.placeholder  = 'mathurasupermrkt@gmail.com';
       if (promptEl) promptEl.style.display = 'none';
     } else {
       titleEl.textContent     = 'Delivery Rider Login';
@@ -252,8 +252,12 @@
         const userCredential = await authFns.signInWithEmailAndPassword(auth, email, password);
         const fbUser = userCredential.user;
 
+        const ADMIN_UID = '7SBL73wlj7OxKBsMExoJNhdrDTU2';
+        const ADMIN_EMAIL = 'mathurasupermrkt@gmail.com';
+        const isMasterAdmin = (fbUser.uid === ADMIN_UID || (fbUser.email && fbUser.email.toLowerCase() === ADMIN_EMAIL));
+
         let name          = fbUser.displayName || email.split('@')[0];
-        let firestoreRole  = null;
+        let firestoreRole  = isMasterAdmin ? 'admin' : null;
         let approvalStatus = 'approved';
 
         // Always fetch the Firestore profile — critical for role checking
@@ -263,16 +267,33 @@
             if (profileSnap.exists()) {
               const data     = profileSnap.data();
               name           = data.name || name;
-              firestoreRole  = data.role || null;
+              if (!isMasterAdmin) {
+                firestoreRole  = data.role || null;
+              }
               approvalStatus = data.approvalStatus || 'approved';
             }
           } catch (fsErr) {
             console.warn('Could not read Firestore profile:', fsErr);
           }
+
+          // If this is the master admin, guarantee Firestore record is marked as admin
+          if (isMasterAdmin) {
+            try {
+              await fs.setDoc(fs.doc(db, 'users', fbUser.uid), {
+                uid: fbUser.uid,
+                name: name || 'Admin Manager',
+                email: fbUser.email,
+                role: 'admin',
+                updatedAt: new Date().toISOString()
+              }, { merge: true });
+            } catch (seedErr) {
+              console.warn('Could not sync admin profile to Firestore:', seedErr);
+            }
+          }
         }
 
-        // Role mismatch – sign out and deny access
-        if (firestoreRole && firestoreRole !== currentRole) {
+        // Role mismatch – sign out and deny access (master admin bypasses)
+        if (!isMasterAdmin && firestoreRole && firestoreRole !== currentRole) {
           await authFns.signOut(auth);
           setLoading(false);
           MathuraQuickMart.toast(
@@ -298,10 +319,11 @@
         }
 
         // Successful login
-        const user = { uid: fbUser.uid, name, email: fbUser.email, role: firestoreRole || currentRole };
+        const finalRole = isMasterAdmin ? 'admin' : (firestoreRole || currentRole);
+        const user = { uid: fbUser.uid, name, email: fbUser.email, role: finalRole };
         MathuraQuickMart.login(user);
 
-        const redirect = (firestoreRole || currentRole) === 'admin'
+        const redirect = finalRole === 'admin'
           ? '/admin/dashboard.html'
           : '/delivery/dashboard.html';
         setTimeout(() => { window.location.href = redirect; }, 800);

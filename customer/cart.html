@@ -673,6 +673,24 @@
         </div>
         <div id="coupon-msg"></div>
       </div>
+      <!-- Minimum Order Warning Box -->
+      <div id="min-order-warning-box" style="display:none;margin-top:14px;background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:12px 14px;color:#92400e;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+        <div style="display:flex;align-items:flex-start;gap:8px;">
+          <span style="font-size:18px;line-height:1;">⚠️</span>
+          <div style="flex:1;">
+            <div id="min-order-warning-text" style="font-size:13px;font-weight:700;line-height:1.4;">
+              Minimum order amount is ₹299. Add ₹80 more to place your order.
+            </div>
+            <div style="margin-top:8px;background:#fef3c7;border-radius:99px;height:6px;overflow:hidden;">
+              <div id="min-order-progress-bar" style="background:#f59e0b;height:100%;width:0%;transition:width 0.3s ease;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#b45309;margin-top:4px;font-weight:600;">
+              <span id="min-order-current-subtotal">Current: ₹0</span>
+              <span id="min-order-target-subtotal">Target: ₹299</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <button class="btn-checkout-cta" id="btn-cart-checkout" onclick="proceedToCheckout()" aria-label="Proceed to Checkout">
         <span>Proceed to Checkout</span>
@@ -700,6 +718,15 @@
       return;
     }
     const subtotal = MathuraQuickMart.getCartTotal();
+    const minCheck = (typeof MathuraQuickMart !== 'undefined' && typeof MathuraQuickMart.checkMinimumOrder === 'function')
+      ? MathuraQuickMart.checkMinimumOrder(subtotal)
+      : { isMet: true, enabled: false, message: '' };
+
+    if (minCheck.enabled && !minCheck.isMet) {
+      MathuraQuickMart.toast(`⚠️ ${minCheck.message}`, 'warning');
+      return;
+    }
+
     const total = Math.max(0, subtotal - couponDiscount);
     const summary = {
       subtotal,
@@ -842,6 +869,50 @@
 
     if (subtotalEl) subtotalEl.textContent = `₹${subtotal}`;
     if (totalEl) totalEl.textContent = `₹${Math.round(total)}`;
+
+    // ── Minimum Order Amount Validation ──
+    const items = (typeof MathuraQuickMart !== 'undefined' && typeof MathuraQuickMart.getCart === 'function')
+      ? MathuraQuickMart.getCart()
+      : [];
+    const minCheck = (typeof MathuraQuickMart !== 'undefined' && typeof MathuraQuickMart.checkMinimumOrder === 'function')
+      ? MathuraQuickMart.checkMinimumOrder(subtotal)
+      : { isMet: true, enabled: false, message: '' };
+
+    const warningBox = document.getElementById('min-order-warning-box');
+    const warningText = document.getElementById('min-order-warning-text');
+    const progressBar = document.getElementById('min-order-progress-bar');
+    const currSubtotalEl = document.getElementById('min-order-current-subtotal');
+    const targetSubtotalEl = document.getElementById('min-order-target-subtotal');
+    const checkoutBtn = document.getElementById('btn-cart-checkout');
+
+    if (items.length > 0 && minCheck.enabled && !minCheck.isMet) {
+      if (warningBox) {
+        warningBox.style.display = 'block';
+        if (warningText) warningText.textContent = minCheck.message;
+        const pct = Math.min(100, Math.max(5, Math.round((subtotal / minCheck.minAmount) * 100)));
+        if (progressBar) progressBar.style.width = pct + '%';
+        if (currSubtotalEl) currSubtotalEl.textContent = `Current: ₹${subtotal}`;
+        if (targetSubtotalEl) targetSubtotalEl.textContent = `Target: ₹${minCheck.minAmount}`;
+      }
+      if (checkoutBtn) {
+        checkoutBtn.disabled = true;
+        checkoutBtn.setAttribute('data-min-order-blocked', 'true');
+        checkoutBtn.style.opacity = '0.55';
+        checkoutBtn.style.cursor = 'not-allowed';
+        checkoutBtn.title = minCheck.message;
+      }
+    } else {
+      if (warningBox) warningBox.style.display = 'none';
+      if (checkoutBtn) {
+        checkoutBtn.removeAttribute('data-min-order-blocked');
+        if (!MathuraQuickMart.storeStatus || MathuraQuickMart.storeStatus.isOpen !== false) {
+          checkoutBtn.disabled = false;
+          checkoutBtn.style.opacity = '1';
+          checkoutBtn.style.cursor = 'pointer';
+          checkoutBtn.title = '';
+        }
+      }
+    }
   }
 
   function applyCouponCode() {
@@ -901,6 +972,19 @@
       return;
     }
 
+    // Minimum Order Amount Verification
+    const subtotal = MathuraQuickMart.getCartTotal();
+    const minCheck = (typeof MathuraQuickMart !== 'undefined' && typeof MathuraQuickMart.checkMinimumOrder === 'function')
+      ? MathuraQuickMart.checkMinimumOrder(subtotal)
+      : { isMet: true, enabled: false, message: '' };
+
+    if (minCheck.enabled && !minCheck.isMet) {
+      MathuraQuickMart.toast(`⚠️ ${minCheck.message}`, 'warning');
+      const warningBox = document.getElementById('min-order-warning-box');
+      if (warningBox) warningBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
     // Save current coupon state so checkout page can use it
     if (appliedCoupon) {
       localStorage.setItem('mathuraquickmart_active_coupon', JSON.stringify({
@@ -926,8 +1010,9 @@
 
   window.addEventListener('user-data-ready', loadCart);
   window.addEventListener('db-ready', loadCart);
+  window.addEventListener('order-rules-changed', loadCart);
   window.addEventListener('storage', (e) => {
-    if (e.key === 'mathuraquickmart_state') {
+    if (e.key === 'mathuraquickmart_state' || e.key === 'mathura_order_rules') {
       loadCart();
     }
   });

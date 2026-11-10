@@ -49,11 +49,11 @@ async function seedDatabase(force = false) {
     }
 
     // Seed primary admin profile
-    const adminUid = 'KVai9GaRYDfxRHdzledvvwIK7La2';
+    const adminUid = '7SBL73wlj7OxKBsMExoJNhdrDTU2';
     writeOps.push(setDoc(doc(db, 'users', adminUid), {
       uid: adminUid,
       name: "Admin Manager",
-      email: "vikramsenthilkumar164@gmail.com",
+      email: "mathurasupermrkt@gmail.com",
       role: "admin",
       createdAt: new Date().toISOString()
     }, { merge: true }));
@@ -72,7 +72,7 @@ async function seedDatabase(force = false) {
 
 // Seed admin profile
 async function seedAdminProfile(uid) {
-  uid = uid || 'KVai9GaRYDfxRHdzledvvwIK7La2';
+  uid = uid || '7SBL73wlj7OxKBsMExoJNhdrDTU2';
   if (!window.FirebaseDB || !window.Firestore) {
     console.error("Firebase is not initialized yet.");
     return;
@@ -86,7 +86,7 @@ async function seedAdminProfile(uid) {
     await setDoc(doc(db, 'users', uid), {
       uid: uid,
       name: "Admin Manager",
-      email: "vikramsenthilkumar164@gmail.com",
+      email: "mathurasupermrkt@gmail.com",
       role: "admin",
       createdAt: new Date().toISOString()
     }, { merge: true });

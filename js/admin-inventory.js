@@ -158,24 +158,55 @@ export function initInventoryModule() {
     const fs = window.Firestore;
     const db = window.FirebaseDB;
     try {
-      // Fetch from 'inventory' collection, but 'products' is the source of truth for display
+      // 1. Load categories into the inventory filter if needed
+      const catSelect = document.getElementById('inv-filter-category');
+      if (catSelect && catSelect.options.length <= 1) {
+        try {
+          const catSnap = await fs.getDocs(fs.collection(db, 'categories'));
+          const catNames = new Set();
+          catSnap.forEach(d => {
+            const data = d.data();
+            if (data.name) catNames.add(data.name);
+          });
+          if (catNames.size > 0) {
+            const currentCatVal = catSelect.value || 'all';
+            catSelect.innerHTML = '<option value="all">All Categories</option>' +
+              Array.from(catNames).sort().map(name => `<option value="${name}">${name}</option>`).join('');
+            catSelect.value = currentCatVal;
+          }
+        } catch (catErr) {
+          console.warn("Could not load categories for inventory filter:", catErr);
+        }
+      }
+
+      // Fetch from 'products' collection
       const snap = await fs.getDocs(fs.collection(db, 'products'));
       let products = [];
       snap.forEach(doc => products.push({ id: doc.id, ...doc.data() }));
 
+      // Cache globally for inventory lookups
+      window._cachedInventoryProducts = products;
+
       // Apply Filters
-      const search = (document.getElementById('inv-search')?.value || '').toLowerCase();
+      const search = (document.getElementById('inv-search')?.value || '').toLowerCase().trim();
       const stockFilter = document.getElementById('inv-filter-stock')?.value || 'all';
+      const categoryFilter = document.getElementById('inv-filter-category')?.value || 'all';
 
       if (search) {
         products = products.filter(p => 
           (p.name || '').toLowerCase().includes(search) || 
-          (p.barcode || '').toLowerCase().includes(search)
+          (p.barcode || '').toLowerCase().includes(search) ||
+          (p.category || '').toLowerCase().includes(search) ||
+          (p.supplierName || p.supplier || '').toLowerCase().includes(search)
         );
       }
 
+      if (categoryFilter && categoryFilter !== 'all') {
+        products = products.filter(p => (p.category || '').toLowerCase() === categoryFilter.toLowerCase());
+      }
+
       if (stockFilter === 'low') {
-        products = products.filter(p => p.stock > 0 && p.stock <= 10);
+        products = products.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= 10);
       } else if (stockFilter === 'out') {
         products = products.filter(p => !p.stock || p.stock <= 0);
       }
@@ -187,18 +218,18 @@ export function initInventoryModule() {
       }
 
       tbody.innerHTML = products.map(p => {
-        let stockClass = p.stock > 10 ? 'badge-green' : (p.stock > 0 ? 'badge-orange' : 'badge-red');
-        let stockLabel = p.stock > 10 ? 'In Stock' : (p.stock > 0 ? 'Low Stock' : 'Out of Stock');
+        const safeStock = Math.max(0, parseInt(p.stock) || 0);
+        let stockClass = safeStock > 10 ? 'badge-green' : (safeStock > 0 ? 'badge-orange' : 'badge-red');
 
         return `
         <tr>
           <td><img src="${p.image || p.image_url || 'https://via.placeholder.com/40'}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;"></td>
-          <td><strong>${p.name}</strong></td>
+          <td><strong>${p.name || 'Unnamed'}</strong></td>
           <td>${p.barcode || p.sku || 'N/A'}</td>
           <td>${p.category || 'N/A'}</td>
           <td>${p.supplierName || p.supplier || 'N/A'}</td>
           <td>
-            <span class="badge ${stockClass}">${p.stock || 0}</span>
+            <span class="badge ${stockClass}">${safeStock}</span>
           </td>
           <td>${p.batch || 'N/A'}</td>
           <td>${p.expiry || 'N/A'}</td>

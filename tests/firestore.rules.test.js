@@ -62,6 +62,12 @@ beforeEach(async () => {
 
     await setDoc(doc(db, "users/driver1"), {
       role: "delivery",
+      approvalStatus: "approved",
+    });
+
+    await setDoc(doc(db, "users/pendingDriver"), {
+      role: "delivery",
+      approvalStatus: "pending",
     });
 
     await setDoc(doc(db, "users/admin1"), {
@@ -180,11 +186,24 @@ test("customer cannot read another customer's order", async () => {
 // 3. CUSTOMER ORDER CREATION
 // --------------------------------------------------
 
-test("customer can create their own pending order", async () => {
+test("customer cannot create an order directly in Firestore", async () => {
   const db = userContext("customer1").firestore();
 
-  await assertSucceeds(
+  await assertFails(
     setDoc(doc(db, "orders/newOrder"), {
+      userId: "customer1",
+      total: 150,
+      status: "pending",
+      driverId: null,
+    })
+  );
+});
+
+test("admin can create an order directly in Firestore", async () => {
+  const db = userContext("admin1").firestore();
+
+  await assertSucceeds(
+    setDoc(doc(db, "orders/adminCreatedOrder"), {
       userId: "customer1",
       total: 150,
       status: "pending",
@@ -221,13 +240,14 @@ test("customer cannot change the order total", async () => {
 });
 
 // --------------------------------------------------
-// 5. DELIVERY PARTNER ACCEPTANCE
+// --------------------------------------------------
+// 5. DELIVERY PARTNER ASSIGNMENT RESTRICTION
 // --------------------------------------------------
 
-test("delivery partner can accept an unassigned order", async () => {
+test("delivery partner cannot directly accept or self-assign an unassigned order", async () => {
   const db = userContext("driver1").firestore();
 
-  await assertSucceeds(
+  await assertFails(
     updateDoc(doc(db, "orders/order1"), {
       driverId: "driver1",
       driverName: "Test Driver",
@@ -319,13 +339,14 @@ test("customer cannot cancel another customer's order", async () => {
 });
 
 // --------------------------------------------------
-// 8. DELIVERY REQUEST DECLINE
+// --------------------------------------------------
+// 8. DELIVERY REQUEST DECLINE RESTRICTION
 // --------------------------------------------------
 
-test("delivery partner can decline an unassigned order", async () => {
+test("delivery partner cannot modify an unassigned order to decline it", async () => {
   const db = userContext("driver1").firestore();
 
-  await assertSucceeds(
+  await assertFails(
     updateDoc(doc(db, "orders/order1"), {
       declinedDrivers: ["driver1"],
     })
@@ -365,6 +386,32 @@ test("admin can update an order", async () => {
   );
 });
 
+test("untrusted user with admin@ prefix cannot update order", async () => {
+  const db = testEnv.authenticatedContext("fakeAdmin", {
+    email: "admin@attacker.test",
+    email_verified: true,
+  }).firestore();
+
+  await assertFails(
+    updateDoc(doc(db, "orders/order1"), {
+      status: "confirmed",
+    })
+  );
+});
+
+test("unverified admin email cannot update order", async () => {
+  const db = testEnv.authenticatedContext("unverifiedAdmin", {
+    email: "mathurasupermrkt@gmail.com",
+    email_verified: false,
+  }).firestore();
+
+  await assertFails(
+    updateDoc(doc(db, "orders/order1"), {
+      status: "confirmed",
+    })
+  );
+});
+
 // --------------------------------------------------
 // 10. STORE-CLOSED RESTRICTION
 // --------------------------------------------------
@@ -390,6 +437,104 @@ test("customer cannot create an order when the store is closed", async () => {
 });
 
 // --------------------------------------------------
+// 10B. MINIMUM ORDER AMOUNT RESTRICTION
+// --------------------------------------------------
+
+test("customer cannot create an order below minimum order amount when enabled", async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(
+      doc(context.firestore(), "settings/orderRules"),
+      {
+        minimumOrderAmount: 299,
+        minimumOrderEnabled: true
+      }
+    );
+  });
+
+  const db = userContext("customer1").firestore();
+
+  await assertFails(
+    setDoc(doc(db, "orders/belowMinOrder"), {
+      userId: "customer1",
+      subtotal: 199,
+      total: 199,
+      status: "pending",
+      driverId: null,
+    })
+  );
+});
+
+test("customer cannot create an order directly even with amount meeting minimum", async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(
+      doc(context.firestore(), "settings/orderRules"),
+      {
+        minimumOrderAmount: 299,
+        minimumOrderEnabled: true
+      }
+    );
+  });
+
+  const db = userContext("customer1").firestore();
+
+  await assertFails(
+    setDoc(doc(db, "orders/validMinOrder"), {
+      userId: "customer1",
+      subtotal: 299,
+      total: 299,
+      status: "pending",
+      driverId: null,
+    })
+  );
+});
+
+test("customer cannot create an order directly when minimum order is disabled", async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(
+      doc(context.firestore(), "settings/orderRules"),
+      {
+        minimumOrderAmount: 299,
+        minimumOrderEnabled: false
+      }
+    );
+  });
+
+  const db = userContext("customer1").firestore();
+
+  await assertFails(
+    setDoc(doc(db, "orders/disabledMinOrder"), {
+      userId: "customer1",
+      subtotal: 150,
+      total: 150,
+      status: "pending",
+      driverId: null,
+    })
+  );
+});
+
+test("non-admin customer cannot update order rules setting", async () => {
+  const db = userContext("customer1").firestore();
+
+  await assertFails(
+    setDoc(doc(db, "settings/orderRules"), {
+      minimumOrderAmount: 50,
+      minimumOrderEnabled: true
+    })
+  );
+});
+
+test("admin can update order rules setting", async () => {
+  const db = userContext("admin1").firestore();
+
+  await assertSucceeds(
+    setDoc(doc(db, "settings/orderRules"), {
+      minimumOrderAmount: 399,
+      minimumOrderEnabled: true
+    })
+  );
+});
+
+// --------------------------------------------------
 // 11. CART SECURITY
 // --------------------------------------------------
 
@@ -406,8 +551,10 @@ test("customer can add an item to their own cart", async () => {
 
   await assertSucceeds(
     setDoc(doc(db, "users/customer1/cart/product3"), {
-      productId: "product3",
-      quantity: 1,
+      id: "product3",
+      name: "Fresh Bread",
+      price: 45,
+      qty: 1,
     })
   );
 });
@@ -515,3 +662,60 @@ test("admin can update delivery partner data", async () => {
     })
   );
 });
+
+// --------------------------------------------------
+// 14. PENDING RIDER & UNASSIGNED ORDER SECURITY
+// --------------------------------------------------
+
+test("pending delivery applicant cannot perform delivery operations", async () => {
+  const db = userContext("pendingDriver").firestore();
+
+  await assertFails(
+    getDoc(doc(db, "orders/order2"))
+  );
+
+  await assertFails(
+    updateDoc(doc(db, "orders/order2"), {
+      status: "out-delivery",
+      updatedAt: "test-time",
+    })
+  );
+});
+
+test("pending delivery applicant cannot update telemetry", async () => {
+  const db = userContext("pendingDriver").firestore();
+
+  await assertFails(
+    setDoc(doc(db, "deliveryPartners/pendingDriver"), {
+      name: "Pending Driver",
+      status: "Available",
+    })
+  );
+});
+
+test("approved delivery partner cannot read unassigned orders", async () => {
+  const db = userContext("driver1").firestore();
+
+  await assertFails(
+    getDoc(doc(db, "orders/order1"))
+  );
+});
+
+test("delivery partner cannot modify protected fields on assigned orders", async () => {
+  const db = userContext("driver1").firestore();
+
+  await assertFails(
+    updateDoc(doc(db, "orders/order2"), {
+      total: 10,
+      updatedAt: "test-time",
+    })
+  );
+
+  await assertFails(
+    updateDoc(doc(db, "orders/order2"), {
+      userId: "hacked-user",
+      updatedAt: "test-time",
+    })
+  );
+});
+

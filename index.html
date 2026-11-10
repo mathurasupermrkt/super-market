@@ -16,7 +16,10 @@
   <link rel="icon" type="image/svg+xml" href="/images/icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="styles/main.css">
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCrhrfd6_Hxh29dNJFRIbFatHbNrseHYEU" defer></script>
+  <!-- Leaflet 1.9.4 Map Styles & Script -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="/js/maps.js"></script>
   <style>
     /* ---- Navbar ---- */
     .navbar {
@@ -224,6 +227,7 @@
     }
 
     .nav-cart-btn {
+      position: relative;
       display: flex;
       align-items: center;
       gap: var(--sp-2);
@@ -1796,7 +1800,7 @@
           <div class="dropdown-menu" id="user-menu" style="display:none;">
             <div data-auth style="display:none">
               <a class="dropdown-item" href="#" onclick="MathuraQuickMart.goToDashboard(event)">📊 Dashboard</a>
-              <a class="dropdown-item" href="/customer/my-orders.html">📦 My Orders</a>
+              <a class="dropdown-item" href="/customer/my-orders.html" onclick="MathuraQuickMart.goToOrders(event)">📦 My Orders</a>
               <a class="dropdown-item" href="/customer/returns.html">🔄 Returns & Refunds</a>
               <a class="dropdown-item" href="/customer/profile.html">👤 Profile</a>
               <a class="dropdown-item" href="/customer/wishlist.html">❤️ Wishlist</a>
@@ -2258,7 +2262,7 @@
         <div class="footer-col">
           <h4>Quick Links</h4>
           <div class="footer-links">
-            <a href="/customer/home.html">Home</a>
+            <a href="/index.html">Home</a>
             <a href="/customer/products.html">All Products</a>
             <a href="/customer/products.html?filter=deals">Daily Offers</a>
             <a href="/customer/products.html?filter=featured">Featured</a>
@@ -2404,6 +2408,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const total = MathuraQuickMart.getCartTotal();
       const el = document.getElementById('nav-cart-total');
       if (el) el.textContent = total > 0 ? '₹' + total : '₹0';
+      if (typeof updateProductCardButtons === 'function') {
+        updateProductCardButtons();
+      }
     }
 
     // ---- Countdown Timer ----
@@ -3059,28 +3066,28 @@ document.addEventListener("DOMContentLoaded", () => {
       // Show personalized section immediately for non-logged-in users (fast path)
       renderPersonalized();
 
-      // Initialize Google Map
-      if (document.getElementById('map') && typeof google !== 'undefined' && google.maps) {
-        const storeLatLng = { lat: 9.3754, lng: 78.8691 }; // Madakottan, Ramanathapuram
-        const map = new google.maps.Map(document.getElementById('map'), {
-          center: storeLatLng,
-          zoom: 15,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-          mapTypeId: 'satellite'
-        });
-        const marker = new google.maps.Marker({
-          position: storeLatLng,
-          map: map,
-          title: 'Mathura Quick Mart'
-        });
-        const infoWindow = new google.maps.InfoWindow({
-          content: '<b>Mathura Quick Mart</b><br>Madakottan, Ramanathapuram'
-        });
-        infoWindow.open(map, marker);
-        marker.addListener('click', () => infoWindow.open(map, marker));
-      }
+      // Initialize Leaflet Store Map
+      (async function initStoreMap() {
+        const mapEl = document.getElementById('map');
+        if (!mapEl || typeof L === 'undefined' || !window.MQMap) return;
+        try {
+          const store = await MQMap.getStoreLocation();
+          const map = MQMap.createMap('map', {
+            center: store,
+            zoom: 16
+          });
+          if (map) {
+            const marker = MQMap.createStoreMarker(store.lat, store.lng, store);
+            marker.addTo(map);
+            marker.openPopup();
+            MQMap.addRecenterButton(map, () => {
+              map.setView([store.lat, store.lng], 16, { animate: true });
+            });
+          }
+        } catch (e) {
+          console.warn('Store map init error:', e);
+        }
+      })();
 
       // Re-render when database is ready
       const onDbReady = () => {

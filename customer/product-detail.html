@@ -84,6 +84,7 @@
     .nav-action-btn:hover { background: var(--gray-50); color: var(--primary); }
     .nav-action-label { font-size: 9px; font-weight: var(--fw-semi); }
     .nav-cart-btn {
+      position: relative;
       display: flex;
       align-items: center;
       gap: var(--sp-2);
@@ -297,7 +298,7 @@
         <div class="dropdown-menu" id="user-menu" style="display:none;">
           <div data-auth style="display:none">
             <a class="dropdown-item" href="#" onclick="MathuraQuickMart.goToDashboard(event)">📊 Dashboard</a>
-            <a class="dropdown-item" href="/customer/my-orders.html">📦 My Orders</a>
+            <a class="dropdown-item" href="/customer/my-orders.html" onclick="MathuraQuickMart.goToOrders(event)">📦 My Orders</a>
             <a class="dropdown-item" href="/customer/returns.html">🔄 Returns & Refunds</a>
             <a class="dropdown-item" href="/customer/profile.html">👤 Profile</a>
             <div class="dropdown-divider"></div>
@@ -553,6 +554,11 @@
     document.getElementById('review-modal').classList.add('hidden');
   }
 
+  // Keyboard: Escape closes the review modal
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeReviewModal();
+  });
+
   function setReviewRating(rating) {
     reviewRatingInput = rating;
     const stars = document.querySelectorAll('#stars-input span');
@@ -562,17 +568,24 @@
   }
 
   function submitReview() {
-    const name = document.getElementById('review-name').value;
-    const comment = document.getElementById('review-comment').value;
+    const user = MathuraQuickMart.state.user;
+    if (!user) {
+      MathuraQuickMart.toast('Please log in to submit a review.', 'error');
+      return;
+    }
 
-    if (!name || !comment) {
-      MathuraQuickMart.toast('Please fill all review fields', 'error');
+    const name = document.getElementById('review-name').value.trim() || user.name || user.email.split('@')[0];
+    const comment = document.getElementById('review-comment').value.trim();
+
+    if (!comment) {
+      MathuraQuickMart.toast('Please write your review before submitting.', 'error');
       return;
     }
 
     const review = {
       id: Date.now(),
       productId: activeProduct.id,
+      userId: user.uid,
       user: name,
       rating: reviewRatingInput,
       date: new Date().toISOString().split('T')[0],
@@ -680,23 +693,28 @@
     }
 
     // Load reviews
-    const reviews = API.reviews.filter(r => r.productId === product.id || product.id === 1);
-    document.getElementById('reviews-list').innerHTML = reviews.map(r => `
-      <div class="review-card">
-        <div class="review-header">
-          <div class="review-user">
-            <div class="review-avatar">${r.user.charAt(0)}</div>
-            <div>
-              <div style="font-weight:var(--fw-semi);">${r.user}</div>
-              ${r.verified ? '<span class="badge badge-green" style="font-size:9px;">Verified Buyer</span>' : ''}
+    const reviews = API.reviews.filter(r => r.productId === product.id);
+    const reviewsList = document.getElementById('reviews-list');
+    if (reviews.length === 0) {
+      reviewsList.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--gray-400);font-size:var(--text-sm);">No reviews yet for this product. Be the first to review it!</div>';
+    } else {
+      reviewsList.innerHTML = reviews.map(r => `
+        <div class="review-card">
+          <div class="review-header">
+            <div class="review-user">
+              <div class="review-avatar">${r.user.charAt(0)}</div>
+              <div>
+                <div style="font-weight:var(--fw-semi);">${r.user}</div>
+                ${r.verified ? '<span class="badge badge-green" style="font-size:9px;">Verified Buyer</span>' : ''}
+              </div>
             </div>
+            <div class="stars">${renderStars(r.rating)}</div>
           </div>
-          <div class="stars">${renderStars(r.rating)}</div>
+          <p style="font-size:var(--text-sm);color:var(--gray-600);">${r.comment}</p>
+          <div style="font-size:10px;color:var(--gray-400);margin-top:8px;">Reviewed on ${r.date}</div>
         </div>
-        <p style="font-size:var(--text-sm);color:var(--gray-600);">${r.comment}</p>
-        <div style="font-size:10px;color:var(--gray-400);margin-top:8px;">Reviewed on ${r.date}</div>
-      </div>
-    `).join('');
+      `).join('');
+    }
 
     // Load recently viewed
     const recents = MathuraQuickMart.state.recentlyViewed.filter(p => p.id !== product.id);

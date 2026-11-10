@@ -156,6 +156,7 @@
     .nav-action-btn:hover { background: var(--gray-50); color: var(--primary); }
     .nav-action-label { font-size: 9px; font-weight: var(--fw-semi); }
     .nav-cart-btn {
+      position: relative;
       display: flex;
       align-items: center;
       gap: var(--sp-2);
@@ -387,7 +388,7 @@
         <div class="dropdown-menu" id="user-menu" style="display:none;">
           <div data-auth style="display:none">
             <a class="dropdown-item" href="#" onclick="MathuraQuickMart.goToDashboard(event)">📊 Dashboard</a>
-            <a class="dropdown-item" href="/customer/my-orders.html">📦 My Orders</a>
+            <a class="dropdown-item" href="/customer/my-orders.html" onclick="MathuraQuickMart.goToOrders(event)">📦 My Orders</a>
             <a class="dropdown-item" href="/customer/returns.html">🔄 Returns & Refunds</a>
             <a class="dropdown-item" href="/customer/profile.html">👤 Profile</a>
             <a class="dropdown-item" href="/customer/wishlist.html">❤️ Wishlist</a>

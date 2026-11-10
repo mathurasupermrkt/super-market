@@ -176,7 +176,16 @@
 
   function renderOrders() {
     const allOrders = MathuraQuickMart.getUserOrders();
-    const filtered = currentFilter === 'all' ? allOrders : allOrders.filter(o => o.status === currentFilter);
+    const filtered = currentFilter === 'all' ? allOrders : allOrders.filter(o => {
+      const s = (o.status || '').toLowerCase();
+      if (currentFilter === 'processing') {
+        return ['processing', 'confirmed', 'pending', 'packed', 'assigned'].includes(s);
+      }
+      if (currentFilter === 'shipped') {
+        return ['shipped', 'out-delivery', 'out-for-delivery'].includes(s);
+      }
+      return s === currentFilter;
+    });
     const container = document.getElementById('orders-list');
 
     if (filtered.length === 0) {
@@ -216,7 +225,7 @@
       `;
 
       const trackBtn = (order.status !== 'delivered' && order.status !== 'cancelled') 
-        ? `<a href="/customer/order-tracking.html" class="btn btn-primary btn-sm">📍 Track Order</a>` 
+        ? `<a href="/customer/order-tracking.html?orderId=${encodeURIComponent(order.id)}" class="btn btn-primary btn-sm">📍 Track Order</a>` 
         : '';
 
       return `
@@ -262,15 +271,20 @@
       MathuraQuickMart.toast('🛒 All items added to cart!', 'success');
       setTimeout(() => { window.location.href = '/customer/cart.html'; }, 1000);
     } else {
-      const sample = API.getProduct(1) || API.products[0];
-      if (sample) MathuraQuickMart.addToCart(sample, 1);
-      MathuraQuickMart.toast('🛒 Sample items added to cart!', 'success');
-      setTimeout(() => { window.location.href = '/customer/cart.html'; }, 1000);
+      MathuraQuickMart.toast('⚠️ Unable to reorder: item details not found for this order.', 'error');
     }
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
     if (!MathuraQuickMart.requireAuth()) return;
+
+    // Securely verify whether the authenticated user is an admin
+    const isAdmin = await MathuraQuickMart.verifyIsAdmin();
+    if (isAdmin) {
+      window.location.replace('/admin/dashboard.html?tab=orders');
+      return;
+    }
+
     renderOrders();
     window.addEventListener('user-data-ready', renderOrders);
     window.addEventListener('db-ready', renderOrders);

@@ -177,24 +177,28 @@
 
       <!-- SECTION: Payment Methods -->
       <div id="section-payments" class="dash-section hidden">
-        <h1 class="products-title mb-6">Saved Payment Methods</h1>
-        <div class="dash-card" style="max-width:500px;">
-          <h2 style="font-size:var(--text-base);font-weight:var(--fw-bold);margin-bottom:var(--sp-4);">Linked wallets & Cards</h2>
-          <div class="payment-option">
-            <div class="payment-icon">📱</div>
+        <h1 class="products-title mb-6">Payment Options &amp; Wallets</h1>
+        <div class="dash-card" style="max-width:540px;">
+          <h2 style="font-size:var(--text-base);font-weight:var(--fw-bold);margin-bottom:var(--sp-4);">Accepted Payment Modes</h2>
+          <div class="payment-option selected mb-3" style="border:1px solid var(--primary-light);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px;">
+            <div class="payment-icon" style="font-size:1.5rem;">💵</div>
             <div>
-              <div style="font-weight:var(--fw-bold);">Paytm Wallet</div>
-              <div style="font-size:11px;color:var(--gray-500);">Linked: +91 98765 43210</div>
+              <div style="font-weight:var(--fw-bold);font-size:14px;">Cash on Delivery (COD)</div>
+              <div style="font-size:12px;color:var(--gray-500);">Pay cash at your doorstep upon order arrival</div>
             </div>
-            <span class="badge badge-green style='margin-left:auto;'">Primary</span>
+            <span class="badge badge-green" style="margin-left:auto;">Available</span>
           </div>
-          <div class="payment-option">
-            <div class="payment-icon">💳</div>
+          <div class="payment-option mb-3" style="border:1px solid var(--gray-200);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px;">
+            <div class="payment-icon" style="font-size:1.5rem;">📱</div>
             <div>
-              <div style="font-weight:var(--fw-bold);">HDFC Credit Card</div>
-              <div style="font-size:11px;color:var(--gray-500);">Ends in **** 4958</div>
+              <div style="font-weight:var(--fw-bold);font-size:14px;">UPI on Delivery</div>
+              <div style="font-size:12px;color:var(--gray-500);">Scan QR / GPay / PhonePe / Paytm on delivery</div>
             </div>
+            <span class="badge badge-blue" style="margin-left:auto;">Instant</span>
           </div>
+          <p style="font-size:12px;color:var(--gray-400);margin-top:12px;line-height:1.5;">
+            🔒 Online card &amp; netbanking gateways are securely verified during checkout. No stored card credentials required.
+          </p>
         </div>
       </div>
       <!-- SECTION: Customer Feedback -->
@@ -345,12 +349,7 @@
         window.location.href = '/customer/cart.html';
       }, 1000);
     } else {
-      const sample = API.getProduct(1) || API.products[0];
-      if (sample) MathuraQuickMart.addToCart(sample, 1);
-      MathuraQuickMart.toast('🛒 Sample items added to cart!', 'success');
-      setTimeout(() => {
-        window.location.href = '/customer/cart.html';
-      }, 1000);
+      MathuraQuickMart.toast('⚠️ Unable to reorder: item details not found for this order.', 'error');
     }
   }
 
