@@ -1011,6 +1011,7 @@
   window.addEventListener('user-data-ready', loadCart);
   window.addEventListener('db-ready', loadCart);
   window.addEventListener('order-rules-changed', loadCart);
+  window.addEventListener('cart-updated', loadCart);
   window.addEventListener('storage', (e) => {
     if (e.key === 'mathuraquickmart_state' || e.key === 'mathura_order_rules') {
       loadCart();

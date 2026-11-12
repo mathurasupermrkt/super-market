@@ -19,6 +19,8 @@ import {
   updatePassword,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   connectAuthEmulator
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import {
@@ -52,13 +54,28 @@ try {
   const auth = getAuth(app);
   const functions = getFunctions(app);
 
-  // ── LOCAL EMULATOR ISOLATION (localhost / 127.0.0.1) ──
-  // Immediately establish local emulator connections before ANY application operations.
-  // Fail closed: Do NOT silently fall back to production if an emulator connection fails.
+  // ── ENVIRONMENT SEPARATION: REAL FIREBASE (DEFAULT) vs ISOLATED EMULATORS ──
+  // By default, the application connects to Real Firebase Authentication and Real Cloud Firestore
+  // on both local development (localhost / 127.0.0.1) and production (mathura-supermrkt.vercel.app).
+  // This enables genuine Google OAuth sign-in (accounts.google.com) and authentic cloud token verification.
+  //
+  // To protect against split-brain states (mixing real Auth with local emulator Firestore),
+  // emulators are never silently or partially connected.
+  //
+  // For isolated offline testing, local emulators can be explicitly enabled:
+  // 1. window.__USE_FIREBASE_EMULATORS__ === true
+  // 2. localStorage.getItem('mathura_use_emulators') === 'true'
+  // 3. URL parameter: ?emulator=true
   const isLocalEnv = typeof window !== 'undefined' && 
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-  if (isLocalEnv) {
+  const isExplicitEmulatorRequested = isLocalEnv && (
+    (typeof window !== 'undefined' && window.__USE_FIREBASE_EMULATORS__ === true) ||
+    (typeof window !== 'undefined' && window.location && new URLSearchParams(window.location.search).get('emulator') === 'true') ||
+    (typeof localStorage !== 'undefined' && localStorage.getItem('mathura_use_emulators') === 'true')
+  );
+
+  if (isExplicitEmulatorRequested) {
     if (!window._firebaseEmulatorsConnected) {
       try {
         const host = window.location.hostname;
@@ -73,7 +90,7 @@ try {
         connectAuthEmulator(auth, `http://${host}:9099`, { disableWarnings: true });
 
         window._firebaseEmulatorsConnected = true;
-        console.log(`🔒 [Local Dev Isolation] Connected to Firebase Emulators on ${host} (Functions:5001, Firestore:8080, Auth:9099)`);
+        console.log(`🔒 [Isolated Emulator Mode] Connected to Firebase Emulators on ${host} (Functions:5001, Firestore:8080, Auth:9099)`);
       } catch (emuErr) {
         // FAIL CLOSED: Prevent any operations from leaking to production
         window.firebaseIsReady = false;
@@ -90,6 +107,8 @@ try {
         throw new Error(`EMULATOR_ISOLATION_FAILED: ${emuErr.message}`);
       }
     }
+  } else {
+    console.log(`🌐 [Live Firebase Mode] Connected directly to Real Firebase Project (${firebaseConfig.projectId}) — Real Google Sign-In & Cloud Firestore`);
   }
 
   // Expose Functions to window
@@ -137,6 +156,8 @@ try {
     updatePassword,
     GoogleAuthProvider,
     signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
     connectAuthEmulator
   };
 

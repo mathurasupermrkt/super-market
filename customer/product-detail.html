@@ -364,14 +364,16 @@
         No description available.
       </p>
 
-      <div class="flex items-center gap-3 mt-4 flex-wrap">
-        <div class="qty-selector">
-          <button class="qty-btn" onclick="adjustQty(-1)">-</button>
-          <div class="qty-value" id="qty-val">1</div>
-          <button class="qty-btn" onclick="adjustQty(1)">+</button>
+      <div class="flex items-center gap-3 mt-4 flex-wrap" id="detail-actions-row">
+        <!-- Quantity counter shown when product is in cart -->
+        <div class="qty-selector" id="detail-qty-selector" style="display:none;height:48px;">
+          <button class="qty-btn" onclick="updateDetailCartQty(-1)" aria-label="Decrease quantity" style="height:48px;width:44px;">-</button>
+          <div class="qty-value" id="qty-val" style="font-size:16px;">1</div>
+          <button class="qty-btn" onclick="updateDetailCartQty(1)" aria-label="Increase quantity" style="height:48px;width:44px;">+</button>
         </div>
 
-        <button class="btn btn-primary btn-lg" onclick="addToCartDetailed()" style="flex:1;min-width:140px;">
+        <!-- Add to cart button shown when product is not in cart -->
+        <button class="btn btn-primary btn-lg" id="detail-add-to-cart-btn" onclick="addToCartDetailed()" style="flex:1;min-width:160px;height:48px;">
           🛒 Add to Cart
         </button>
         <button class="btn btn-whatsapp btn-lg" onclick="askProductOnWhatsApp()" style="flex:1;min-width:160px;">
@@ -379,6 +381,9 @@
         </button>
         <button class="btn btn-outline btn-icon-lg" onclick="toggleWishDetailed()" id="wishlist-detail-btn" title="Wishlist">
           🤍
+        </button>
+        <button class="btn btn-outline btn-icon-lg" onclick="openPriceAlertModal()" id="price-alert-btn" title="Set Price Drop Alert" style="font-size:1.1rem;">
+          📉
         </button>
       </div>
 
@@ -492,25 +497,118 @@
   </div>
 </div>
 
+<!-- Price Drop Alert Modal -->
+<div class="modal-overlay hidden" id="price-alert-modal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <h3 style="margin:0;display:flex;align-items:center;gap:6px;">📉 Set Price Drop Alert</h3>
+      <button class="btn btn-ghost btn-icon-sm" onclick="closePriceAlertModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:#f8fafc;padding:12px;border-radius:8px;margin-bottom:16px;border:1px solid #e2e8f0;">
+        <div style="font-weight:700;font-size:14px;color:#1e293b;" id="alert-modal-prod-name">Product Name</div>
+        <div style="font-size:12px;color:#64748b;margin-top:2px;">
+          Current Price: <strong style="color:var(--primary-dark);font-size:14px;" id="alert-modal-current-price">₹0</strong>
+        </div>
+      </div>
+      <div class="form-group mb-4">
+        <label class="form-label">Notify me when price drops to or below (₹):</label>
+        <div style="position:relative;">
+          <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-weight:700;color:#64748b;">₹</span>
+          <input type="number" class="form-input" id="target-price-input" style="padding-left:28px;" placeholder="e.g. 250" min="1">
+        </div>
+        <p style="font-size:11px;color:#64748b;margin-top:6px;">
+          🔔 You will receive a real-time chime notification when this item drops to your target price.
+        </p>
+      </div>
+      <div id="existing-alert-notice" style="display:none;background:#fef3c7;border:1px solid #f59e0b;padding:8px 12px;border-radius:6px;font-size:12px;color:#92400e;margin-bottom:14px;">
+        ⚠️ Active alert currently set at <strong id="existing-alert-val">₹0</strong>. Saving will update it.
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-primary w-full" onclick="saveProductPriceAlert()">Set Price Alert</button>
+        <button class="btn btn-ghost" id="btn-delete-price-alert" onclick="deleteProductPriceAlert()" style="display:none;color:#ef4444;">Remove</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast-container" id="toast-container"></div>
 
 <script src="../js/app.js"></script>
+<script src="/js/notifications.js"></script>
 <script>
   let activeProduct = null;
   let companionProduct = null;
-  let detailedQty = 1;
   let reviewRatingInput = 5;
 
-  function adjustQty(amount) {
-    detailedQty += amount;
-    if (detailedQty < 1) detailedQty = 1;
-    document.getElementById('qty-val').textContent = detailedQty;
+  /**
+   * Synchronizes the product detail page Add-to-Cart button and quantity selector.
+   * If the active product is in the cart (qty > 0), displays #detail-qty-selector with the current count.
+   * If the active product is not in the cart, displays #detail-add-to-cart-btn.
+   * If the product is out of stock, disables the button with 'Out of Stock'.
+   */
+  function updateDetailCartButton() {
+    if (!activeProduct) return;
+    const pId = String(activeProduct.id);
+    const cart = (typeof MathuraQuickMart !== 'undefined' && typeof MathuraQuickMart.getCart === 'function')
+      ? MathuraQuickMart.getCart()
+      : [];
+    const cartItem = cart.find(i => String(i.id) === pId);
+    const cartQty = cartItem ? (Number(cartItem.qty) || 0) : 0;
+
+    const qtySelector = document.getElementById('detail-qty-selector');
+    const addBtn = document.getElementById('detail-add-to-cart-btn');
+    const qtyVal = document.getElementById('qty-val');
+
+    if (!qtySelector || !addBtn) return;
+
+    if (activeProduct.stock !== undefined && activeProduct.stock !== null && Number(activeProduct.stock) <= 0) {
+      qtySelector.style.display = 'none';
+      addBtn.style.display = 'flex';
+      addBtn.disabled = true;
+      addBtn.style.opacity = '0.5';
+      addBtn.style.cursor = 'not-allowed';
+      addBtn.textContent = 'Out of Stock';
+      return;
+    }
+
+    if (cartQty > 0) {
+      qtySelector.style.display = 'flex';
+      if (qtyVal) qtyVal.textContent = cartQty;
+      addBtn.style.display = 'none';
+    } else {
+      qtySelector.style.display = 'none';
+      addBtn.style.display = 'flex';
+      addBtn.disabled = false;
+      addBtn.style.opacity = '1';
+      addBtn.style.cursor = 'pointer';
+      addBtn.innerHTML = '🛒 Add to Cart';
+    }
   }
+  window.updateDetailCartButton = updateDetailCartButton;
 
   function addToCartDetailed() {
     if (activeProduct) {
-      MathuraQuickMart.addToCart(activeProduct, detailedQty);
+      MathuraQuickMart.addToCart(activeProduct, 1);
+      updateDetailCartButton();
+    } else {
+      MathuraQuickMart.toast('Product not found or unavailable', 'error');
     }
+  }
+
+  function updateDetailCartQty(change) {
+    if (!activeProduct) return;
+    const pId = String(activeProduct.id);
+    const cart = MathuraQuickMart.getCart();
+    const cartItem = cart.find(i => String(i.id) === pId);
+    const currentQty = cartItem ? (Number(cartItem.qty) || 0) : 0;
+    const newQty = currentQty + change;
+    if (newQty <= 0) {
+      MathuraQuickMart.removeFromCart(activeProduct.id);
+    } else {
+      MathuraQuickMart.updateCartQty(activeProduct.id, newQty);
+    }
+    updateDetailCartButton();
   }
 
   function toggleWishDetailed() {
@@ -534,6 +632,7 @@
       MathuraQuickMart.addToCart(activeProduct, 1);
       MathuraQuickMart.addToCart(companionProduct, 1);
       MathuraQuickMart.toast('✨ Bundle added to cart!', 'success');
+      updateDetailCartButton();
     }
   }
 
@@ -556,8 +655,62 @@
 
   // Keyboard: Escape closes the review modal
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeReviewModal();
+    if (e.key === 'Escape') {
+      closeReviewModal();
+      closePriceAlertModal();
+    }
   });
+
+  // Price Drop Alert Modal handlers
+  async function openPriceAlertModal() {
+    if (!activeProduct) return;
+    const modal = document.getElementById('price-alert-modal');
+    document.getElementById('alert-modal-prod-name').textContent = activeProduct.name;
+    document.getElementById('alert-modal-current-price').textContent = `₹${activeProduct.price}`;
+    
+    const input = document.getElementById('target-price-input');
+    const notice = document.getElementById('existing-alert-notice');
+    const deleteBtn = document.getElementById('btn-delete-price-alert');
+
+    input.value = Math.max(1, Math.round(activeProduct.price * 0.9)); // default to 10% discount
+
+    if (typeof MathuraNotifications !== 'undefined') {
+      const existing = await MathuraNotifications.getPriceAlert(activeProduct.id);
+      if (existing) {
+        input.value = existing.targetPrice;
+        document.getElementById('existing-alert-val').textContent = `₹${existing.targetPrice}`;
+        notice.style.display = 'block';
+        deleteBtn.style.display = 'inline-block';
+      } else {
+        notice.style.display = 'none';
+        deleteBtn.style.display = 'none';
+      }
+    }
+
+    modal.classList.remove('hidden');
+  }
+
+  function closePriceAlertModal() {
+    const modal = document.getElementById('price-alert-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  async function saveProductPriceAlert() {
+    if (!activeProduct) return;
+    const targetPrice = document.getElementById('target-price-input').value;
+    if (typeof MathuraNotifications !== 'undefined') {
+      const ok = await MathuraNotifications.setPriceAlert(activeProduct.id, targetPrice, activeProduct.price, activeProduct.name);
+      if (ok) closePriceAlertModal();
+    }
+  }
+
+  async function deleteProductPriceAlert() {
+    if (!activeProduct) return;
+    if (typeof MathuraNotifications !== 'undefined') {
+      await MathuraNotifications.deletePriceAlert(activeProduct.id);
+      closePriceAlertModal();
+    }
+  }
 
   function setReviewRating(rating) {
     reviewRatingInput = rating;
@@ -726,6 +879,9 @@
         recGrid.innerHTML = recents.slice(0, 4).map(p => renderProductCard(p)).join('');
       }
     }
+
+    // Synchronize detail page cart button / quantity selector with current cart state
+    updateDetailCartButton();
   }
 
   document.addEventListener('DOMContentLoaded', () => {

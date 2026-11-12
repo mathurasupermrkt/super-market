@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MATHURA QUICK MART — Staging Test</title>
+  <style>
+    body {font-family: Arial, sans-serif; margin:0; padding:0; background:#f9f9f9;}
+    .banner {background:#ff9800;color:#000;padding:12px 20px;text-align:center;font-weight:bold;}
+    .container {max-width:800px;margin:40px auto;padding:20px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.1);border-radius:4px;}
+    button {font-size:1rem;padding:8px 16px;cursor:pointer;}
+    .status {margin-top:16px;color:#555;}
+  </style>
+</head>
+<body>
+  <div class="banner">MATHURA QUICK MART — STAGING ENVIRONMENT — TEST ONLY</div>
+  <div class="container">
+    <h2>Staging Firebase Initialization</h2>
+    <div id="initStatus" class="status">Loading…</div>
+    <button id="enableBtn">Enable Staging Notifications</button>
+    <div id="result" class="status"></div>
+  </div>
+
+  <!-- Load ONLY the staging Firebase initializer -->
+  <script type="module" src="/js/firebase-init.staging.js"></script>
+
+  <script>
+    // Update status when the staging initializer signals readiness
+    window.addEventListener('firebase-ready', () => {
+      const el = document.getElementById('initStatus');
+      if (window.firebaseIsReady) {
+        el.textContent = 'Staging Firebase initialized successfully.';
+        el.style.color = 'green';
+      } else {
+        el.textContent = 'Failed to initialize staging Firebase.';
+        el.style.color = 'red';
+      }
+    });
+
+    // Button click – request permission using the function exposed by the initializer
+    document.getElementById('enableBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('enableBtn');
+        const resultEl = document.getElementById('result');
+        if (!('Notification' in window)) {
+          resultEl.textContent = 'This browser does not support notifications.';
+          return;
+        }
+        if (typeof window.registerStagingSW !== 'function' || typeof window.requestNotificationPermission !== 'function') {
+          resultEl.textContent = 'Staging notification helper not available.';
+          return;
+        }
+        btn.disabled = true; // prevent repeated clicks
+        try {
+          await window.registerStagingSW();
+          const token = await window.requestNotificationPermission();
+          if (token) {
+            resultEl.textContent = 'Permission granted – FCM token obtained (not displayed for security).';
+            resultEl.style.color = 'green';
+          } else {
+            resultEl.textContent = 'Permission request completed, but no token was retrieved.';
+            resultEl.style.color = 'orange';
+          }
+        } catch (e) {
+          resultEl.textContent = 'Error while enabling notifications: ' + e.message;
+          resultEl.style.color = 'red';
+        } finally {
+          btn.disabled = false;
+        }
+      });
+  </script>
+</body>
+</html>
+

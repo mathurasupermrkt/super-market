@@ -361,5 +361,76 @@ service cloud.firestore {
         (!('status' in request.resource.data) || request.resource.data.status == 'unread') &&
         (!('userId' in request.resource.data) || request.resource.data.userId == null || (isAuthenticated() && request.resource.data.userId == request.auth.uid));
     }
+
+    // =========================================================================
+    // 9. REAL-TIME NOTIFICATIONS
+    // =========================================================================
+
+    match /notifications/{notificationId} {
+      // Admin can read all; Customers can only read their own notifications
+      allow read: if isAdmin() || (
+        isAuthenticated() &&
+        (
+          resource.data.recipientUid == request.auth.uid ||
+          (resource.data.recipientRole == 'admin' && isAdmin())
+        )
+      );
+
+      // System / Admin / Authenticated users can create notifications
+      allow create: if isAuthenticated() &&
+        request.resource.data.keys().hasAll(['recipientRole', 'type', 'title', 'message', 'isRead']) &&
+        request.resource.data.isRead == false &&
+        (
+          isAdmin() ||
+          request.resource.data.recipientRole == 'admin' ||
+          request.resource.data.recipientUid == request.auth.uid
+        );
+
+      // Customer can update 'isRead' and 'readAt' on their own notification; Admin can update admin notifications
+      allow update: if (
+        isAdmin() && (resource.data.recipientRole == 'admin' || resource.data.recipientUid == 'admin')
+      ) || (
+        isAuthenticated() &&
+        resource.data.recipientUid == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead', 'readAt'])
+      );
+
+      // Admin or owner can delete
+      allow delete: if isAdmin() || (
+        isAuthenticated() && resource.data.recipientUid == request.auth.uid
+      );
+    }
+
+    // =========================================================================
+    // 10. PRODUCT PRICE ALERTS
+    // =========================================================================
+
+    match /priceAlerts/{alertId} {
+      // Customer can read only their own price alerts; Admin can read all
+      allow read: if isAdmin() || (
+        isAuthenticated() && resource.data.customerUid == request.auth.uid
+      );
+
+      // Customer can create price alerts for themselves with valid positive targetPrice
+      allow create: if isAuthenticated() &&
+        request.resource.data.customerUid == request.auth.uid &&
+        request.resource.data.keys().hasAll(['customerUid', 'productId', 'targetPrice', 'isActive']) &&
+        request.resource.data.targetPrice is number &&
+        request.resource.data.targetPrice > 0;
+
+      // Customer can update or toggle their own price alert
+      allow update: if (
+        isAdmin() || (
+          isAuthenticated() &&
+          resource.data.customerUid == request.auth.uid &&
+          request.resource.data.customerUid == request.auth.uid
+        )
+      );
+
+      // Customer or Admin can delete price alert
+      allow delete: if isAdmin() || (
+        isAuthenticated() && resource.data.customerUid == request.auth.uid
+      );
+    }
   }
 }

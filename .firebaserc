@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "mathura-quickmart-v2"
+    "default": "mathura-quickmart-v2",
+    "staging": "mathura-quick-mart-staging"
   }
 }

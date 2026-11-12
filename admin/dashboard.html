@@ -148,6 +148,20 @@
         </button>
       </div>
 
+      <!-- Real-Time Notification Bell & Dropdown -->
+      <div id="admin-notif-wrapper" style="position:relative;">
+        <button id="admin-notif-btn" class="btn btn-ghost btn-icon" onclick="MathuraNotifications.toggleDropdown('admin-notif-dropdown')" title="Order Notifications" style="position:relative;font-size:1.3rem;padding:6px 10px;cursor:pointer;">
+          🔔
+          <span class="badge" id="admin-notif-badge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;border-radius:10px;font-size:10px;padding:2px 6px;font-weight:700;">0</span>
+        </button>
+        <div id="admin-notif-dropdown" class="admin-notif-dropdown" style="display:none;position:absolute;right:0;top:calc(100% + 8px);width:380px;background:#ffffff;border:1px solid #cbd5e1;border-radius:12px;box-shadow:0 10px 25px -5px rgba(0,0,0,0.15);z-index:1000;overflow:hidden;">
+          <!-- Populated by MathuraNotifications -->
+        </div>
+      </div>
+
+      <!-- Notification Sound Control -->
+      <button class="btn btn-ghost btn-sm" onclick="MathuraNotifications.toggleSound()" data-sound-toggle style="font-size:12px;font-weight:600;padding:4px 8px;" title="Toggle Notification Sound">🔊 Sound ON</button>
+
       <!-- Admin profile name -->
       <div style="text-align:right;">
         <div style="font-weight:var(--fw-bold);font-size:var(--text-sm);">Store Manager</div>
@@ -1503,6 +1517,7 @@
 
 
 <script src="../js/app.js"></script>
+<script src="/js/notifications.js"></script>
 <script>
   // Admin Authentication & Session Guard
   const ADMIN_UID = '7SBL73wlj7OxKBsMExoJNhdrDTU2';
@@ -2489,6 +2504,22 @@
       return String(timeB).localeCompare(String(timeA));
     });
     tbody.innerHTML = sorted.map(_buildOrderRow).join('');
+
+    // Check if URL has orderId to highlight
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetOrderId = urlParams.get('orderId');
+    if (targetOrderId) {
+      setTimeout(() => {
+        const rows = tbody.querySelectorAll('tr');
+        rows.forEach(r => {
+          if (r.textContent.includes(targetOrderId)) {
+            r.style.outline = '3px solid #f59e0b';
+            r.style.backgroundColor = '#fef3c7';
+            r.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      }, 200);
+    }
   }
 
   function renderAdminOrders() {
@@ -2594,6 +2625,34 @@
       const db = window.FirebaseDB;
       fs.setDoc(fs.doc(db, 'orders', id), { status: val, updatedAt: new Date().toISOString() }, { merge: true })
         .catch(e => console.warn('Status sync error:', e));
+
+      // Create real-time notification document for the customer
+      if (match && match.userId) {
+        const notifId = `cust_order_${id}_${val}`;
+        let title = `Order Status: ${val.toUpperCase()}`;
+        let message = `Your order #${id} has been updated to ${val}.`;
+        if (val === 'confirmed') { title = 'Order Confirmed! 📦'; message = `Your order #${id} has been confirmed. Store team is packing it.`; }
+        else if (val === 'processing') { title = 'Order Processing ⏳'; message = `Your order #${id} is being processed.`; }
+        else if (val === 'packed') { title = 'Order Packed 🛍️'; message = `Your order #${id} has been packed and ready for dispatch.`; }
+        else if (val === 'out-delivery') { title = 'Out for Delivery! ⚡'; message = `Your order #${id} is out for delivery! Arriving shortly.`; }
+        else if (val === 'delivered') { title = 'Order Delivered! ✅'; message = `Your order #${id} has been delivered. Enjoy your fresh groceries!`; }
+        else if (val === 'cancelled') { title = 'Order Cancelled ❌'; message = `Your order #${id} has been cancelled.`; }
+
+        fs.setDoc(fs.doc(db, 'notifications', notifId), {
+          id: notifId,
+          recipientUid: match.userId,
+          recipientRole: 'customer',
+          type: 'order_status',
+          status: val,
+          title: title,
+          message: message,
+          orderId: id,
+          amount: match.total || 0,
+          isRead: false,
+          createdAt: new Date().toISOString(),
+          link: `/customer/my-orders.html?orderId=${id}`
+        }, { merge: true }).catch(err => console.warn('Notification sync error:', err));
+      }
     }
 
     // Automatically queue WhatsApp notification task
@@ -3734,9 +3793,12 @@
       document.querySelector('.admin-sidebar').classList.toggle('open');
     });
 
-    // Start the orders listener as soon as Firebase is ready (does NOT wait for full sync)
+    // Start the orders & notification listeners as soon as Firebase is ready
     const startListeners = () => {
       startOrdersListener();
+      if (typeof MathuraNotifications !== 'undefined') {
+        MathuraNotifications.init('admin');
+      }
     };
 
     if (window.FirebaseDB && window.Firestore) {

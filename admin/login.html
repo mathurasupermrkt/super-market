@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Staff Portal – Mathura Quick Mart</title>
-  
+
   <meta name="theme-color" content="#00695c">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/svg+xml" href="/images/icon.svg">
@@ -18,10 +19,12 @@
       justify-content: center;
       padding: var(--sp-4);
     }
+
     .login-container {
       width: 100%;
       max-width: 420px;
     }
+
     .staff-toggle {
       display: flex;
       background: var(--gray-100);
@@ -29,6 +32,7 @@
       padding: 4px;
       margin-bottom: var(--sp-6);
     }
+
     .staff-toggle-btn {
       flex: 1;
       padding: 0.5rem 1rem;
@@ -42,399 +46,422 @@
       transition: all var(--transition-fast);
       text-align: center;
     }
+
     .staff-toggle-btn.active {
       background: var(--white);
       color: var(--primary-dark);
       box-shadow: var(--shadow-sm);
     }
+
     .btn-loading {
       opacity: 0.75;
       cursor: not-allowed;
       pointer-events: none;
     }
+
     .btn-loading::after {
       content: '';
       display: inline-block;
       width: 14px;
       height: 14px;
       margin-left: 8px;
-      border: 2px solid rgba(255,255,255,0.5);
+      border: 2px solid rgba(255, 255, 255, 0.5);
       border-top-color: #fff;
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
       vertical-align: middle;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
   </style>
 
   <script type='module' src='/js/firebase-init.js'></script>
 </head>
+
 <body>
 
-<div class="login-container animate-scale-in">
-  <!-- Logo -->
-  <div style="text-align:center;margin-bottom:var(--sp-6);">
-    <a href="../index.html" class="navbar-logo" style="display:inline-flex;align-items:center;gap:var(--sp-2);">
-      <div class="logo-icon" style="background:linear-gradient(135deg, #0f766e, #022c22);">💼</div>
-      <div>
-        <div class="logo-text" style="font-size:var(--text-2xl);background:linear-gradient(135deg, #0f766e, #022c22);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Staff Workspace</div>
-      </div>
-    </a>
-    <p style="color:var(--gray-500);font-size:var(--text-xs);margin-top:8px;">Store Management &amp; Logistics Portals</p>
-  </div>
-
-  <div class="card p-8">
-    <div class="staff-toggle">
-      <button class="staff-toggle-btn active" id="toggle-admin" onclick="setRole('admin')">Store Admin</button>
-      <button class="staff-toggle-btn" id="toggle-delivery" onclick="setRole('delivery')">Delivery Rider</button>
-    </div>
-
-    <div id="login-form-box">
-      <h1 style="font-size:var(--text-lg);font-weight:var(--fw-bold);margin-bottom:var(--sp-4);text-align:center;" id="login-title">Admin Login</h1>
-
-      <div class="form-group mb-4">
-        <label class="form-label" id="username-label">Email ID</label>
-        <input type="email" class="form-input" id="login-email" placeholder="mathurasupermrkt@gmail.com" value="mathurasupermrkt@gmail.com" required>
-      </div>
-
-      <div class="form-group mb-6">
-        <div style="display:flex;justify-content:between;">
-          <label class="form-label">Password</label>
+  <div class="login-container animate-scale-in">
+    <!-- Logo -->
+    <div style="text-align:center;margin-bottom:var(--sp-6);">
+      <a href="../index.html" class="navbar-logo" style="display:inline-flex;align-items:center;gap:var(--sp-2);">
+        <div class="logo-icon" style="background:linear-gradient(135deg, #0f766e, #022c22);">💼</div>
+        <div>
+          <div class="logo-text"
+            style="font-size:var(--text-2xl);background:linear-gradient(135deg, #0f766e, #022c22);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">
+            Staff Workspace</div>
         </div>
-        <input type="password" class="form-input" id="login-password" placeholder="••••••••" required>
-      </div>
-
-      <button class="btn btn-primary btn-lg w-full" id="login-btn" onclick="handleLogin()"
-        style="background:linear-gradient(135deg, #0f766e, #115e59);box-shadow: 0 10px 25px -5px rgb(15 118 110 / 0.3);">
-        Sign In to Portal
-      </button>
-
-      <div id="rider-register-prompt" style="display:none;margin-top:16px;text-align:center;font-size:var(--text-sm);color:var(--gray-500);">
-        New Delivery Partner? <a href="javascript:void(0)" onclick="toggleRiderRegister(true)" style="color:var(--primary-dark);font-weight:700;">Apply / Register Here</a>
-      </div>
-
-      <div class="divider"></div>
-      <a href="../index.html" style="font-size:var(--text-sm);color:var(--gray-500);display:block;text-align:center;">🏪 Return to Customer Store</a>
+      </a>
+      <p style="color:var(--gray-500);font-size:var(--text-xs);margin-top:8px;">Store Management &amp; Logistics Portals
+      </p>
     </div>
 
-    <!-- RIDER REGISTRATION FORM -->
-    <div id="rider-register-box" style="display:none;">
-      <h1 style="font-size:var(--text-lg);font-weight:var(--fw-bold);margin-bottom:var(--sp-4);text-align:center;">Delivery Partner Registration</h1>
-      
-      <div class="form-group mb-3">
-        <label class="form-label">Full Name *</label>
-        <input type="text" class="form-input" id="reg-name" placeholder="e.g. Ramesh Kumar" required>
+    <div class="card p-8">
+      <div class="staff-toggle">
+        <button class="staff-toggle-btn active" id="toggle-admin" onclick="setRole('admin')">Store Admin</button>
+        <button class="staff-toggle-btn" id="toggle-delivery" onclick="setRole('delivery')">Delivery Rider</button>
       </div>
 
-      <div class="form-group mb-3">
-        <label class="form-label">Email Address *</label>
-        <input type="email" class="form-input" id="reg-email" placeholder="driver@email.com" required>
+      <div id="login-form-box">
+        <h1 style="font-size:var(--text-lg);font-weight:var(--fw-bold);margin-bottom:var(--sp-4);text-align:center;"
+          id="login-title">Admin Login</h1>
+
+        <div class="form-group mb-4">
+          <label class="form-label" id="username-label">Email ID</label>
+          <input type="email" class="form-input" id="login-email" placeholder="admin@gmail.com"
+            value="mathurasupermrkt@gmail.com" required>
+        </div>
+
+        <div class="form-group mb-6">
+          <div style="display:flex;justify-content:between;">
+            <label class="form-label">Password</label>
+          </div>
+          <input type="password" class="form-input" id="login-password" placeholder="••••••••" required>
+        </div>
+
+        <button class="btn btn-primary btn-lg w-full" id="login-btn" onclick="handleLogin()"
+          style="background:linear-gradient(135deg, #0f766e, #115e59);box-shadow: 0 10px 25px -5px rgb(15 118 110 / 0.3);">
+          Sign In to Portal
+        </button>
+
+        <div id="rider-register-prompt"
+          style="display:none;margin-top:16px;text-align:center;font-size:var(--text-sm);color:var(--gray-500);">
+          New Delivery Partner? <a href="javascript:void(0)" onclick="toggleRiderRegister(true)"
+            style="color:var(--primary-dark);font-weight:700;">Apply / Register Here</a>
+        </div>
+
+        <div class="divider"></div>
+        <a href="../index.html"
+          style="font-size:var(--text-sm);color:var(--gray-500);display:block;text-align:center;">🏪 Return to Customer
+          Store</a>
       </div>
 
-      <div class="form-group mb-3">
-        <label class="form-label">Mobile Number *</label>
-        <input type="tel" class="form-input" id="reg-mobile" placeholder="+91 98765 43210" required>
-      </div>
+      <!-- RIDER REGISTRATION FORM -->
+      <div id="rider-register-box" style="display:none;">
+        <h1 style="font-size:var(--text-lg);font-weight:var(--fw-bold);margin-bottom:var(--sp-4);text-align:center;">
+          Delivery Partner Registration</h1>
 
-      <div class="form-group mb-3">
-        <label class="form-label">Vehicle Info *</label>
-        <input type="text" class="form-input" id="reg-vehicle" placeholder="e.g. Honda Activa (UP 85 AB 1234)" required>
-      </div>
+        <div class="form-group mb-3">
+          <label class="form-label">Full Name *</label>
+          <input type="text" class="form-input" id="reg-name" placeholder="e.g. Ramesh Kumar" required>
+        </div>
 
-      <div class="form-group mb-3">
-        <label class="form-label">Driving License No. *</label>
-        <input type="text" class="form-input" id="reg-license" placeholder="e.g. UP852021000123" required>
-      </div>
+        <div class="form-group mb-3">
+          <label class="form-label">Email Address *</label>
+          <input type="email" class="form-input" id="reg-email" placeholder="driver@email.com" required>
+        </div>
 
-      <div class="form-group mb-4">
-        <label class="form-label">Password *</label>
-        <input type="password" class="form-input" id="reg-password" placeholder="Minimum 6 characters" minlength="6" required>
-      </div>
+        <div class="form-group mb-3">
+          <label class="form-label">Mobile Number *</label>
+          <input type="tel" class="form-input" id="reg-mobile" placeholder="+91 98765 43210" required>
+        </div>
 
-      <button class="btn btn-primary btn-lg w-full mb-3" id="reg-btn" onclick="handleRiderRegister()"
-        style="background:linear-gradient(135deg, #0f766e, #115e59);">
-        Submit Partner Application
-      </button>
+        <div class="form-group mb-3">
+          <label class="form-label">Vehicle Info *</label>
+          <input type="text" class="form-input" id="reg-vehicle" placeholder="e.g. Honda Activa (UP 85 AB 1234)"
+            required>
+        </div>
 
-      <div style="text-align:center;font-size:var(--text-sm);">
-        Already registered? <a href="javascript:void(0)" onclick="toggleRiderRegister(false)" style="color:var(--primary-dark);font-weight:700;">Back to Login</a>
+        <div class="form-group mb-3">
+          <label class="form-label">Driving License No. *</label>
+          <input type="text" class="form-input" id="reg-license" placeholder="e.g. UP852021000123" required>
+        </div>
+
+        <div class="form-group mb-4">
+          <label class="form-label">Password *</label>
+          <input type="password" class="form-input" id="reg-password" placeholder="Minimum 6 characters" minlength="6"
+            required>
+        </div>
+
+        <button class="btn btn-primary btn-lg w-full mb-3" id="reg-btn" onclick="handleRiderRegister()"
+          style="background:linear-gradient(135deg, #0f766e, #115e59);">
+          Submit Partner Application
+        </button>
+
+        <div style="text-align:center;font-size:var(--text-sm);">
+          Already registered? <a href="javascript:void(0)" onclick="toggleRiderRegister(false)"
+            style="color:var(--primary-dark);font-weight:700;">Back to Login</a>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<div class="toast-container" id="toast-container"></div>
+  <div class="toast-container" id="toast-container"></div>
 
-<script src="../js/app.js"></script>
-<script>
-  let currentRole = 'admin';
+  <script src="../js/app.js"></script>
+  <script>
+    let currentRole = 'admin';
 
-  function setRole(role) {
-    currentRole = role;
-    document.getElementById('toggle-admin').classList.toggle('active', role === 'admin');
-    document.getElementById('toggle-delivery').classList.toggle('active', role === 'delivery');
+    function setRole(role) {
+      currentRole = role;
+      document.getElementById('toggle-admin').classList.toggle('active', role === 'admin');
+      document.getElementById('toggle-delivery').classList.toggle('active', role === 'delivery');
 
-    const titleEl    = document.getElementById('login-title');
-    const emailInput = document.getElementById('login-email');
-    const promptEl   = document.getElementById('rider-register-prompt');
+      const titleEl = document.getElementById('login-title');
+      const emailInput = document.getElementById('login-email');
+      const promptEl = document.getElementById('rider-register-prompt');
 
-    toggleRiderRegister(false);
+      toggleRiderRegister(false);
 
-    if (role === 'admin') {
-      titleEl.textContent     = 'Admin Login';
-      emailInput.placeholder  = 'mathurasupermrkt@gmail.com';
-      if (promptEl) promptEl.style.display = 'none';
-    } else {
-      titleEl.textContent     = 'Delivery Rider Login';
-      emailInput.placeholder  = 'rider@mathuraquickmart.in';
-      if (promptEl) promptEl.style.display = 'block';
-    }
-  }
-
-  function toggleRiderRegister(show) {
-    const loginBox = document.getElementById('login-form-box');
-    const regBox   = document.getElementById('rider-register-box');
-    if (show) {
-      loginBox.style.display = 'none';
-      regBox.style.display   = 'block';
-    } else {
-      loginBox.style.display = 'block';
-      regBox.style.display   = 'none';
-    }
-  }
-
-  function setLoading(loading) {
-    const btn = document.getElementById('login-btn');
-    if (loading) {
-      btn.classList.add('btn-loading');
-      btn.textContent = 'Signing In...';
-    } else {
-      btn.classList.remove('btn-loading');
-      btn.textContent = 'Sign In to Portal';
-    }
-  }
-
-  function getAuthErrorMessage(code) {
-    switch (code) {
-      case 'auth/user-not-found':     return 'No account found with this email.';
-      case 'auth/wrong-password':     return 'Incorrect password. Please try again.';
-      case 'auth/invalid-email':      return 'Please enter a valid email address.';
-      case 'auth/too-many-requests':  return 'Too many failed attempts. Try again later.';
-      case 'auth/invalid-credential': return 'Invalid email or password.';
-      default:                        return 'Sign in failed. Please try again.';
-    }
-  }
-
-  function handleLogin() {
-    const email    = document.getElementById('login-email').value.trim();
-    const password = document.getElementById('login-password').value;
-
-    if (!email || !password) {
-      MathuraQuickMart.toast('Please enter your email and password', 'error');
-      return;
+      if (role === 'admin') {
+        titleEl.textContent = 'Admin Login';
+        emailInput.placeholder = 'mathurasupermrkt@gmail.com';
+        if (promptEl) promptEl.style.display = 'none';
+      } else {
+        titleEl.textContent = 'Delivery Rider Login';
+        emailInput.placeholder = 'rider@mathuraquickmart.in';
+        if (promptEl) promptEl.style.display = 'block';
+      }
     }
 
-    setLoading(true);
+    function toggleRiderRegister(show) {
+      const loginBox = document.getElementById('login-form-box');
+      const regBox = document.getElementById('rider-register-box');
+      if (show) {
+        loginBox.style.display = 'none';
+        regBox.style.display = 'block';
+      } else {
+        loginBox.style.display = 'block';
+        regBox.style.display = 'none';
+      }
+    }
 
-    async function doLogin() {
-      const auth    = window.FirebaseAuth;
-      const authFns = window.FirebaseAuthFns;
-      const db      = window.FirebaseDB;
-      const fs      = window.Firestore;
+    function setLoading(loading) {
+      const btn = document.getElementById('login-btn');
+      if (loading) {
+        btn.classList.add('btn-loading');
+        btn.textContent = 'Signing In...';
+      } else {
+        btn.classList.remove('btn-loading');
+        btn.textContent = 'Sign In to Portal';
+      }
+    }
 
-      if (!auth || !authFns) {
-        setLoading(false);
-        MathuraQuickMart.toast('Firebase not ready. Please refresh the page and try again.', 'error');
+    function getAuthErrorMessage(code) {
+      switch (code) {
+        case 'auth/user-not-found': return 'No account found with this email.';
+        case 'auth/wrong-password': return 'Incorrect password. Please try again.';
+        case 'auth/invalid-email': return 'Please enter a valid email address.';
+        case 'auth/too-many-requests': return 'Too many failed attempts. Try again later.';
+        case 'auth/invalid-credential': return 'Invalid email or password.';
+        default: return 'Sign in failed. Please try again.';
+      }
+    }
+
+    function handleLogin() {
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+
+      if (!email || !password) {
+        MathuraQuickMart.toast('Please enter your email and password', 'error');
         return;
       }
 
-      try {
-        const userCredential = await authFns.signInWithEmailAndPassword(auth, email, password);
-        const fbUser = userCredential.user;
+      setLoading(true);
 
-        const ADMIN_UID = '7SBL73wlj7OxKBsMExoJNhdrDTU2';
-        const ADMIN_EMAIL = 'mathurasupermrkt@gmail.com';
-        const isMasterAdmin = (fbUser.uid === ADMIN_UID || (fbUser.email && fbUser.email.toLowerCase() === ADMIN_EMAIL));
+      async function doLogin() {
+        const auth = window.FirebaseAuth;
+        const authFns = window.FirebaseAuthFns;
+        const db = window.FirebaseDB;
+        const fs = window.Firestore;
 
-        let name          = fbUser.displayName || email.split('@')[0];
-        let firestoreRole  = isMasterAdmin ? 'admin' : null;
-        let approvalStatus = 'approved';
+        if (!auth || !authFns) {
+          setLoading(false);
+          MathuraQuickMart.toast('Firebase not ready. Please refresh the page and try again.', 'error');
+          return;
+        }
 
-        // Always fetch the Firestore profile — critical for role checking
-        if (fs && db) {
-          try {
-            const profileSnap = await fs.getDoc(fs.doc(db, 'users', fbUser.uid));
-            if (profileSnap.exists()) {
-              const data     = profileSnap.data();
-              name           = data.name || name;
-              if (!isMasterAdmin) {
-                firestoreRole  = data.role || null;
-              }
-              approvalStatus = data.approvalStatus || 'approved';
-            }
-          } catch (fsErr) {
-            console.warn('Could not read Firestore profile:', fsErr);
-          }
+        try {
+          const userCredential = await authFns.signInWithEmailAndPassword(auth, email, password);
+          const fbUser = userCredential.user;
 
-          // If this is the master admin, guarantee Firestore record is marked as admin
-          if (isMasterAdmin) {
+          const ADMIN_UID = '7SBL73wlj7OxKBsMExoJNhdrDTU2';
+          const ADMIN_EMAIL = 'mathurasupermrkt@gmail.com';
+          const isMasterAdmin = (fbUser.uid === ADMIN_UID || (fbUser.email && fbUser.email.toLowerCase() === ADMIN_EMAIL));
+
+          let name = fbUser.displayName || email.split('@')[0];
+          let firestoreRole = isMasterAdmin ? 'admin' : null;
+          let approvalStatus = 'approved';
+
+          // Always fetch the Firestore profile — critical for role checking
+          if (fs && db) {
             try {
-              await fs.setDoc(fs.doc(db, 'users', fbUser.uid), {
-                uid: fbUser.uid,
-                name: name || 'Admin Manager',
-                email: fbUser.email,
-                role: 'admin',
-                updatedAt: new Date().toISOString()
-              }, { merge: true });
-            } catch (seedErr) {
-              console.warn('Could not sync admin profile to Firestore:', seedErr);
+              const profileSnap = await fs.getDoc(fs.doc(db, 'users', fbUser.uid));
+              if (profileSnap.exists()) {
+                const data = profileSnap.data();
+                name = data.name || name;
+                if (!isMasterAdmin) {
+                  firestoreRole = data.role || null;
+                }
+                approvalStatus = data.approvalStatus || 'approved';
+              }
+            } catch (fsErr) {
+              console.warn('Could not read Firestore profile:', fsErr);
+            }
+
+            // If this is the master admin, guarantee Firestore record is marked as admin
+            if (isMasterAdmin) {
+              try {
+                await fs.setDoc(fs.doc(db, 'users', fbUser.uid), {
+                  uid: fbUser.uid,
+                  name: name || 'Admin Manager',
+                  email: fbUser.email,
+                  role: 'admin',
+                  updatedAt: new Date().toISOString()
+                }, { merge: true });
+              } catch (seedErr) {
+                console.warn('Could not sync admin profile to Firestore:', seedErr);
+              }
             }
           }
-        }
 
-        // Role mismatch – sign out and deny access (master admin bypasses)
-        if (!isMasterAdmin && firestoreRole && firestoreRole !== currentRole) {
-          await authFns.signOut(auth);
+          // Role mismatch – sign out and deny access (master admin bypasses)
+          if (!isMasterAdmin && firestoreRole && firestoreRole !== currentRole) {
+            await authFns.signOut(auth);
+            setLoading(false);
+            MathuraQuickMart.toast(
+              `Access Denied. This account is not a ${currentRole === 'admin' ? 'Store Admin' : 'Delivery Rider'}.`,
+              'error'
+            );
+            return;
+          }
+
+          // Check Delivery Approval Status
+          if (currentRole === 'delivery' && approvalStatus === 'pending') {
+            await authFns.signOut(auth);
+            setLoading(false);
+            MathuraQuickMart.toast('⚠️ Your account is pending Admin approval. Please wait for activation.', 'warning', 6000);
+            return;
+          }
+
+          if (currentRole === 'delivery' && approvalStatus === 'rejected') {
+            await authFns.signOut(auth);
+            setLoading(false);
+            MathuraQuickMart.toast('❌ Your registration request was rejected by Admin.', 'error', 6000);
+            return;
+          }
+
+          // Successful login
+          const finalRole = isMasterAdmin ? 'admin' : (firestoreRole || currentRole);
+          const user = { uid: fbUser.uid, name, email: fbUser.email, role: finalRole };
+          MathuraQuickMart.login(user);
+
+          const redirect = finalRole === 'admin'
+            ? '/admin/dashboard.html'
+            : '/delivery/dashboard.html';
+          setTimeout(() => { window.location.href = redirect; }, 800);
+
+        } catch (error) {
           setLoading(false);
-          MathuraQuickMart.toast(
-            `Access Denied. This account is not a ${currentRole === 'admin' ? 'Store Admin' : 'Delivery Rider'}.`,
-            'error'
-          );
-          return;
+          console.error('Login error:', error.code, error.message);
+          MathuraQuickMart.toast(getAuthErrorMessage(error.code), 'error');
         }
+      }
 
-        // Check Delivery Approval Status
-        if (currentRole === 'delivery' && approvalStatus === 'pending') {
-          await authFns.signOut(auth);
+      // Firebase modules are async — check flag set by firebase-init.js to avoid race condition
+      if (window.firebaseIsReady || (window.FirebaseAuth && window.FirebaseAuthFns)) {
+        doLogin();
+      } else {
+        // Show user feedback while waiting
+        const waitTimeout = setTimeout(() => {
           setLoading(false);
-          MathuraQuickMart.toast('⚠️ Your account is pending Admin approval. Please wait for activation.', 'warning', 6000);
-          return;
-        }
+          MathuraQuickMart.toast('Firebase is taking too long to load. Please refresh the page.', 'error');
+        }, 8000);
 
-        if (currentRole === 'delivery' && approvalStatus === 'rejected') {
-          await authFns.signOut(auth);
-          setLoading(false);
-          MathuraQuickMart.toast('❌ Your registration request was rejected by Admin.', 'error', 6000);
-          return;
-        }
-
-        // Successful login
-        const finalRole = isMasterAdmin ? 'admin' : (firestoreRole || currentRole);
-        const user = { uid: fbUser.uid, name, email: fbUser.email, role: finalRole };
-        MathuraQuickMart.login(user);
-
-        const redirect = finalRole === 'admin'
-          ? '/admin/dashboard.html'
-          : '/delivery/dashboard.html';
-        setTimeout(() => { window.location.href = redirect; }, 800);
-
-      } catch (error) {
-        setLoading(false);
-        console.error('Login error:', error.code, error.message);
-        MathuraQuickMart.toast(getAuthErrorMessage(error.code), 'error');
+        window.addEventListener('firebase-ready', () => {
+          clearTimeout(waitTimeout);
+          doLogin();
+        }, { once: true });
       }
     }
 
-    // Firebase modules are async — check flag set by firebase-init.js to avoid race condition
-    if (window.firebaseIsReady || (window.FirebaseAuth && window.FirebaseAuthFns)) {
-      doLogin();
-    } else {
-      // Show user feedback while waiting
-      const waitTimeout = setTimeout(() => {
-        setLoading(false);
-        MathuraQuickMart.toast('Firebase is taking too long to load. Please refresh the page.', 'error');
-      }, 8000);
+    async function handleRiderRegister() {
+      const name = document.getElementById('reg-name').value.trim();
+      const email = document.getElementById('reg-email').value.trim();
+      const mobile = document.getElementById('reg-mobile').value.trim();
+      const vehicle = document.getElementById('reg-vehicle').value.trim();
+      const license = document.getElementById('reg-license').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const btn = document.getElementById('reg-btn');
 
-      window.addEventListener('firebase-ready', () => {
-        clearTimeout(waitTimeout);
-        doLogin();
-      }, { once: true });
-    }
-  }
+      if (!name || !email || !mobile || !vehicle || !license || !password) {
+        MathuraQuickMart.toast('Please fill in all required fields.', 'warning');
+        return;
+      }
 
-  async function handleRiderRegister() {
-    const name     = document.getElementById('reg-name').value.trim();
-    const email    = document.getElementById('reg-email').value.trim();
-    const mobile   = document.getElementById('reg-mobile').value.trim();
-    const vehicle  = document.getElementById('reg-vehicle').value.trim();
-    const license  = document.getElementById('reg-license').value.trim();
-    const password = document.getElementById('reg-password').value;
-    const btn      = document.getElementById('reg-btn');
+      if (password.length < 6) {
+        MathuraQuickMart.toast('Password must be at least 6 characters.', 'warning');
+        return;
+      }
 
-    if (!name || !email || !mobile || !vehicle || !license || !password) {
-      MathuraQuickMart.toast('Please fill in all required fields.', 'warning');
-      return;
-    }
+      btn.disabled = true;
+      btn.textContent = 'Submitting Request...';
 
-    if (password.length < 6) {
-      MathuraQuickMart.toast('Password must be at least 6 characters.', 'warning');
-      return;
-    }
+      // Wait for Firebase if not ready yet
+      if (!window.FirebaseAuth || !window.FirebaseAuthFns || !window.Firestore) {
+        await new Promise((resolve, reject) => {
+          const t = setTimeout(() => reject(new Error('Firebase timed out. Refresh and try again.')), 8000);
+          window.addEventListener('firebase-ready', () => { clearTimeout(t); resolve(); }, { once: true });
+        }).catch(err => {
+          MathuraQuickMart.toast(err.message, 'error');
+          btn.disabled = false;
+          btn.textContent = 'Submit Partner Application';
+          throw err;
+        });
+      }
 
-    btn.disabled = true;
-    btn.textContent = 'Submitting Request...';
+      try {
+        const { createUserWithEmailAndPassword } = window.FirebaseAuthFns;
+        const auth = window.FirebaseAuth;
+        const fs = window.Firestore;
+        const db = window.FirebaseDB;
 
-    // Wait for Firebase if not ready yet
-    if (!window.FirebaseAuth || !window.FirebaseAuthFns || !window.Firestore) {
-      await new Promise((resolve, reject) => {
-        const t = setTimeout(() => reject(new Error('Firebase timed out. Refresh and try again.')), 8000);
-        window.addEventListener('firebase-ready', () => { clearTimeout(t); resolve(); }, { once: true });
-      }).catch(err => {
-        MathuraQuickMart.toast(err.message, 'error');
+        // 1. Create Auth Account
+        const userCred = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCred.user;
+
+        // 2. Save Driver Document in Firestore with pending status
+        await fs.setDoc(fs.doc(db, 'users', user.uid), {
+          uid: user.uid,
+          name,
+          email,
+          mobile,
+          vehicle,
+          license,
+          role: 'delivery',
+          approvalStatus: 'pending',
+          assignedOrders: [],
+          createdAt: new Date().toISOString()
+        });
+
+        MathuraQuickMart.toast('🎉 Registration submitted! Pending Admin Approval.', 'success', 6000);
+
+        // Return to login form
+        toggleRiderRegister(false);
+        document.getElementById('login-email').value = email;
         btn.disabled = false;
         btn.textContent = 'Submit Partner Application';
-        throw err;
-      });
+
+      } catch (err) {
+        console.error('Registration error:', err);
+        // Show a clean error for duplicate email
+        const msg = err.code === 'auth/email-already-in-use'
+          ? 'This email is already registered. Try logging in instead.'
+          : err.message || 'Registration failed. Please try again.';
+        MathuraQuickMart.toast(msg, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Submit Partner Application';
+      }
     }
 
-    try {
-      const { createUserWithEmailAndPassword } = window.FirebaseAuthFns;
-      const auth = window.FirebaseAuth;
-      const fs   = window.Firestore;
-      const db   = window.FirebaseDB;
-
-      // 1. Create Auth Account
-      const userCred = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCred.user;
-
-      // 2. Save Driver Document in Firestore with pending status
-      await fs.setDoc(fs.doc(db, 'users', user.uid), {
-        uid: user.uid,
-        name,
-        email,
-        mobile,
-        vehicle,
-        license,
-        role: 'delivery',
-        approvalStatus: 'pending',
-        assignedOrders: [],
-        createdAt: new Date().toISOString()
-      });
-
-      MathuraQuickMart.toast('🎉 Registration submitted! Pending Admin Approval.', 'success', 6000);
-
-      // Return to login form
-      toggleRiderRegister(false);
-      document.getElementById('login-email').value = email;
-      btn.disabled = false;
-      btn.textContent = 'Submit Partner Application';
-
-    } catch (err) {
-      console.error('Registration error:', err);
-      // Show a clean error for duplicate email
-      const msg = err.code === 'auth/email-already-in-use'
-        ? 'This email is already registered. Try logging in instead.'
-        : err.message || 'Registration failed. Please try again.';
-      MathuraQuickMart.toast(msg, 'error');
-      btn.disabled = false;
-      btn.textContent = 'Submit Partner Application';
-    }
-  }
-
-  // Allow pressing Enter to submit
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') handleLogin();
-  });
-</script>
+    // Allow pressing Enter to submit
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleLogin();
+    });
+  </script>
 </body>
+
 </html>

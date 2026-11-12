@@ -499,12 +499,14 @@ export const ALLOWED_ORIGINS = [
 ];
 
 export const assignOrder = onCall({
+  region: 'us-central1',
   cors: ALLOWED_ORIGINS
 }, async (request) => {
   return await assignOrderHandler(request.data, request.auth);
 });
 
 export const verifyAndPlaceOrder = onCall({
+  region: 'us-central1',
   cors: ALLOWED_ORIGINS
 }, async (request) => {
   return await verifyAndPlaceOrderHandler(request.data, request.auth);
@@ -515,4 +517,194 @@ export const syncRiderLocationToOrders = onDocumentWritten('deliveryPartners/{pa
   const afterData = event.data?.after?.data();
   const beforeData = event.data?.before?.data();
   return await syncRiderLocationToOrdersHandler(partnerId, beforeData, afterData);
+});
+
+/**
+ * 4. REAL-TIME NOTIFICATIONS & EVENT TRIGGERS
+ */
+export async function handleOrderWrittenNotification(orderId, beforeData, afterData) {
+  if (!afterData) return null; // deleted order
+
+  const nowISO = new Date().toISOString();
+
+  // Case A: New Order Created
+  if (!beforeData) {
+    const batch = db.batch();
+
+    // 1. Admin Notification
+    const adminNotifRef = db.collection('notifications').doc(`admin_order_${orderId}`);
+    batch.set(adminNotifRef, {
+      id: `admin_order_${orderId}`,
+      recipientUid: 'admin',
+      recipientRole: 'admin',
+      type: 'new_order',
+      title: 'NEW ORDER RECEIVED! 🛒',
+      message: `Order #${orderId} from ${afterData.customerName || 'Customer'} (₹${afterData.total || 0})`,
+      orderId: orderId,
+      customerName: afterData.customerName || 'Customer',
+      amount: afterData.total || 0,
+      isRead: false,
+      createdAt: nowISO,
+      link: `/admin/dashboard.html?tab=orders&orderId=${orderId}`
+    }, { merge: true });
+
+    // 2. Customer Confirmation Notification
+    if (afterData.userId) {
+      const custNotifRef = db.collection('notifications').doc(`cust_order_${orderId}_created`);
+      batch.set(custNotifRef, {
+        id: `cust_order_${orderId}_created`,
+        recipientUid: afterData.userId,
+        recipientRole: 'customer',
+        type: 'order_status',
+        status: afterData.status || 'confirmed',
+        title: 'Order Placed Successfully! 🎉',
+        message: `Your order #${orderId} (₹${afterData.total || 0}) has been received and confirmed.`,
+        orderId: orderId,
+        amount: afterData.total || 0,
+        isRead: false,
+        createdAt: nowISO,
+        link: `/customer/my-orders.html?orderId=${orderId}`
+      }, { merge: true });
+    }
+
+    await batch.commit();
+    console.log(`[Notification] Created initial order notifications for order ${orderId}`);
+    return true;
+  }
+
+  // Case B: Order Status Changed
+  if (beforeData.status !== afterData.status && afterData.userId) {
+    const status = afterData.status;
+    let title = `Order Status: ${status.toUpperCase()}`;
+    let message = `Your order #${orderId} status updated to ${status}.`;
+
+    switch (status) {
+      case 'confirmed':
+        title = 'Order Confirmed! 📦';
+        message = `Your order #${orderId} has been confirmed. Store team is preparing your items.`;
+        break;
+      case 'processing':
+        title = 'Order Processing ⏳';
+        message = `Your order #${orderId} is being processed and assembled.`;
+        break;
+      case 'packed':
+        title = 'Order Packed 🛍️';
+        message = `Your items for order #${orderId} are packed and ready for dispatch.`;
+        break;
+      case 'out-delivery':
+      case 'out-for-delivery':
+        title = 'Out for Delivery! ⚡';
+        message = `Your order #${orderId} is on the way! Our delivery partner will arrive shortly.`;
+        break;
+      case 'delivered':
+        title = 'Order Delivered! ✅';
+        message = `Your order #${orderId} has been successfully delivered. Enjoy your fresh groceries!`;
+        break;
+      case 'cancelled':
+        title = 'Order Cancelled ❌';
+        message = `Your order #${orderId} has been cancelled. Any deducted payment will be refunded.`;
+        break;
+      case 'refunded':
+        title = 'Refund Processed 💳';
+        message = `Refund for cancelled order #${orderId} has been completed.`;
+        break;
+    }
+
+    const notifId = `cust_order_${orderId}_${status}`;
+    await db.collection('notifications').doc(notifId).set({
+      id: notifId,
+      recipientUid: afterData.userId,
+      recipientRole: 'customer',
+      type: 'order_status',
+      status: status,
+      title: title,
+      message: message,
+      orderId: orderId,
+      amount: afterData.total || 0,
+      isRead: false,
+      createdAt: nowISO,
+      link: `/customer/my-orders.html?orderId=${orderId}`
+    }, { merge: true });
+
+    console.log(`[Notification] Sent order status notification for ${orderId}: ${status}`);
+    return true;
+  }
+
+  return null;
+}
+
+export async function handleProductWrittenPriceAlert(productId, beforeData, afterData) {
+  if (!beforeData || !afterData) return null;
+
+  const oldPrice = Number(beforeData.price);
+  const newPrice = Number(afterData.price);
+
+  // Trigger only when price strictly decreases
+  if (Number.isFinite(oldPrice) && Number.isFinite(newPrice) && newPrice < oldPrice) {
+    const alertsSnap = await db.collection('priceAlerts')
+      .where('productId', '==', String(productId))
+      .where('isActive', '==', true)
+      .where('targetPrice', '>=', newPrice)
+      .get();
+
+    if (alertsSnap.empty) return null;
+
+    const nowISO = new Date().toISOString();
+    const batch = db.batch();
+    let alertCount = 0;
+
+    for (const doc of alertsSnap.docs) {
+      const alert = doc.data();
+      // Avoid duplicate alert if already notified at this exact price
+      if (alert.lastNotifiedPrice === newPrice) continue;
+
+      const notifId = `price_alert_${doc.id}_${Math.round(newPrice)}`;
+      const notifRef = db.collection('notifications').doc(notifId);
+
+      batch.set(notifRef, {
+        id: notifId,
+        recipientUid: alert.customerUid,
+        recipientRole: 'customer',
+        type: 'price_alert',
+        title: `Price Drop Alert: ${afterData.name || 'Product'} 📉`,
+        message: `Price dropped from ₹${oldPrice} to ₹${newPrice}! (Your target was ₹${alert.targetPrice})`,
+        productId: String(productId),
+        previousPrice: oldPrice,
+        currentPrice: newPrice,
+        targetPrice: alert.targetPrice,
+        isRead: false,
+        createdAt: nowISO,
+        link: `/customer/product-detail.html?id=${productId}`
+      }, { merge: true });
+
+      batch.update(doc.ref, {
+        lastNotifiedPrice: newPrice,
+        lastNotifiedAt: nowISO
+      });
+
+      alertCount++;
+    }
+
+    if (alertCount > 0) {
+      await batch.commit();
+      console.log(`[Price Alert] Sent ${alertCount} price alert notification(s) for product ${productId}`);
+    }
+    return alertCount;
+  }
+
+  return null;
+}
+
+export const onOrderWritten = onDocumentWritten('orders/{orderId}', async (event) => {
+  const orderId = event.params.orderId;
+  const beforeData = event.data?.before?.data();
+  const afterData = event.data?.after?.data();
+  return await handleOrderWrittenNotification(orderId, beforeData, afterData);
+});
+
+export const onProductWritten = onDocumentWritten('products/{productId}', async (event) => {
+  const productId = event.params.productId;
+  const beforeData = event.data?.before?.data();
+  const afterData = event.data?.after?.data();
+  return await handleProductWrittenPriceAlert(productId, beforeData, afterData);
 });

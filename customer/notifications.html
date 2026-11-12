@@ -95,9 +95,13 @@
   <div class="notif-header">
     <div>
       <h1 style="font-size:var(--text-2xl);font-weight:var(--fw-bold);color:var(--gray-900);">Notifications</h1>
-      <p style="font-size:var(--text-sm);color:var(--gray-500);margin-top:4px;">Stay updated with your orders and offers</p>
+      <p style="font-size:var(--text-sm);color:var(--gray-500);margin-top:4px;">Stay updated with your orders, price alerts, and offers</p>
     </div>
-    <button class="btn btn-ghost btn-sm" onclick="markAllRead()">✓ Mark all read</button>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button class="btn btn-ghost btn-sm" onclick="MathuraNotifications.toggleSound()" data-sound-toggle title="Toggle Sound">🔊 Sound ON</button>
+      <button class="btn btn-ghost btn-sm" onclick="MathuraNotifications.requestBrowserPermission()" title="Enable Browser Push">🔔 Enable Push</button>
+      <button class="btn btn-ghost btn-sm" onclick="MathuraNotifications.markAllAsRead()">✓ Mark all read</button>
+    </div>
   </div>
 
   <div id="notifications-list">
@@ -108,66 +112,81 @@
 <div class="toast-container" id="toast-container"></div>
 
 <script src="../js/app.js"></script>
+<script src="/js/notifications.js"></script>
 <script>
   function markAllRead() {
+    if (typeof MathuraNotifications !== 'undefined') {
+      MathuraNotifications.markAllAsRead();
+    }
     document.querySelectorAll('.notif-item.unread').forEach(item => {
       item.classList.remove('unread');
     });
-    MathuraQuickMart.toast('✓ All notifications marked as read', 'success');
   }
 
   function renderDynamicNotifications() {
     const listEl = document.getElementById('notifications-list');
     if (!listEl) return;
 
-    const userOrders = MathuraQuickMart.getUserOrders();
-    const coupons = API.coupons || [];
     const notifs = [];
 
-    // Build notifications from real user orders
+    // 1. Pull real-time Firestore notifications if available
+    if (typeof MathuraNotifications !== 'undefined' && Array.isArray(MathuraNotifications.items)) {
+      MathuraNotifications.items.forEach(n => {
+        const dateObj = new Date(n.createdAt || Date.now());
+        const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', ' + dateObj.toLocaleDateString();
+        let icon = '🔔';
+        let type = 'order';
+
+        if (n.type === 'new_order') { icon = '🛒'; type = 'order'; }
+        else if (n.type === 'price_alert') { icon = '📉'; type = 'alert'; }
+        else if (n.status === 'out-delivery' || n.status === 'out-for-delivery') { icon = '🛵'; type = 'delivery'; }
+        else if (n.status === 'delivered') { icon = '✅'; type = 'order'; }
+        else if (n.status === 'cancelled') { icon = '❌'; type = 'alert'; }
+
+        notifs.push({
+          id: n.id,
+          icon,
+          type,
+          title: n.title || 'Notification',
+          desc: n.message || '',
+          time: timeStr,
+          timestamp: dateObj.getTime(),
+          unread: !n.isRead,
+          link: n.link || '/customer/my-orders.html'
+        });
+      });
+    }
+
+    const userOrders = MathuraQuickMart.getUserOrders();
+    const coupons = API.coupons || [];
+
+    // Fallback order updates if not already present in notifs
     userOrders.forEach(o => {
       const orderDate = new Date(o.date || o.createdAt || Date.now());
       const timeStr = MathuraQuickMart.formatDate(orderDate.toISOString());
+      const exists = notifs.some(n => n.id && n.id.includes(String(o.id)));
 
-      if (o.status === 'out-delivery' || o.status === 'out-for-delivery') {
-        notifs.push({
-          icon: '🛵',
-          type: 'delivery',
-          title: `Order ${o.id} is out for delivery!`,
-          desc: o.driverName ? `Your rider ${o.driverName} is on the way with your order.` : 'Your order is on the way to your address.',
-          time: timeStr,
-          timestamp: orderDate.getTime(),
-          unread: true,
-          link: `/customer/order-tracking.html?orderId=${encodeURIComponent(o.id)}`
-        });
-      } else if (o.status === 'delivered') {
-        notifs.push({
-          icon: '✅',
-          type: 'order',
-          title: `Order ${o.id} delivered successfully`,
-          desc: `Your grocery package has been delivered (Total: ₹${o.total || o.subtotal || 0}). Thank you for shopping with Mathura Quick Mart!`,
-          time: timeStr,
-          timestamp: orderDate.getTime(),
-          unread: false,
-          link: `/customer/my-orders.html`
-        });
-      } else if (o.status === 'confirmed' || o.status === 'pending') {
-        notifs.push({
-          icon: '📦',
-          type: 'order',
-          title: `Order ${o.id} placed & confirmed`,
-          desc: `We received your order for ${Array.isArray(o.items) ? o.items.length : 1} items. Store staff are currently packing it.`,
-          time: timeStr,
-          timestamp: orderDate.getTime(),
-          unread: false,
-          link: `/customer/order-tracking.html?orderId=${encodeURIComponent(o.id)}`
-        });
+      if (!exists) {
+        if (o.status === 'out-delivery' || o.status === 'out-for-delivery') {
+          notifs.push({
+            id: `local_${o.id}`,
+            icon: '🛵',
+            type: 'delivery',
+            title: `Order ${o.id} is out for delivery!`,
+            desc: o.driverName ? `Your rider ${o.driverName} is on the way with your order.` : 'Your order is on the way to your address.',
+            time: timeStr,
+            timestamp: orderDate.getTime(),
+            unread: true,
+            link: `/customer/order-tracking.html?orderId=${encodeURIComponent(o.id)}`
+          });
+        }
       }
     });
 
     // Add active coupon announcements
     coupons.slice(0, 2).forEach(c => {
       notifs.push({
+        id: `coupon_${c.code}`,
         icon: '🏷️',
         type: 'promo',
         title: `Offer: ${c.code} — ${c.description || (c.type === 'percent' ? c.discount + '% OFF' : '₹' + c.discount + ' OFF')}`,
@@ -187,7 +206,7 @@
         <div class="dash-card text-center py-12" style="background:#fff;border-radius:var(--radius-xl);padding:3rem 1.5rem;border:1px solid var(--gray-200);">
           <div style="font-size:2.5rem;margin-bottom:var(--sp-3);">🔔</div>
           <h3 style="font-size:var(--text-lg);font-weight:bold;color:var(--gray-800);margin-bottom:var(--sp-2);">No notifications yet</h3>
-          <p style="font-size:var(--text-sm);color:var(--gray-500);margin-bottom:var(--sp-4);">Updates about your active orders, deliveries, and verified store promotions will appear here.</p>
+          <p style="font-size:var(--text-sm);color:var(--gray-500);margin-bottom:var(--sp-4);">Updates about your active orders, deliveries, price alerts, and verified store promotions will appear here in real-time.</p>
           <a href="/customer/products.html" class="btn btn-primary btn-sm">🛍️ Browse Store</a>
         </div>
       `;
@@ -195,7 +214,7 @@
     }
 
     listEl.innerHTML = notifs.map(n => `
-      <div class="notif-item ${n.unread ? 'unread' : ''}" onclick="${n.link ? `window.location.href='${n.link}'` : 'this.classList.remove(\'unread\')'}" style="cursor:pointer;">
+      <div class="notif-item ${n.unread ? 'unread' : ''}" onclick="${n.id && typeof MathuraNotifications !== 'undefined' ? `MathuraNotifications.markAsRead('${n.id}');` : ''} ${n.link ? `window.location.href='${n.link}'` : 'this.classList.remove(\'unread\')'}" style="cursor:pointer;">
         <div class="notif-icon ${n.type}">${n.icon}</div>
         <div class="notif-content">
           <div class="notif-title">${n.title}</div>
@@ -208,9 +227,14 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    const user = MathuraQuickMart.state ? MathuraQuickMart.state.user : null;
+    if (typeof MathuraNotifications !== 'undefined' && user) {
+      MathuraNotifications.init(user.role || 'customer', user.uid);
+    }
     renderDynamicNotifications();
     window.addEventListener('user-data-ready', renderDynamicNotifications);
     window.addEventListener('db-ready', renderDynamicNotifications);
+    window.addEventListener('notification-received', renderDynamicNotifications);
   });
 </script>
 </body>

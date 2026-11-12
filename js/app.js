@@ -343,9 +343,15 @@ const MathuraQuickMart = {
       authLinks.forEach(el => el.style.display = '');
       guestLinks.forEach(el => el.style.display = 'none');
       userNameEls.forEach(el => el.textContent = user.name || user.email);
+      if (typeof MathuraNotifications !== 'undefined') {
+        MathuraNotifications.init(user.role || 'customer', user.uid);
+      }
     } else {
       authLinks.forEach(el => el.style.display = 'none');
       guestLinks.forEach(el => el.style.display = '');
+      if (typeof MathuraNotifications !== 'undefined') {
+        MathuraNotifications.init('guest', null);
+      }
     }
   },
 
@@ -371,6 +377,11 @@ const MathuraQuickMart = {
       window.addEventListener('firebase-ready', () => {
         window.FirebaseAuthFns.signOut(window.FirebaseAuth).catch(() => {});
       }, { once: true });
+    }
+
+    // Clean up notification listeners to avoid stray updates
+    if (typeof MathuraNotifications !== 'undefined' && MathuraNotifications.unsubscribe) {
+      MathuraNotifications.unsubscribe();
     }
 
     // Redirect to the correct portal login page based on role
@@ -520,53 +531,74 @@ const MathuraQuickMart = {
 
   // ============ CART ============
   getCart() {
-    if (!this.state.cart || !this.state.cart.length) {
+    if (!this.state.cart) {
       this.loadState();
     }
     return this.state.cart || [];
   },
 
   getCartCount() {
-    if (!this.state.cart || !this.state.cart.length) {
+    if (!this.state.cart) {
       this.loadState();
     }
-    return (this.state.cart || []).reduce((sum, item) => sum + (item.qty || 1), 0);
+    return (this.state.cart || []).reduce((sum, item) => sum + (Number(item.qty) || 1), 0);
   },
 
   getCartTotal() {
-    if (!this.state.cart || !this.state.cart.length) {
+    if (!this.state.cart) {
       this.loadState();
     }
-    return (this.state.cart || []).reduce((sum, item) => sum + ((item.price || 0) * (item.qty || 1)), 0);
+    return (this.state.cart || []).reduce((sum, item) => sum + ((Number(item.price) || 0) * (Number(item.qty) || 1)), 0);
   },
 
 
   addToCart(product, qty = 1) {
+    if (!product || !product.id) {
+      this.toast('Invalid product', 'error');
+      return;
+    }
     // Guard: do not add out-of-stock items
-    if (product.stock !== undefined && product.stock !== null && product.stock <= 0) {
-      this.toast(`${product.name} is out of stock`, 'warning');
+    if (product.stock !== undefined && product.stock !== null && Number(product.stock) <= 0) {
+      this.toast(`${product.name || 'Product'} is out of stock`, 'warning');
       return;
     }
     const prodId = String(product.id);
     const existing = this.state.cart.find(i => String(i.id) === prodId);
     if (existing) {
-      if (product.stock !== undefined && product.stock !== null && (existing.qty + qty) > product.stock) {
-        this.toast(`Only ${product.stock} items available in stock`, 'warning');
+      const maxStock = (product.stock !== undefined && product.stock !== null)
+        ? Number(product.stock)
+        : (existing.stock !== undefined && existing.stock !== null ? Number(existing.stock) : 9999);
+      if ((existing.qty + qty) > maxStock) {
+        this.toast(`Only ${maxStock} items available in stock`, 'warning');
         return;
       }
       existing.qty += qty;
+      this.toast(`${product.name} quantity increased to ${existing.qty} 🛒`, 'success');
     } else {
-      this.state.cart.push({ ...product, id: parseInt(product.id) || product.id, qty });
+      if (product.stock !== undefined && product.stock !== null && qty > Number(product.stock)) {
+        this.toast(`Only ${product.stock} items available in stock`, 'warning');
+        return;
+      }
+      this.state.cart.push({
+        ...product,
+        id: parseInt(product.id) || product.id,
+        price: Number(product.price) || 0,
+        qty: Math.max(1, parseInt(qty, 10) || 1)
+      });
+      this.toast(`${product.name} added to cart 🛒`, 'success');
     }
     this.saveState();
     this.renderCartBadge();
-    this.toast(`${product.name} added to cart 🛒`, 'success');
     this.animateCartIcon();
     // Sync to Firestore
     this._syncCartItemToFirestore(product.id);
   },
 
   removeFromCart(productId) {
+    if (!productId) {
+      this.toast('Invalid product ID', 'error');
+      return;
+    }
     const pId = String(productId);
     this.state.cart = this.state.cart.filter(i => String(i.id) !== pId);
     this.saveState();
@@ -577,13 +609,20 @@ const MathuraQuickMart = {
   },
 
   updateCartQty(productId, qty) {
+    if (!productId) {
+      this.toast('Invalid product ID', 'error');
+      return;
+    }
     if (qty < 1) { this.removeFromCart(productId); return; }
     const pId = String(productId);
     const item = this.state.cart.find(i => String(i.id) === pId);
     if (item) {
       const product = (window.API && window.API.getProduct) ? window.API.getProduct(productId) : null;
-      if (product && product.stock !== undefined && product.stock !== null && qty > product.stock) {
-        this.toast(`Only ${product.stock} items available in stock`, 'warning');
+      const stock = (product && product.stock !== undefined && product.stock !== null)
+        ? Number(product.stock)
+        : (item.stock !== undefined && item.stock !== null ? Number(item.stock) : 9999);
+      if (qty > stock) {
+        this.toast(`Only ${stock} items available in stock`, 'warning');
         return;
       }
       item.qty = qty;
@@ -591,6 +630,8 @@ const MathuraQuickMart = {
       this.renderCartBadge();
       // Sync to Firestore
       this._syncCartItemToFirestore(productId);
+    } else {
+      this.toast('Item not found in cart', 'error');
     }
   },
 
@@ -617,6 +658,9 @@ const MathuraQuickMart = {
 
     if (typeof updateProductCardButtons === 'function') {
       updateProductCardButtons();
+    }
+    if (typeof updateDetailCartButton === 'function') {
+      updateDetailCartButton();
     }
   },
 
@@ -865,10 +909,17 @@ const MathuraQuickMart = {
     const refs = this._getFirestoreRefs();
     if (!refs) return;
     const { uid, db, fs } = refs;
-    const item = this.state.cart.find(i => i.id === productId);
+    const item = this.state.cart.find(i => String(i.id) === String(productId));
     if (!item) { this._deleteCartItemFromFirestore(productId); return; }
     try {
-      await fs.setDoc(fs.doc(db, 'users', uid, 'cart', productId.toString()), item);
+      const payload = {
+        ...item,
+        id: parseInt(item.id) || item.id,
+        name: String(item.name || 'Product'),
+        price: Number(item.price) || 0,
+        qty: Math.max(1, parseInt(item.qty, 10) || 1)
+      };
+      await fs.setDoc(fs.doc(db, 'users', uid, 'cart', productId.toString()), payload);
     } catch (e) { console.warn('Firestore cart write error:', e); }
   },
 
@@ -937,24 +988,43 @@ const MathuraQuickMart = {
       const db = window.FirebaseDB;
       const fs = window.Firestore;
       try {
-        // 1. Load cart from users/{uid}/cart
+        // 1. Load cart from users/{uid}/cart and merge seamlessly
         const cartSnap = await fs.getDocs(fs.collection(db, 'users', uid, 'cart'));
+        const cartMap = new Map();
+
+        // Seed with existing local cart items
+        (this.state.cart || []).forEach(localItem => {
+          if (localItem && localItem.id) {
+            cartMap.set(String(localItem.id), {
+              ...localItem,
+              id: parseInt(localItem.id) || localItem.id,
+              price: Number(localItem.price) || 0,
+              qty: Math.max(1, parseInt(localItem.qty, 10) || 1)
+            });
+          }
+        });
+
         if (!cartSnap.empty) {
-          const cartMap = new Map();
           cartSnap.forEach(d => {
             const item = d.data();
             if (!item || !item.id) return;
             const key = String(item.id);
             if (cartMap.has(key)) {
-              cartMap.get(key).qty = (cartMap.get(key).qty || 1) + (item.qty || 1);
+              const existing = cartMap.get(key);
+              existing.qty = Math.max(existing.qty || 1, Number(item.qty) || 1);
             } else {
-              cartMap.set(key, { ...item, id: parseInt(item.id) || item.id, qty: item.qty || 1 });
+              cartMap.set(key, {
+                ...item,
+                id: parseInt(item.id) || item.id,
+                price: Number(item.price) || 0,
+                qty: Math.max(1, parseInt(item.qty, 10) || 1)
+              });
             }
           });
-          this.state.cart = Array.from(cartMap.values());
-          this.saveState();
-          this.renderCartBadge();
         }
+        this.state.cart = Array.from(cartMap.values());
+        this.saveState();
+        this.renderCartBadge();
 
         // 2. Load wishlist from users/{uid}/wishlist
         const wishSnap = await fs.getDocs(fs.collection(db, 'users', uid, 'wishlist'));
@@ -1635,6 +1705,47 @@ const API = {
             }
           });
 
+          // Ensure real-time notification sync for immediate feedback
+          if (window.FirebaseDB && window.Firestore) {
+            const db = window.FirebaseDB;
+            const fs = window.Firestore;
+            const nowISO = new Date().toISOString();
+            
+            // Admin notification
+            fs.setDoc(fs.doc(db, 'notifications', `admin_order_${serverOrder.id}`), {
+              id: `admin_order_${serverOrder.id}`,
+              recipientUid: 'admin',
+              recipientRole: 'admin',
+              type: 'new_order',
+              title: 'NEW ORDER RECEIVED! 🛒',
+              message: `Order #${serverOrder.id} from ${serverOrder.customerName || 'Customer'} (₹${serverOrder.total || 0})`,
+              orderId: serverOrder.id,
+              customerName: serverOrder.customerName || 'Customer',
+              amount: serverOrder.total || 0,
+              isRead: false,
+              createdAt: nowISO,
+              link: `/admin/dashboard.html?tab=orders&orderId=${serverOrder.id}`
+            }, { merge: true }).catch(() => {});
+
+            // Customer confirmation notification
+            if (serverOrder.userId) {
+              fs.setDoc(fs.doc(db, 'notifications', `cust_order_${serverOrder.id}_created`), {
+                id: `cust_order_${serverOrder.id}_created`,
+                recipientUid: serverOrder.userId,
+                recipientRole: 'customer',
+                type: 'order_status',
+                status: 'confirmed',
+                title: 'Order Placed Successfully! 🎉',
+                message: `Your order #${serverOrder.id} (₹${serverOrder.total || 0}) has been confirmed.`,
+                orderId: serverOrder.id,
+                amount: serverOrder.total || 0,
+                isRead: false,
+                createdAt: nowISO,
+                link: `/customer/my-orders.html?orderId=${serverOrder.id}`
+              }, { merge: true }).catch(() => {});
+            }
+          }
+
           return serverOrder;
         }
       } catch (fnError) {
@@ -2233,12 +2344,18 @@ function renderStars(rating) {
 }
 
 function addToCart(productId) {
+  if (!productId) {
+    MathuraQuickMart.toast('Invalid product ID', 'error');
+    return;
+  }
   const product = (window.API && window.API.getProduct)
     ? window.API.getProduct(productId)
     : (window.API && window.API.products ? window.API.products.find(p => String(p.id) === String(productId)) : null);
   if (product) {
     MathuraQuickMart.addToCart(product);
     refreshProductCards(productId);
+  } else {
+    MathuraQuickMart.toast('Product not found or unavailable', 'error');
   }
 }
 
@@ -2249,17 +2366,22 @@ function updateCartQtyDirect(productId, qty) {
 
 function refreshProductCards(productId = null) {
   updateProductCardButtons(productId);
-  if (typeof renderStorefront === 'function') renderStorefront();
-  if (typeof renderProducts === 'function') renderProducts();
+  if (typeof updateDetailCartButton === 'function') {
+    updateDetailCartButton();
+  }
 }
 
 window.renderCartButtonHtml = renderCartButtonHtml;
 window.updateProductCardButtons = updateProductCardButtons;
+window.refreshProductCards = refreshProductCards;
 
 // Keep cards synchronized when cart changes or across tabs
 if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
   window.addEventListener('cart-updated', () => {
     updateProductCardButtons();
+    if (typeof updateDetailCartButton === 'function') {
+      updateDetailCartButton();
+    }
   });
 
   window.addEventListener('storage', (e) => {
@@ -2267,6 +2389,9 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
       MathuraQuickMart.loadState();
       MathuraQuickMart.renderCartBadge();
       updateProductCardButtons();
+      if (typeof updateDetailCartButton === 'function') {
+        updateDetailCartButton();
+      }
     }
   });
 }
