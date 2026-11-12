@@ -3323,3 +3323,62 @@ section,
     overflow-x: auto;
   }
 }
+
+/* ---- Admin Mobile Responsive Fix ---- */
+@media (max-width: 768px) {
+  .admin-layout {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-main {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-left: 0;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .admin-topbar,
+  .admin-content,
+  .admin-tab-panel {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .admin-topbar {
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+
+  .admin-topbar>* {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .admin-content {
+    padding: 16px 12px;
+    overflow-x: hidden;
+  }
+
+  .admin-content table {
+    width: 100%;
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+/* ---- Banners Table Mobile Fix ---- */
+@media (max-width: 768px) {
+  #tab-banners>div[style*="overflow-x:auto"] {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #tab-banners .data-table {
+    min-width: 900px;
+  }
+}
