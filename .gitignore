@@ -73,3 +73,5 @@ node_modules/
 # Backup files
 *.bak
 *.bak*
+
+styles/diff.txt
